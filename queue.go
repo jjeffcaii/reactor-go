@@ -1,66 +1,109 @@
 package rs
 
 import (
-	"context"
+	"errors"
 	"math"
+	"sync"
 	"sync/atomic"
 )
 
-type OnWaiting = func(ctx context.Context, q *Queue)
+const (
+	RequestInfinite = math.MaxInt32
 
-type Queue struct {
-	tickets int32
-	ch      chan interface{}
-	pause   chan struct{}
+	defaultQueueSize = 16
+)
+
+var errIllegalCap = errors.New("cap must greater than zero")
+
+type queue struct {
+	elements   chan interface{}
+	cond       *sync.Cond
+	tickets    int32
+	onRequestN func(int32)
+	done       chan struct{}
 }
 
-func (p *Queue) Close() error {
-	p.tickets = math.MaxInt32
-	close(p.pause)
-	close(p.ch)
-	return nil
-}
-
-func (p *Queue) RequestN(n int32) {
-	if atomic.CompareAndSwapInt32(&(p.tickets), 0, n) {
-		p.pause <- struct{}{}
-	} else {
-		atomic.AddInt32(&(p.tickets), n)
-	}
-}
-
-func (p *Queue) Add(v interface{}) (err error) {
-	defer func() {
-		if e, ok := recover().(error); ok {
-			err = e
-		}
-	}()
-	p.ch <- v
+func (p *queue) Close() (err error) {
+	p.cond.Broadcast()
+	close(p.elements)
 	return
 }
 
-func (p *Queue) Poll(ctx context.Context, fn OnWaiting) (interface{}, bool) {
-	select {
-	case <-ctx.Done():
-		return nil, false
-	case v, ok := <-p.ch:
-		// tickets exhausted
-		foo := atomic.LoadInt32(&(p.tickets))
-		if foo == 0 {
-			if fn != nil {
-				fn(ctx, p)
-			}
-			<-p.pause
-		}
-		atomic.AddInt32(&(p.tickets), -1)
-		return v, ok
-	}
+func (p *queue) HandleRequest(handler func(n int32)) {
+	p.onRequestN = handler
 }
 
-func NewQueue(size int) *Queue {
-	return &Queue{
-		tickets: 0,
-		ch:      make(chan interface{}, size),
-		pause:   make(chan struct{}, 1),
+func (p *queue) SetTickets(n int32) {
+	atomic.StoreInt32(&(p.tickets), n)
+}
+
+func (p *queue) Tickets() (n int32) {
+	n = atomic.LoadInt32(&(p.tickets))
+	if n < 0 {
+		n = 0
+	}
+	return
+}
+
+func (p *queue) Push(item interface{}) (err error) {
+	defer func() {
+		err, _ = recover().(error)
+	}()
+	p.elements <- item
+	return
+}
+
+func (p *queue) Request(n int32) {
+	if n < 1 {
+		return
+	}
+	p.cond.L.Lock()
+	if atomic.LoadInt32(&(p.tickets)) < 1 {
+		atomic.StoreInt32(&(p.tickets), n)
+		p.cond.Signal()
+	} else {
+		atomic.StoreInt32(&(p.tickets), n)
+	}
+	if p.onRequestN != nil {
+		p.onRequestN(n)
+	}
+	p.cond.L.Unlock()
+}
+
+func (p *queue) Poll() (item interface{}, ok bool) {
+	select {
+	case <-p.done:
+		return
+	default:
+		p.cond.L.Lock()
+		if atomic.LoadInt32(&(p.tickets)) == RequestInfinite {
+			item, ok = <-p.elements
+			if !ok {
+				close(p.done)
+			}
+			p.cond.L.Unlock()
+			return
+		}
+		for atomic.AddInt32(&(p.tickets), -1) < 0 {
+			p.cond.Wait()
+		}
+		item, ok = <-p.elements
+		if !ok {
+			close(p.done)
+		}
+		p.cond.L.Unlock()
+	}
+	return
+}
+
+func newQueue(cap int, tickets int32) *queue {
+	if cap < 1 {
+		panic(errIllegalCap)
+	}
+	return &queue{
+		cond:     sync.NewCond(&sync.Mutex{}),
+		tickets:  tickets,
+		elements: make(chan interface{}, cap),
+		done:     make(chan struct{}),
 	}
 }
