@@ -18,6 +18,14 @@ type fluxProcessor struct {
 	sig          Signal
 	pubScheduler Scheduler
 	subScheduler Scheduler
+	transforms   []FnTransform
+}
+
+func (p *fluxProcessor) Map(fn FnTransform) Flux {
+	if fn != nil {
+		p.transforms = append(p.transforms, fn)
+	}
+	return p
 }
 
 func (p *fluxProcessor) Dispose() {
@@ -53,13 +61,14 @@ func (p *fluxProcessor) Cancel() {
 	_ = p.q.Close()
 }
 
-func (p *fluxProcessor) Next(v interface{}) (err error) {
-	if p.sig == SignalDefault {
-		err = p.q.Push(v)
-	} else {
-		err = errWrongSignal
+func (p *fluxProcessor) Next(v interface{}) error {
+	if p.sig != SignalDefault {
+		return errWrongSignal
 	}
-	return
+	for i, l := 0, len(p.transforms); i < l; i++ {
+		v = p.transforms[i](v)
+	}
+	return p.q.Push(v)
 }
 
 func (p *fluxProcessor) Error(e error) {

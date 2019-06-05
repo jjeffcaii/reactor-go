@@ -24,6 +24,27 @@ func TestFlux_Simple(t *testing.T) {
 		}))
 }
 
+func TestFlux_Map(t *testing.T) {
+	f := NewFlux(func(ctx context.Context, producer Producer) {
+		for i := 0; i < 100; i++ {
+			_ = producer.Next(i)
+		}
+		producer.Complete()
+	})
+
+	f.
+		Map(func(i interface{}) interface{} {
+			return i.(int) * 2
+		}).
+		Map(func(i interface{}) interface{} {
+			return fmt.Sprintf("message_%04d", i.(int))
+		}).
+		Subscribe(context.Background(), OnNext(func(ctx context.Context, s Subscription, v interface{}) {
+			log.Println("next:", v)
+		}))
+
+}
+
 func TestFlux_Request(t *testing.T) {
 	f := NewFlux(func(ctx context.Context, producer Producer) {
 		for i := 0; i < 100; i++ {

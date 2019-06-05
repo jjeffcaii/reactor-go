@@ -68,12 +68,14 @@ type (
 
 	Mono interface {
 		Publisher
+		Map(fn FnTransform) Mono
 		SubscribeOn(s Scheduler) Mono
 		PublishOn(s Scheduler) Mono
 	}
 
 	Flux interface {
 		Publisher
+		Map(fn FnTransform) Flux
 		SubscribeOn(s Scheduler) Flux
 		PublishOn(s Scheduler) Flux
 	}

@@ -15,6 +15,14 @@ type defaultMonoProcessor struct {
 	e            error
 	sig          Signal
 	done         chan struct{}
+	transforms   []FnTransform
+}
+
+func (p *defaultMonoProcessor) Map(transform FnTransform) Mono {
+	if transform != nil {
+		p.transforms = append(p.transforms, transform)
+	}
+	return p
 }
 
 func (p *defaultMonoProcessor) Dispose() {
@@ -55,6 +63,9 @@ func (p *defaultMonoProcessor) OnError(ctx context.Context, err error) {
 func (p *defaultMonoProcessor) Success(v interface{}) {
 	if p.sig != SignalDefault {
 		return
+	}
+	for i, l := 0, len(p.transforms); i < l; i++ {
+		v = p.transforms[i](v)
 	}
 	p.r = v
 	p.sig = SignalComplete
