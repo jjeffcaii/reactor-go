@@ -7,8 +7,8 @@ import (
 )
 
 type defaultMonoProcessor struct {
-	gen          func(MonoProducer)
-	hooks        *hooks
+	gen          func(MonoSink)
+	hooks        *Hooks
 	pubScheduler Scheduler
 	subScheduler Scheduler
 	r            interface{}
@@ -44,20 +44,20 @@ func (p *defaultMonoProcessor) Cancel() {
 func (p *defaultMonoProcessor) Request(n int) {
 }
 
-func (p *defaultMonoProcessor) OnSubscribe(ctx context.Context, s Subscription) {
-	p.hooks.OnSubscribe(ctx, s)
+func (p *defaultMonoProcessor) OnSubscribe(s Subscription) {
+	p.hooks.OnSubscribe(s)
 }
 
-func (p *defaultMonoProcessor) OnNext(ctx context.Context, s Subscription, v interface{}) {
-	p.hooks.OnNext(ctx, s, v)
+func (p *defaultMonoProcessor) OnNext(s Subscription, v interface{}) {
+	p.hooks.OnNext(s, v)
 }
 
-func (p *defaultMonoProcessor) OnComplete(ctx context.Context) {
-	p.hooks.OnComplete(ctx)
+func (p *defaultMonoProcessor) OnComplete() {
+	p.hooks.OnComplete()
 }
 
-func (p *defaultMonoProcessor) OnError(ctx context.Context, err error) {
-	p.hooks.OnError(ctx, err)
+func (p *defaultMonoProcessor) OnError(err error) {
+	p.hooks.OnError(err)
 }
 
 func (p *defaultMonoProcessor) Success(v interface{}) {
@@ -114,31 +114,31 @@ func (p *defaultMonoProcessor) Subscribe(ctx context.Context, opts ...OpSubscrib
 	})
 	p.subScheduler.Do(ctx, func(ctx context.Context) {
 		defer func() {
-			p.hooks.OnFinally(ctx, p.sig)
-			returnHooks(p.hooks)
+			p.hooks.OnFinally(p.sig)
+			ReturnHooks(p.hooks)
 			p.hooks = nil
 		}()
-		p.OnSubscribe(ctx, p)
+		p.OnSubscribe(p)
 		<-p.done
 		switch p.sig {
 		case SignalComplete:
-			p.OnNext(ctx, p, p.r)
+			p.OnNext(p, p.r)
 		case SignalError:
-			p.OnError(ctx, p.e)
+			p.OnError(p.e)
 		case SignalCancel:
-			p.hooks.OnCancel(ctx)
+			p.hooks.OnCancel()
 		}
 	})
 	return p
 }
 
-func NewMono(fn func(sink MonoProducer)) Mono {
+func NewMono(fn func(sink MonoSink)) Mono {
 	return &defaultMonoProcessor{
 		gen:          fn,
 		done:         make(chan struct{}),
 		sig:          SignalDefault,
 		pubScheduler: Immediate(),
 		subScheduler: Immediate(),
-		hooks:        borrowHooks(),
+		hooks:        BorrowHooks(),
 	}
 }

@@ -1,3 +1,4 @@
 package rs
 
-type FnTransform = func(interface{}) interface{}
+type FnFilter func(interface{}) bool
+type FnTransform func(interface{}) interface{}

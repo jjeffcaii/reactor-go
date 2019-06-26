@@ -8,7 +8,7 @@ import (
 )
 
 func TestNewMono(t *testing.T) {
-	mono := NewMono(func(producer MonoProducer) {
+	mono := NewMono(func(producer MonoSink) {
 		producer.Success(1)
 	})
 	mono.
@@ -18,9 +18,9 @@ func TestNewMono(t *testing.T) {
 		Map(func(i interface{}) interface{} {
 			return fmt.Sprintf("mapped_%04d", i)
 		}).
-		Subscribe(context.Background(), OnNext(func(ctx context.Context, sub Subscription, v interface{}) {
+		Subscribe(context.Background(), OnNext(func(sub Subscription, v interface{}) {
 			log.Println("next1:", v)
-		}), OnNext(func(ctx context.Context, sub Subscription, v interface{}) {
+		}), OnNext(func(sub Subscription, v interface{}) {
 			log.Println("next2:", v)
 		}))
 }

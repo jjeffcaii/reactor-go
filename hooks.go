@@ -1,18 +1,17 @@
 package rs
 
 import (
-	"context"
 	"sync"
 )
 
 var hooksPool = sync.Pool{
 	New: func() interface{} {
-		return &hooks{}
+		return new(Hooks)
 	},
 }
 
-// hooks is used to handle rx lifecycle events.
-type hooks struct {
+// Hooks is used to handle rx lifecycle events.
+type Hooks struct {
 	hOnCancel    []FnOnCancel
 	hOnRequest   []FnOnRequest
 	hOnSubscribe []FnOnSubscribe
@@ -22,7 +21,7 @@ type hooks struct {
 	hOnFinally   []FnOnFinally
 }
 
-func (p *hooks) Reset() {
+func (p *Hooks) Reset() {
 	if p.hOnCancel != nil {
 		p.hOnCancel = p.hOnCancel[:0]
 	}
@@ -46,100 +45,100 @@ func (p *hooks) Reset() {
 	}
 }
 
-func (p *hooks) OnCancel(ctx context.Context) {
+func (p *Hooks) OnCancel() {
 	if p == nil {
 		return
 	}
 	for i, l := 0, len(p.hOnCancel); i < l; i++ {
-		p.hOnCancel[i](ctx)
+		p.hOnCancel[i]()
 	}
 }
 
-func (p *hooks) OnRequest(ctx context.Context, n int) {
+func (p *Hooks) OnRequest(n int) {
 	if p == nil {
 		return
 	}
 	for i, l := 0, len(p.hOnRequest); i < l; i++ {
-		p.hOnRequest[i](ctx, n)
+		p.hOnRequest[i](n)
 	}
 }
 
-func (p *hooks) OnSubscribe(ctx context.Context, s Subscription) {
+func (p *Hooks) OnSubscribe(s Subscription) {
 	if p == nil {
 		return
 	}
 	for i, l := 0, len(p.hOnSubscribe); i < l; i++ {
-		p.hOnSubscribe[l-i-1](ctx, s)
+		p.hOnSubscribe[l-i-1](s)
 	}
 }
 
-func (p *hooks) OnNext(ctx context.Context, s Subscription, elem interface{}) {
+func (p *Hooks) OnNext(s Subscription, elem interface{}) {
 	if p == nil {
 		return
 	}
 	for i, l := 0, len(p.hOnNext); i < l; i++ {
-		p.hOnNext[i](ctx, s, elem)
+		p.hOnNext[i](s, elem)
 	}
 }
 
-func (p *hooks) OnComplete(ctx context.Context) {
+func (p *Hooks) OnComplete() {
 	if p == nil {
 		return
 	}
 	for i, l := 0, len(p.hOnComplete); i < l; i++ {
-		p.hOnComplete[i](ctx)
+		p.hOnComplete[i]()
 	}
 }
 
-func (p *hooks) OnError(ctx context.Context, err error) {
+func (p *Hooks) OnError(err error) {
 	if p == nil {
 		return
 	}
 	for i, l := 0, len(p.hOnError); i < l; i++ {
-		p.hOnError[i](ctx, err)
+		p.hOnError[i](err)
 	}
 }
 
-func (p *hooks) OnFinally(ctx context.Context, sig Signal) {
+func (p *Hooks) OnFinally(sig Signal) {
 	if p == nil {
 		return
 	}
 	for i, l := 0, len(p.hOnFinally); i < l; i++ {
-		p.hOnFinally[l-i-1](ctx, sig)
+		p.hOnFinally[l-i-1](sig)
 	}
 }
 
-func (p *hooks) DoOnError(fn FnOnError) {
+func (p *Hooks) DoOnError(fn FnOnError) {
 	p.hOnError = append(p.hOnError, fn)
 }
 
-func (p *hooks) DoOnNext(fn FnOnNext) {
+func (p *Hooks) DoOnNext(fn FnOnNext) {
 	p.hOnNext = append(p.hOnNext, fn)
 }
 
-func (p *hooks) DoOnRequest(fn FnOnRequest) {
+func (p *Hooks) DoOnRequest(fn FnOnRequest) {
 	p.hOnRequest = append(p.hOnRequest, fn)
 }
 
-func (p *hooks) DoOnComplete(fn FnOnComplete) {
+func (p *Hooks) DoOnComplete(fn FnOnComplete) {
 	p.hOnComplete = append(p.hOnComplete, fn)
 }
 
-func (p *hooks) DoOnCancel(fn FnOnCancel) {
+func (p *Hooks) DoOnCancel(fn FnOnCancel) {
 	p.hOnCancel = append(p.hOnCancel, fn)
 }
 
-func (p *hooks) DoOnSubscribe(fn FnOnSubscribe) {
+func (p *Hooks) DoOnSubscribe(fn FnOnSubscribe) {
 	p.hOnSubscribe = append(p.hOnSubscribe, fn)
 }
-func (p *hooks) DoOnFinally(fn FnOnFinally) {
+func (p *Hooks) DoOnFinally(fn FnOnFinally) {
 	p.hOnFinally = append(p.hOnFinally, fn)
 }
 
-func borrowHooks() *hooks {
-	return hooksPool.Get().(*hooks)
+func BorrowHooks() *Hooks {
+	return hooksPool.Get().(*Hooks)
 }
-func returnHooks(h *hooks) {
+func ReturnHooks(h *Hooks) {
 	h.Reset()
 	hooksPool.Put(h)
 }

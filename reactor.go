@@ -1,6 +1,8 @@
 package rs
 
-import "context"
+import (
+	"context"
+)
 
 type Signal int8
 
@@ -12,13 +14,13 @@ const (
 )
 
 type (
-	FnOnComplete = func(ctx context.Context)
-	FnOnNext = func(ctx context.Context, s Subscription, v interface{})
-	FnOnCancel = func(ctx context.Context)
-	FnOnSubscribe = func(ctx context.Context, s Subscription)
-	FnOnRequest = func(ctx context.Context, n int)
-	FnOnError = func(ctx context.Context, err error)
-	FnOnFinally = func(ctx context.Context, g Signal)
+	FnOnComplete = func()
+	FnOnNext = func(s Subscription, v interface{})
+	FnOnCancel = func()
+	FnOnSubscribe = func(s Subscription)
+	FnOnRequest = func(n int)
+	FnOnError = func(err error)
+	FnOnFinally = func(g Signal)
 )
 
 type (
@@ -35,10 +37,10 @@ type (
 	}
 
 	Subscriber interface {
-		OnSubscribe(ctx context.Context, s Subscription)
-		OnNext(ctx context.Context, s Subscription, v interface{})
-		OnComplete(ctx context.Context)
-		OnError(ctx context.Context, err error)
+		OnSubscribe(s Subscription)
+		OnNext(s Subscription, v interface{})
+		OnComplete()
+		OnError(err error)
 	}
 
 	Subscription interface {
@@ -51,13 +53,13 @@ type (
 		Subscriber
 	}
 
-	Producer interface {
+	FluxSink interface {
 		Next(v interface{}) error
 		Error(e error)
 		Complete()
 	}
 
-	MonoProducer interface {
+	MonoSink interface {
 		Success(v interface{})
 		Error(e error)
 	}
@@ -75,6 +77,7 @@ type (
 
 	Flux interface {
 		Publisher
+		Filter(fn FnFilter) Flux
 		Map(fn FnTransform) Flux
 		SubscribeOn(s Scheduler) Flux
 		PublishOn(s Scheduler) Flux

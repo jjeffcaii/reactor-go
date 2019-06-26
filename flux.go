@@ -11,19 +11,26 @@ var errIllegalRequestN = errors.New("illegal requestN")
 
 type fluxProcessor struct {
 	n            int
-	gen          func(context.Context, Producer)
+	gen          func(context.Context, FluxSink)
 	q            *queue
 	e            error
-	hooks        *hooks
+	hooks        *Hooks
 	sig          Signal
 	pubScheduler Scheduler
 	subScheduler Scheduler
-	transforms   []FnTransform
+	chain        []interface{}
+}
+
+func (p *fluxProcessor) Filter(fn FnFilter) Flux {
+	if fn != nil {
+		p.chain = append(p.chain, fn)
+	}
+	return p
 }
 
 func (p *fluxProcessor) Map(fn FnTransform) Flux {
 	if fn != nil {
-		p.transforms = append(p.transforms, fn)
+		p.chain = append(p.chain, fn)
 	}
 	return p
 }
@@ -61,12 +68,20 @@ func (p *fluxProcessor) Cancel() {
 	_ = p.q.Close()
 }
 
-func (p *fluxProcessor) Next(v interface{}) error {
+func (p *fluxProcessor) Next(v interface{}) (err error) {
 	if p.sig != SignalDefault {
-		return errWrongSignal
+		err = errWrongSignal
+		return
 	}
-	for i, l := 0, len(p.transforms); i < l; i++ {
-		v = p.transforms[i](v)
+	for i, l := 0, len(p.chain); i < l; i++ {
+		fn := p.chain[i]
+		if t, ok := fn.(FnTransform); ok {
+			v = t(v)
+			continue
+		}
+		if !fn.(FnFilter)(v) {
+			return
+		}
 	}
 	return p.q.Push(v)
 }
@@ -108,54 +123,54 @@ func (p *fluxProcessor) Subscribe(ctx context.Context, opts ...OpSubscriber) Dis
 	}
 	// bind request N
 	p.q.HandleRequest(func(n int32) {
-		p.hooks.OnRequest(ctx, int(n))
+		p.hooks.OnRequest(int(n))
 	})
 	p.subScheduler.Do(ctx, func(ctx context.Context) {
 		defer func() {
-			p.hooks.OnFinally(ctx, p.sig)
-			returnHooks(p.hooks)
+			p.hooks.OnFinally(p.sig)
+			ReturnHooks(p.hooks)
 			p.hooks = nil
 		}()
-		p.OnSubscribe(ctx, p)
+		p.OnSubscribe(p)
 		for {
 			v, ok := p.q.Poll()
 			if !ok {
 				break
 			}
-			p.OnNext(ctx, p, v)
+			p.OnNext(p, v)
 		}
 		switch p.sig {
 		case SignalComplete:
-			p.OnComplete(ctx)
+			p.OnComplete()
 		case SignalError:
-			p.OnError(ctx, p.e)
+			p.OnError(p.e)
 		case SignalCancel:
 			cancel()
-			p.hooks.OnCancel(ctx)
+			p.hooks.OnCancel()
 		}
 	})
 	return p
 }
 
-func (p *fluxProcessor) OnSubscribe(ctx context.Context, s Subscription) {
-	p.hooks.OnSubscribe(ctx, s)
+func (p *fluxProcessor) OnSubscribe(s Subscription) {
+	p.hooks.OnSubscribe(s)
 }
 
-func (p *fluxProcessor) OnNext(ctx context.Context, s Subscription, v interface{}) {
-	p.hooks.OnNext(ctx, s, v)
+func (p *fluxProcessor) OnNext(s Subscription, v interface{}) {
+	p.hooks.OnNext(s, v)
 }
 
-func (p *fluxProcessor) OnComplete(ctx context.Context) {
-	p.hooks.OnComplete(ctx)
+func (p *fluxProcessor) OnComplete() {
+	p.hooks.OnComplete()
 }
 
-func (p *fluxProcessor) OnError(ctx context.Context, err error) {
-	p.hooks.OnError(ctx, err)
+func (p *fluxProcessor) OnError(err error) {
+	p.hooks.OnError(err)
 }
 
-func NewFlux(fn func(ctx context.Context, producer Producer)) Flux {
+func NewFlux(fn func(ctx context.Context, producer FluxSink)) Flux {
 	return &fluxProcessor{
-		hooks:        borrowHooks(),
+		hooks:        BorrowHooks(),
 		gen:          fn,
 		q:            newQueue(defaultQueueSize, RequestInfinite),
 		pubScheduler: Elastic(),
