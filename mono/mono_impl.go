@@ -27,6 +27,20 @@ func (p *defaultMonoProcessor) Map(transform rs.FnTransform) Mono {
 	return p
 }
 
+func (p *defaultMonoProcessor) MapInt(transform func(int) interface{}) Mono {
+	p.Map(func(i interface{}) interface{} {
+		return transform(i.(int))
+	})
+	return p
+}
+
+func (p *defaultMonoProcessor) MapString(transform func(string) interface{}) Mono {
+	p.Map(func(i interface{}) interface{} {
+		return transform(i.(string))
+	})
+	return p
+}
+
 func (p *defaultMonoProcessor) Dispose() {
 	panic("implement me")
 }

@@ -18,7 +18,7 @@ type (
 	FnTransform func(interface{}) interface{}
 
 	FnOnComplete = func()
-	FnOnNext = func(Subscription, interface{})
+	FnOnNext = func(s Subscription, i interface{})
 	FnOnCancel = func()
 	FnOnSubscribe = func(Subscription)
 	FnOnRequest = func(int)
@@ -61,7 +61,7 @@ type (
 	}
 )
 
-type OpSubscriber func(*Hooks)
+type OpSubscriber func(h *Hooks)
 
 func OnRequest(fn FnOnRequest) OpSubscriber {
 	return func(h *Hooks) {
@@ -72,6 +72,36 @@ func OnRequest(fn FnOnRequest) OpSubscriber {
 func OnNext(fn FnOnNext) OpSubscriber {
 	return func(h *Hooks) {
 		h.DoOnNext(fn)
+	}
+}
+
+func OnNextBool(fn func(Subscription, bool)) OpSubscriber {
+	return func(h *Hooks) {
+		h.DoOnNext(func(s Subscription, i interface{}) {
+			if v, ok := i.(bool); ok {
+				fn(s, v)
+			}
+		})
+	}
+}
+
+func OnNextInt(fn func(Subscription, int)) OpSubscriber {
+	return func(h *Hooks) {
+		h.DoOnNext(func(s Subscription, i interface{}) {
+			if v, ok := i.(int); ok {
+				fn(s, v)
+			}
+		})
+	}
+}
+
+func OnNextString(fn func(Subscription, string)) OpSubscriber {
+	return func(h *Hooks) {
+		h.DoOnNext(func(subscription Subscription, i interface{}) {
+			if v, ok := i.(string); ok {
+				fn(subscription, v)
+			}
+		})
 	}
 }
 
