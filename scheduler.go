@@ -1,9 +1,10 @@
 package rs
 
-import "context"
+import (
+	"context"
+)
 
 var (
-
 	elastic   = &elasticScheduler{}
 	immediate = &immediateScheduler{}
 )

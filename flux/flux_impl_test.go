@@ -1,4 +1,4 @@
-package rs
+package flux
 
 import (
 	"context"
@@ -7,12 +7,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jjeffcaii/reactor-go"
 	"github.com/stretchr/testify/require"
 )
 
 func TestFlux_Simple(t *testing.T) {
 
-	flux := NewFlux(func(ctx context.Context, producer FluxSink) {
+	flux := New(func(ctx context.Context, producer Sink) {
 		for i := 0; i < 10; i++ {
 			time.Sleep(100 * time.Millisecond)
 			producer.Next(fmt.Sprintf("MSG_%04d", i))
@@ -20,16 +21,16 @@ func TestFlux_Simple(t *testing.T) {
 		producer.Complete()
 	})
 	flux.
-		Subscribe(context.Background(), OnNext(func(sub Subscription, v interface{}) {
+		Subscribe(context.Background(), rs.OnNext(func(sub rs.Subscription, v interface{}) {
 			log.Println("onNext:", v)
-		}), OnError(func(err error) {
+		}), rs.OnError(func(err error) {
 			log.Println("onError:", err)
 			require.NoError(t, err)
 		}))
 }
 
 func TestFlux_Map(t *testing.T) {
-	f := NewFlux(func(ctx context.Context, producer FluxSink) {
+	f := New(func(ctx context.Context, producer Sink) {
 		for i := 0; i < 100; i++ {
 			_ = producer.Next(i)
 		}
@@ -46,14 +47,14 @@ func TestFlux_Map(t *testing.T) {
 		Map(func(i interface{}) interface{} {
 			return fmt.Sprintf("message_%04d", i.(int))
 		}).
-		Subscribe(context.Background(), OnNext(func(s Subscription, v interface{}) {
+		Subscribe(context.Background(), rs.OnNext(func(s rs.Subscription, v interface{}) {
 			log.Println("next:", v)
 		}))
 
 }
 
 func TestFlux_Request(t *testing.T) {
-	f := NewFlux(func(ctx context.Context, producer FluxSink) {
+	f := New(func(ctx context.Context, producer Sink) {
 		for i := 0; i < 100; i++ {
 			_ = producer.Next(fmt.Sprintf("message_%04d", i))
 		}
@@ -62,17 +63,17 @@ func TestFlux_Request(t *testing.T) {
 
 	f.Subscribe(
 		context.Background(),
-		OnRequest(func(n int) {
+		rs.OnRequest(func(n int) {
 			log.Println("request:", n)
 		}),
-		OnSubscribe(func(s Subscription) {
+		rs.OnSubscribe(func(s rs.Subscription) {
 			s.Request(1)
 		}),
-		OnNext(func(s Subscription, v interface{}) {
+		rs.OnNext(func(s rs.Subscription, v interface{}) {
 			log.Println("next:", v)
 			s.Request(1)
 		}),
-		OnComplete(func() {
+		rs.OnComplete(func() {
 			log.Println("finish")
 		}),
 	)

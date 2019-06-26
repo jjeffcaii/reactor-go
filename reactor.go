@@ -14,13 +14,16 @@ const (
 )
 
 type (
+	Predicate func(interface{}) bool
+	FnTransform func(interface{}) interface{}
+
 	FnOnComplete = func()
-	FnOnNext = func(s Subscription, v interface{})
+	FnOnNext = func(Subscription, interface{})
 	FnOnCancel = func()
-	FnOnSubscribe = func(s Subscription)
-	FnOnRequest = func(n int)
-	FnOnError = func(err error)
-	FnOnFinally = func(g Signal)
+	FnOnSubscribe = func(Subscription)
+	FnOnRequest = func(int)
+	FnOnError = func(error)
+	FnOnFinally = func(Signal)
 )
 
 type (
@@ -53,33 +56,39 @@ type (
 		Subscriber
 	}
 
-	FluxSink interface {
-		Next(v interface{}) error
-		Error(e error)
-		Complete()
-	}
-
-	MonoSink interface {
-		Success(v interface{})
-		Error(e error)
-	}
-
 	Scheduler interface {
 		Do(ctx context.Context, fn func(ctx context.Context))
 	}
-
-	Mono interface {
-		Publisher
-		Map(fn FnTransform) Mono
-		SubscribeOn(s Scheduler) Mono
-		PublishOn(s Scheduler) Mono
-	}
-
-	Flux interface {
-		Publisher
-		Filter(fn FnFilter) Flux
-		Map(fn FnTransform) Flux
-		SubscribeOn(s Scheduler) Flux
-		PublishOn(s Scheduler) Flux
-	}
 )
+
+type OpSubscriber func(*Hooks)
+
+func OnRequest(fn FnOnRequest) OpSubscriber {
+	return func(h *Hooks) {
+		h.DoOnRequest(fn)
+	}
+}
+
+func OnNext(fn FnOnNext) OpSubscriber {
+	return func(h *Hooks) {
+		h.DoOnNext(fn)
+	}
+}
+
+func OnComplete(fn FnOnComplete) OpSubscriber {
+	return func(h *Hooks) {
+		h.DoOnComplete(fn)
+	}
+}
+
+func OnSubscribe(fn FnOnSubscribe) OpSubscriber {
+	return func(h *Hooks) {
+		h.DoOnSubscribe(fn)
+	}
+}
+
+func OnError(fn FnOnError) OpSubscriber {
+	return func(h *Hooks) {
+		h.DoOnError(fn)
+	}
+}

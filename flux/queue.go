@@ -1,4 +1,4 @@
-package rs
+package flux
 
 import (
 	"errors"
@@ -10,12 +10,12 @@ import (
 const (
 	RequestInfinite = math.MaxInt32
 
-	defaultQueueSize = 16
+	DefaultQueueSize = 16
 )
 
 var errIllegalCap = errors.New("cap must greater than zero")
 
-type queue struct {
+type Queue struct {
 	elements   chan interface{}
 	cond       *sync.Cond
 	tickets    int32
@@ -23,21 +23,21 @@ type queue struct {
 	done       chan struct{}
 }
 
-func (p *queue) Close() (err error) {
+func (p *Queue) Close() (err error) {
 	p.cond.Broadcast()
 	close(p.elements)
 	return
 }
 
-func (p *queue) HandleRequest(handler func(n int32)) {
+func (p *Queue) HandleRequest(handler func(n int32)) {
 	p.onRequestN = handler
 }
 
-func (p *queue) SetTickets(n int32) {
+func (p *Queue) SetTickets(n int32) {
 	atomic.StoreInt32(&(p.tickets), n)
 }
 
-func (p *queue) Tickets() (n int32) {
+func (p *Queue) Tickets() (n int32) {
 	n = atomic.LoadInt32(&(p.tickets))
 	if n < 0 {
 		n = 0
@@ -45,7 +45,7 @@ func (p *queue) Tickets() (n int32) {
 	return
 }
 
-func (p *queue) Push(item interface{}) (err error) {
+func (p *Queue) Push(item interface{}) (err error) {
 	defer func() {
 		err, _ = recover().(error)
 	}()
@@ -53,7 +53,7 @@ func (p *queue) Push(item interface{}) (err error) {
 	return
 }
 
-func (p *queue) Request(n int32) {
+func (p *Queue) Request(n int32) {
 	if n < 1 {
 		return
 	}
@@ -70,7 +70,7 @@ func (p *queue) Request(n int32) {
 	p.cond.L.Unlock()
 }
 
-func (p *queue) Poll() (item interface{}, ok bool) {
+func (p *Queue) Poll() (item interface{}, ok bool) {
 	select {
 	case <-p.done:
 		return
@@ -96,11 +96,11 @@ func (p *queue) Poll() (item interface{}, ok bool) {
 	return
 }
 
-func newQueue(cap int, tickets int32) *queue {
+func NewQueue(cap int, tickets int32) *Queue {
 	if cap < 1 {
 		panic(errIllegalCap)
 	}
-	return &queue{
+	return &Queue{
 		cond:     sync.NewCond(&sync.Mutex{}),
 		tickets:  tickets,
 		elements: make(chan interface{}, cap),

@@ -1,24 +1,26 @@
-package rs
+package mono
 
 import (
 	"context"
 	"errors"
 	"fmt"
+
+	"github.com/jjeffcaii/reactor-go"
 )
 
 type defaultMonoProcessor struct {
-	gen          func(MonoSink)
-	hooks        *Hooks
-	pubScheduler Scheduler
-	subScheduler Scheduler
+	gen          func(Sink)
+	hooks        *rs.Hooks
+	pubScheduler rs.Scheduler
+	subScheduler rs.Scheduler
 	r            interface{}
 	e            error
-	sig          Signal
+	sig          rs.Signal
 	done         chan struct{}
-	transforms   []FnTransform
+	transforms   []rs.FnTransform
 }
 
-func (p *defaultMonoProcessor) Map(transform FnTransform) Mono {
+func (p *defaultMonoProcessor) Map(transform rs.FnTransform) Mono {
 	if transform != nil {
 		p.transforms = append(p.transforms, transform)
 	}
@@ -34,21 +36,21 @@ func (p *defaultMonoProcessor) IsDisposed() bool {
 }
 
 func (p *defaultMonoProcessor) Cancel() {
-	if p.sig != SignalDefault {
+	if p.sig != rs.SignalDefault {
 		return
 	}
-	p.sig = SignalCancel
+	p.sig = rs.SignalCancel
 	close(p.done)
 }
 
 func (p *defaultMonoProcessor) Request(n int) {
 }
 
-func (p *defaultMonoProcessor) OnSubscribe(s Subscription) {
+func (p *defaultMonoProcessor) OnSubscribe(s rs.Subscription) {
 	p.hooks.OnSubscribe(s)
 }
 
-func (p *defaultMonoProcessor) OnNext(s Subscription, v interface{}) {
+func (p *defaultMonoProcessor) OnNext(s rs.Subscription, v interface{}) {
 	p.hooks.OnNext(s, v)
 }
 
@@ -61,37 +63,37 @@ func (p *defaultMonoProcessor) OnError(err error) {
 }
 
 func (p *defaultMonoProcessor) Success(v interface{}) {
-	if p.sig != SignalDefault {
+	if p.sig != rs.SignalDefault {
 		return
 	}
 	for i, l := 0, len(p.transforms); i < l; i++ {
 		v = p.transforms[i](v)
 	}
 	p.r = v
-	p.sig = SignalComplete
+	p.sig = rs.SignalComplete
 	close(p.done)
 }
 
 func (p *defaultMonoProcessor) Error(e error) {
-	if p.sig != SignalDefault {
+	if p.sig != rs.SignalDefault {
 		return
 	}
 	p.e = e
-	p.sig = SignalError
+	p.sig = rs.SignalError
 	close(p.done)
 }
 
-func (p *defaultMonoProcessor) SubscribeOn(s Scheduler) Mono {
+func (p *defaultMonoProcessor) SubscribeOn(s rs.Scheduler) Mono {
 	p.subScheduler = s
 	return p
 }
 
-func (p *defaultMonoProcessor) PublishOn(s Scheduler) Mono {
+func (p *defaultMonoProcessor) PublishOn(s rs.Scheduler) Mono {
 	p.pubScheduler = s
 	return p
 }
 
-func (p *defaultMonoProcessor) Subscribe(ctx context.Context, opts ...OpSubscriber) Disposable {
+func (p *defaultMonoProcessor) Subscribe(ctx context.Context, opts ...rs.OpSubscriber) rs.Disposable {
 	for _, fn := range opts {
 		fn(p.hooks)
 	}
@@ -115,30 +117,30 @@ func (p *defaultMonoProcessor) Subscribe(ctx context.Context, opts ...OpSubscrib
 	p.subScheduler.Do(ctx, func(ctx context.Context) {
 		defer func() {
 			p.hooks.OnFinally(p.sig)
-			ReturnHooks(p.hooks)
+			rs.ReturnHooks(p.hooks)
 			p.hooks = nil
 		}()
 		p.OnSubscribe(p)
 		<-p.done
 		switch p.sig {
-		case SignalComplete:
+		case rs.SignalComplete:
 			p.OnNext(p, p.r)
-		case SignalError:
+		case rs.SignalError:
 			p.OnError(p.e)
-		case SignalCancel:
+		case rs.SignalCancel:
 			p.hooks.OnCancel()
 		}
 	})
 	return p
 }
 
-func NewMono(fn func(sink MonoSink)) Mono {
+func New(fn func(sink Sink)) Mono {
 	return &defaultMonoProcessor{
 		gen:          fn,
 		done:         make(chan struct{}),
-		sig:          SignalDefault,
-		pubScheduler: Immediate(),
-		subScheduler: Immediate(),
-		hooks:        BorrowHooks(),
+		sig:          rs.SignalDefault,
+		pubScheduler: rs.Immediate(),
+		subScheduler: rs.Immediate(),
+		hooks:        rs.BorrowHooks(),
 	}
 }

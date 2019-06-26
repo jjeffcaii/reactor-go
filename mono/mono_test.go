@@ -1,14 +1,16 @@
-package rs
+package mono
 
 import (
 	"context"
 	"fmt"
 	"log"
 	"testing"
+
+	"github.com/jjeffcaii/reactor-go"
 )
 
-func TestNewMono(t *testing.T) {
-	mono := NewMono(func(producer MonoSink) {
+func TestNew(t *testing.T) {
+	mono := New(func(producer Sink) {
 		producer.Success(1)
 	})
 	mono.
@@ -18,9 +20,9 @@ func TestNewMono(t *testing.T) {
 		Map(func(i interface{}) interface{} {
 			return fmt.Sprintf("mapped_%04d", i)
 		}).
-		Subscribe(context.Background(), OnNext(func(sub Subscription, v interface{}) {
+		Subscribe(context.Background(), rs.OnNext(func(s rs.Subscription, v interface{}) {
 			log.Println("next1:", v)
-		}), OnNext(func(sub Subscription, v interface{}) {
+		}), rs.OnNext(func(sub rs.Subscription, v interface{}) {
 			log.Println("next2:", v)
 		}))
 }

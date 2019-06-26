@@ -1,9 +1,11 @@
-package rs
+package flux
 
 import (
 	"context"
 	"errors"
 	"fmt"
+
+	"github.com/jjeffcaii/reactor-go"
 )
 
 var errWrongSignal = errors.New("wrong signal")
@@ -11,24 +13,24 @@ var errIllegalRequestN = errors.New("illegal requestN")
 
 type fluxProcessor struct {
 	n            int
-	gen          func(context.Context, FluxSink)
-	q            *queue
+	gen          func(context.Context, Sink)
+	q            *Queue
 	e            error
-	hooks        *Hooks
-	sig          Signal
-	pubScheduler Scheduler
-	subScheduler Scheduler
+	hooks        *rs.Hooks
+	sig          rs.Signal
+	pubScheduler rs.Scheduler
+	subScheduler rs.Scheduler
 	chain        []interface{}
 }
 
-func (p *fluxProcessor) Filter(fn FnFilter) Flux {
+func (p *fluxProcessor) Filter(fn rs.Predicate) Flux {
 	if fn != nil {
 		p.chain = append(p.chain, fn)
 	}
 	return p
 }
 
-func (p *fluxProcessor) Map(fn FnTransform) Flux {
+func (p *fluxProcessor) Map(fn rs.FnTransform) Flux {
 	if fn != nil {
 		p.chain = append(p.chain, fn)
 	}
@@ -43,12 +45,12 @@ func (p *fluxProcessor) IsDisposed() bool {
 	panic("implement me")
 }
 
-func (p *fluxProcessor) SubscribeOn(s Scheduler) Flux {
+func (p *fluxProcessor) SubscribeOn(s rs.Scheduler) Flux {
 	p.subScheduler = s
 	return p
 }
 
-func (p *fluxProcessor) PublishOn(s Scheduler) Flux {
+func (p *fluxProcessor) PublishOn(s rs.Scheduler) Flux {
 	p.pubScheduler = s
 	return p
 }
@@ -64,22 +66,22 @@ func (p *fluxProcessor) Request(n int) {
 }
 
 func (p *fluxProcessor) Cancel() {
-	p.sig = SignalCancel
+	p.sig = rs.SignalCancel
 	_ = p.q.Close()
 }
 
 func (p *fluxProcessor) Next(v interface{}) (err error) {
-	if p.sig != SignalDefault {
+	if p.sig != rs.SignalDefault {
 		err = errWrongSignal
 		return
 	}
 	for i, l := 0, len(p.chain); i < l; i++ {
 		fn := p.chain[i]
-		if t, ok := fn.(FnTransform); ok {
+		if t, ok := fn.(rs.FnTransform); ok {
 			v = t(v)
 			continue
 		}
-		if !fn.(FnFilter)(v) {
+		if !fn.(rs.Predicate)(v) {
 			return
 		}
 	}
@@ -88,16 +90,16 @@ func (p *fluxProcessor) Next(v interface{}) (err error) {
 
 func (p *fluxProcessor) Error(e error) {
 	p.e = e
-	p.sig = SignalError
+	p.sig = rs.SignalError
 	_ = p.q.Close()
 }
 
 func (p *fluxProcessor) Complete() {
-	p.sig = SignalComplete
+	p.sig = rs.SignalComplete
 	_ = p.q.Close()
 }
 
-func (p *fluxProcessor) Subscribe(ctx context.Context, opts ...OpSubscriber) Disposable {
+func (p *fluxProcessor) Subscribe(ctx context.Context, opts ...rs.OpSubscriber) rs.Disposable {
 	for _, it := range opts {
 		it(p.hooks)
 	}
@@ -128,7 +130,7 @@ func (p *fluxProcessor) Subscribe(ctx context.Context, opts ...OpSubscriber) Dis
 	p.subScheduler.Do(ctx, func(ctx context.Context) {
 		defer func() {
 			p.hooks.OnFinally(p.sig)
-			ReturnHooks(p.hooks)
+			rs.ReturnHooks(p.hooks)
 			p.hooks = nil
 		}()
 		p.OnSubscribe(p)
@@ -140,11 +142,11 @@ func (p *fluxProcessor) Subscribe(ctx context.Context, opts ...OpSubscriber) Dis
 			p.OnNext(p, v)
 		}
 		switch p.sig {
-		case SignalComplete:
+		case rs.SignalComplete:
 			p.OnComplete()
-		case SignalError:
+		case rs.SignalError:
 			p.OnError(p.e)
-		case SignalCancel:
+		case rs.SignalCancel:
 			cancel()
 			p.hooks.OnCancel()
 		}
@@ -152,11 +154,11 @@ func (p *fluxProcessor) Subscribe(ctx context.Context, opts ...OpSubscriber) Dis
 	return p
 }
 
-func (p *fluxProcessor) OnSubscribe(s Subscription) {
+func (p *fluxProcessor) OnSubscribe(s rs.Subscription) {
 	p.hooks.OnSubscribe(s)
 }
 
-func (p *fluxProcessor) OnNext(s Subscription, v interface{}) {
+func (p *fluxProcessor) OnNext(s rs.Subscription, v interface{}) {
 	p.hooks.OnNext(s, v)
 }
 
@@ -168,12 +170,12 @@ func (p *fluxProcessor) OnError(err error) {
 	p.hooks.OnError(err)
 }
 
-func NewFlux(fn func(ctx context.Context, producer FluxSink)) Flux {
+func New(fn func(ctx context.Context, producer Sink)) Flux {
 	return &fluxProcessor{
-		hooks:        BorrowHooks(),
+		hooks:        rs.BorrowHooks(),
 		gen:          fn,
-		q:            newQueue(defaultQueueSize, RequestInfinite),
-		pubScheduler: Elastic(),
-		subScheduler: Immediate(),
+		q:            NewQueue(DefaultQueueSize, RequestInfinite),
+		pubScheduler: rs.Elastic(),
+		subScheduler: rs.Immediate(),
 	}
 }
