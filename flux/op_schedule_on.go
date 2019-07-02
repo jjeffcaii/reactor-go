@@ -23,8 +23,8 @@ func (p *fluxSubscribeOn) Subscribe(ctx context.Context, s rs.Subscriber) rs.Dis
 	return nil
 }
 
-func (p *fluxSubscribeOn) Filter(rs.Predicate) Flux {
-	panic("implement me")
+func (p *fluxSubscribeOn) Filter(filter rs.Predicate) Flux {
+	return newFluxFilter(p, filter)
 }
 
 func (p *fluxSubscribeOn) Map(t rs.Transformer) Flux {
