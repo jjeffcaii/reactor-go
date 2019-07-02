@@ -5,7 +5,7 @@
   </a>
 </p>
 
-> A golang implementation for reactive-streams.
+> A golang implementation for reactive-streams. ***[WARNNING] IT IS STILL UNDER DEVELOPMENT!!!***
 
 ### 🏠 [Homepage](https://github.com/jjeffcaii/reactor-go)
 
