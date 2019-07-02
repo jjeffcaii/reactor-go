@@ -27,8 +27,12 @@ func Example() {
 		}).
 		SubscribeOn(scheduler.Elastic()).
 		Subscribe(context.Background(), rs.NewSubscriber(
+			rs.OnSubscribe(func(s rs.Subscription) {
+				s.Request(1)
+			}),
 			rs.OnNext(func(s rs.Subscription, v interface{}) {
 				fmt.Println("next:", v)
+				s.Request(1)
 			}),
 			rs.OnComplete(func() {
 				close(done)
