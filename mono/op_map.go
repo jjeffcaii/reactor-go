@@ -40,6 +40,14 @@ type monoMap struct {
 	mapper rs.Transformer
 }
 
+func (m monoMap) Block(ctx context.Context) (interface{}, error) {
+	return toBlock(ctx, m)
+}
+
+func (m monoMap) FlatMap(f flatMapper) Mono {
+	return newMonoFlatMap(m, f)
+}
+
 func (m monoMap) SubscribeOn(sc scheduler.Scheduler) Mono {
 	return newMonoScheduleOn(m, sc)
 }

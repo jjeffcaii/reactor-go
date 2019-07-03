@@ -1,5 +1,9 @@
 package rs
 
+import "errors"
+
+var ErrCancelled = errors.New("subscriber has been cancelled")
+
 type Signal int8
 
 func (s Signal) String() string {

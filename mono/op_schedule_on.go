@@ -12,6 +12,14 @@ type monoScheduleOn struct {
 	sc     scheduler.Scheduler
 }
 
+func (m monoScheduleOn) Block(ctx context.Context) (interface{}, error) {
+	return toBlock(ctx, m)
+}
+
+func (m monoScheduleOn) FlatMap(f flatMapper) Mono {
+	return newMonoFlatMap(m, f)
+}
+
 func (m monoScheduleOn) SubscribeOn(sc scheduler.Scheduler) Mono {
 	return newMonoScheduleOn(m, sc)
 }

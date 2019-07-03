@@ -79,3 +79,17 @@ func TestMonoCreate_SubscribeOn(t *testing.T) {
 		))
 	<-done
 }
+
+func TestBlock(t *testing.T) {
+	gen := func(i context.Context, sink mono.Sink) {
+		sink.Success(1)
+	}
+	v, err := mono.Create(gen).
+		Map(func(i interface{}) interface{} {
+			return i.(int) * 2
+		}).
+		SubscribeOn(scheduler.Elastic()).
+		Block(context.Background())
+	assert.NoError(t, err, "an error occurred")
+	assert.Equal(t, 2, v, "bad result")
+}

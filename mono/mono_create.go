@@ -29,9 +29,6 @@ func (s *defaultSink) Request(n int) {
 	if n < 1 {
 		panic(fmt.Errorf("negative request %d", n))
 	}
-	if !atomic.CompareAndSwapInt32(&(s.stat), 0, 1) {
-		return
-	}
 }
 
 func (s *defaultSink) Cancel() {
@@ -39,13 +36,13 @@ func (s *defaultSink) Cancel() {
 }
 
 func (s *defaultSink) Complete() {
-	if atomic.CompareAndSwapInt32(&(s.stat), 1, 2) {
+	if atomic.CompareAndSwapInt32(&(s.stat), 0, statComplete) {
 		s.s.OnComplete()
 	}
 }
 
 func (s *defaultSink) Error(err error) {
-	if atomic.CompareAndSwapInt32(&(s.stat), 0, 1) {
+	if atomic.CompareAndSwapInt32(&(s.stat), 0, statError) {
 		s.s.OnError(err)
 	}
 }
@@ -56,6 +53,14 @@ func (s *defaultSink) Next(v interface{}) {
 
 type monoCreate struct {
 	sinker func(context.Context, Sink)
+}
+
+func (m monoCreate) Block(ctx context.Context) (interface{}, error) {
+	return toBlock(ctx, m)
+}
+
+func (m monoCreate) FlatMap(f flatMapper) Mono {
+	return newMonoFlatMap(m, f)
 }
 
 func (m monoCreate) SubscribeOn(sc scheduler.Scheduler) Mono {

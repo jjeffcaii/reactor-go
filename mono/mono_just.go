@@ -34,6 +34,14 @@ type monoJust struct {
 	value interface{}
 }
 
+func (m *monoJust) Block(ctx context.Context) (interface{}, error) {
+	return toBlock(ctx, m)
+}
+
+func (m *monoJust) FlatMap(f flatMapper) Mono {
+	return newMonoFlatMap(m, f)
+}
+
 func (m *monoJust) SubscribeOn(sc scheduler.Scheduler) Mono {
 	return newMonoScheduleOn(m, sc)
 }

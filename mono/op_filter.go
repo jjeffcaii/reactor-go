@@ -35,6 +35,14 @@ type monoFilter struct {
 	f rs.Predicate
 }
 
+func (m monoFilter) Block(ctx context.Context) (interface{}, error) {
+	return toBlock(ctx, m)
+}
+
+func (m monoFilter) FlatMap(f flatMapper) Mono {
+	return newMonoFlatMap(m, f)
+}
+
 func (m monoFilter) SubscribeOn(sc scheduler.Scheduler) Mono {
 	return newMonoScheduleOn(m, sc)
 }
