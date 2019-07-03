@@ -1,6 +1,6 @@
 <h1 align="center">Welcome to reactor-go 👋</h1>
 
-![Travis (.org)](https://img.shields.io/travis/jjeffcaii/reactor-go.svg?style=flat-square)
+[![Build Status](https://travis-ci.com/jjeffcaii/reactor-go.svg?branch=master)](https://travis-ci.com/jjeffcaii/reactor-go)
 ![GoDoc](https://godoc.org/github.com/jjeffcaii/reactor-go?status.svg)
 ![Go Report Card](https://goreportcard.com/badge/github.com/jjeffcaii/reactor-go)
 ![License](https://img.shields.io/github/license/jjeffcaii/reactor-go.svg)
