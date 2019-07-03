@@ -1,9 +1,10 @@
 <h1 align="center">Welcome to reactor-go 👋</h1>
-<p>
-  <a href="https://jjeffcaii.github.io/reactor-go">
-    <img alt="Documentation" src="https://img.shields.io/badge/documentation-yes-brightgreen.svg" target="_blank" />
-  </a>
-</p>
+
+![Travis (.org)](https://img.shields.io/travis/jjeffcaii/reactor-go.svg?style=flat-square)
+![GoDoc](https://godoc.org/github.com/jjeffcaii/reactor-go?status.svg)
+![Go Report Card](https://goreportcard.com/badge/github.com/jjeffcaii/reactor-go)
+![License](https://img.shields.io/github/license/jjeffcaii/reactor-go.svg)
+![GitHub Release](https://img.shields.io/github/release-pre/jjeffcaii/reactor-go.svg)
 
 > A golang implementation for reactive-streams. ***[WARNNING] IT IS STILL UNDER DEVELOPMENT!!!***
 
