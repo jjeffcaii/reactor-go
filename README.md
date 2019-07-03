@@ -1,4 +1,4 @@
-<h1 align="center">Welcome to reactor-go 👋</h1>
+# reactor-go 🚀🚀🚀
 
 [![Build Status](https://travis-ci.com/jjeffcaii/reactor-go.svg?branch=master)](https://travis-ci.com/jjeffcaii/reactor-go)
 ![GoDoc](https://godoc.org/github.com/jjeffcaii/reactor-go?status.svg)
