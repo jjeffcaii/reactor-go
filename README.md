@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.com/jjeffcaii/reactor-go.svg?branch=master)](https://travis-ci.com/jjeffcaii/reactor-go)
 ![GoDoc](https://godoc.org/github.com/jjeffcaii/reactor-go?status.svg)
-![Go Report Card](https://goreportcard.com/badge/github.com/jjeffcaii/reactor-go)
+[![Go Report Card](https://goreportcard.com/badge/github.com/jjeffcaii/reactor-go)](https://goreportcard.com/report/github.com/jjeffcaii/reactor-go)
 ![License](https://img.shields.io/github/license/jjeffcaii/reactor-go.svg)
 ![GitHub Release](https://img.shields.io/github/release-pre/jjeffcaii/reactor-go.svg)
 
