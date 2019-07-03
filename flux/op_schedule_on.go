@@ -12,7 +12,7 @@ type fluxSubscribeOn struct {
 	sc     scheduler.Scheduler
 }
 
-func (p *fluxSubscribeOn) Subscribe(ctx context.Context, s rs.Subscriber) rs.Disposable {
+func (p *fluxSubscribeOn) Subscribe(ctx context.Context, s rs.Subscriber) {
 	w := p.sc.Worker()
 	w.Do(func() {
 		defer func() {
@@ -20,7 +20,6 @@ func (p *fluxSubscribeOn) Subscribe(ctx context.Context, s rs.Subscriber) rs.Dis
 		}()
 		p.source.Subscribe(ctx, s)
 	})
-	return nil
 }
 
 func (p *fluxSubscribeOn) Filter(filter rs.Predicate) Flux {

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
 type mapSubscriber struct {
@@ -27,10 +28,6 @@ func (m mapSubscriber) OnSubscribe(s rs.Subscription) {
 	m.s.OnSubscribe(s)
 }
 
-func (mapSubscriber) Raw() rs.RawSubscriber {
-	panic("implement me")
-}
-
 func newMapSubscriber(s rs.Subscriber, t rs.Transformer) mapSubscriber {
 	return mapSubscriber{
 		s: s,
@@ -43,13 +40,20 @@ type monoMap struct {
 	mapper rs.Transformer
 }
 
+func (m monoMap) SubscribeOn(sc scheduler.Scheduler) Mono {
+	return newMonoScheduleOn(m, sc)
+}
+
+func (m monoMap) Filter(f rs.Predicate) Mono {
+	return newMonoFilter(m, f)
+}
+
 func (m monoMap) Map(t rs.Transformer) Mono {
 	return newMonoMap(m, t)
 }
 
-func (m monoMap) Subscribe(ctx context.Context, sub rs.Subscriber) rs.Disposable {
+func (m monoMap) Subscribe(ctx context.Context, sub rs.Subscriber) {
 	m.source.Subscribe(ctx, newMapSubscriber(sub, m.mapper))
-	return nil
 }
 
 func newMonoMap(source Mono, tf rs.Transformer) Mono {

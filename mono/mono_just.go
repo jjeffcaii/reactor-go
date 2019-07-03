@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 
 	"github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
 type justSubscriber struct {
@@ -33,16 +34,23 @@ type monoJust struct {
 	value interface{}
 }
 
+func (m *monoJust) SubscribeOn(sc scheduler.Scheduler) Mono {
+	return newMonoScheduleOn(m, sc)
+}
+
+func (m *monoJust) Filter(f rs.Predicate) Mono {
+	return newMonoFilter(m, f)
+}
+
 func (m *monoJust) Map(t rs.Transformer) Mono {
 	return newMonoMap(m, t)
 }
 
-func (m *monoJust) Subscribe(ctx context.Context, s rs.Subscriber) rs.Disposable {
+func (m *monoJust) Subscribe(ctx context.Context, s rs.Subscriber) {
 	s.OnSubscribe(&justSubscriber{
 		s: s,
 		v: m.value,
 	})
-	return nil
 }
 
 func Just(v interface{}) Mono {

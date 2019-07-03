@@ -72,14 +72,13 @@ type sliceFlux struct {
 	slice []interface{}
 }
 
-func (p *sliceFlux) Subscribe(ctx context.Context, s rs.Subscriber) rs.Disposable {
+func (p *sliceFlux) Subscribe(ctx context.Context, s rs.Subscriber) {
 	if len(p.slice) < 1 {
 		s.OnComplete()
-		return nil
+		return
 	}
 	subscription := newSliceSubscription(s, p.slice)
 	s.OnSubscribe(subscription)
-	return nil
 }
 
 func (p *sliceFlux) Filter(filter rs.Predicate) Flux {

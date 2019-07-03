@@ -14,14 +14,6 @@ type Subscriber interface {
   OnError(error)
   OnNext(Subscription, interface{})
   OnSubscribe(Subscription)
-  Raw() RawSubscriber
-}
-
-type RawSubscriber struct {
-  OnSubscribe FnOnSubscribe
-  OnError     FnOnError
-  OnNext      FnOnNext
-  OnComplete  FnOnComplete
 }
 
 type subscriber struct {
@@ -29,15 +21,6 @@ type subscriber struct {
   fnOnNext      FnOnNext
   fnOnComplete  FnOnComplete
   fnOnError     FnOnError
-}
-
-func (p *subscriber) Raw() RawSubscriber {
-  return RawSubscriber{
-    OnSubscribe: p.fnOnSubscribe,
-    OnComplete:  p.fnOnComplete,
-    OnNext:      p.fnOnNext,
-    OnError:     p.fnOnError,
-  }
 }
 
 func (p *subscriber) OnComplete() {

@@ -22,7 +22,7 @@ func TestJust2(t *testing.T) {
 		Map(func(i interface{}) interface{} {
 			return fmt.Sprintf("A%04d", i.(int))
 		}).
-		SubscribeOn(scheduler.Immediate()).
+		SubscribeOn(scheduler.Elastic()).
 		Subscribe(context.Background(), rs.NewSubscriber(
 			rs.OnNext(func(s rs.Subscription, i interface{}) {
 				log.Println("next:", i)

@@ -28,10 +28,6 @@ func (s mapSubscriber) OnSubscribe(subscription rs.Subscription) {
 	s.source.OnSubscribe(subscription)
 }
 
-func (s mapSubscriber) Raw() rs.RawSubscriber {
-	panic("not implement")
-}
-
 func newMapSubscriber(s rs.Subscriber, mapper rs.Transformer) rs.Subscriber {
 	return mapSubscriber{
 		source: s,
@@ -56,9 +52,8 @@ func (p fluxMap) SubscribeOn(sc scheduler.Scheduler) Flux {
 	return newFluxSubscribeOn(p, sc)
 }
 
-func (p fluxMap) Subscribe(ctx context.Context, sub rs.Subscriber) rs.Disposable {
+func (p fluxMap) Subscribe(ctx context.Context, sub rs.Subscriber) {
 	p.source.Subscribe(ctx, newMapSubscriber(sub, p.mapper))
-	return nil
 }
 
 func newFluxMap(source Flux, mapper rs.Transformer) Flux {

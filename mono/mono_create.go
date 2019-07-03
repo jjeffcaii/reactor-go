@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 
 	"github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
 type Sink interface {
@@ -57,17 +58,24 @@ type monoCreate struct {
 	sinker func(context.Context, Sink)
 }
 
+func (m monoCreate) SubscribeOn(sc scheduler.Scheduler) Mono {
+	return newMonoScheduleOn(m, sc)
+}
+
+func (m monoCreate) Filter(f rs.Predicate) Mono {
+	return newMonoFilter(m, f)
+}
+
 func (m monoCreate) Map(t rs.Transformer) Mono {
 	return newMonoMap(m, t)
 }
 
-func (m monoCreate) Subscribe(ctx context.Context, s rs.Subscriber) rs.Disposable {
+func (m monoCreate) Subscribe(ctx context.Context, s rs.Subscriber) {
 	sink := &defaultSink{
 		s: s,
 	}
 	s.OnSubscribe(sink)
 	m.sinker(ctx, sink)
-	return nil
 }
 
 func Create(gen func(context.Context, Sink)) Mono {

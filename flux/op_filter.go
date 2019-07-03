@@ -30,10 +30,6 @@ func (s filterSubscriber) OnSubscribe(ss rs.Subscription) {
 	s.source.OnSubscribe(ss)
 }
 
-func (filterSubscriber) Raw() rs.RawSubscriber {
-	panic("implement me")
-}
-
 func newFilterSubscriber(s rs.Subscriber, p rs.Predicate) rs.Subscriber {
 	return filterSubscriber{
 		source:    s,
@@ -46,9 +42,8 @@ type fluxFilter struct {
 	predicate rs.Predicate
 }
 
-func (f fluxFilter) Subscribe(ctx context.Context, s rs.Subscriber) rs.Disposable {
+func (f fluxFilter) Subscribe(ctx context.Context, s rs.Subscriber) {
 	f.source.Subscribe(ctx, newFilterSubscriber(s, f.predicate))
-	return nil
 }
 
 func (f fluxFilter) Filter(p rs.Predicate) Flux {

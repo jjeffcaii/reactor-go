@@ -16,7 +16,7 @@ func (m fluxCreate) SubscribeOn(sc scheduler.Scheduler) Flux {
   return newFluxSubscribeOn(m, sc)
 }
 
-func (m fluxCreate) Subscribe(ctx context.Context, s rs.Subscriber) rs.Disposable {
+func (m fluxCreate) Subscribe(ctx context.Context, s rs.Subscriber) {
   var sink Sink
   switch m.backpressure {
   case OverflowBuffer:
@@ -26,7 +26,6 @@ func (m fluxCreate) Subscribe(ctx context.Context, s rs.Subscriber) rs.Disposabl
   }
   s.OnSubscribe(sink)
   m.source(ctx, sink)
-  return nil
 }
 
 func (m fluxCreate) Filter(predicate rs.Predicate) Flux {
