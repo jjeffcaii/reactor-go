@@ -12,6 +12,10 @@ type monoScheduleOn struct {
 	sc     scheduler.Scheduler
 }
 
+func (m monoScheduleOn) DoFinally(fn rs.FnOnFinally) Mono {
+	return newMonoDoFinally(m, fn)
+}
+
 func (m monoScheduleOn) DoOnNext(fn rs.FnOnNext) Mono {
 	return newMonoPeek(m, peekNext(fn))
 }

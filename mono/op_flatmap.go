@@ -99,6 +99,10 @@ type monoFlatMap struct {
 	mapper flatMapper
 }
 
+func (m monoFlatMap) DoFinally(fn rs.FnOnFinally) Mono {
+	return newMonoDoFinally(m, fn)
+}
+
 func (m monoFlatMap) DoOnNext(fn rs.FnOnNext) Mono {
 	return newMonoPeek(m, peekNext(fn))
 }

@@ -88,6 +88,10 @@ type monoPeek struct {
 	onCancelCall    rs.FnOnCancel
 }
 
+func (p *monoPeek) DoFinally(fn rs.FnOnFinally) Mono {
+	return newMonoDoFinally(p, fn)
+}
+
 func (p *monoPeek) DoOnNext(fn rs.FnOnNext) Mono {
 	return newMonoPeek(p, peekNext(fn))
 }

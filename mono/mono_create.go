@@ -55,6 +55,10 @@ type monoCreate struct {
 	sinker func(context.Context, Sink)
 }
 
+func (m monoCreate) DoFinally(fn rs.FnOnFinally) Mono {
+	return newMonoDoFinally(m, fn)
+}
+
 func (m monoCreate) DoOnNext(fn rs.FnOnNext) Mono {
 	return newMonoPeek(m, peekNext(fn))
 }

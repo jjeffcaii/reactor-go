@@ -17,4 +17,5 @@ type Mono interface {
 	SubscribeOn(scheduler.Scheduler) Mono
 	Block(context.Context) (interface{}, error)
 	DoOnNext(rs.FnOnNext) Mono
+	DoFinally(rs.FnOnFinally) Mono
 }

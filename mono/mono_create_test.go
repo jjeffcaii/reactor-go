@@ -99,6 +99,9 @@ func TestMonoCreate_Peek(t *testing.T) {
 		sink.Success(333)
 	}
 	mono.Create(gen).
+		DoFinally(func(signal rs.Signal) {
+			log.Println("onFinally:", signal)
+		}).
 		DoOnNext(func(s rs.Subscription, v interface{}) {
 			log.Println("doOnNext1:", v)
 			assert.Equal(t, 333, v, "bad next 1")

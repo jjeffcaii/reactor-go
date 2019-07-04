@@ -35,6 +35,10 @@ type monoFilter struct {
 	f rs.Predicate
 }
 
+func (m monoFilter) DoFinally(fn rs.FnOnFinally) Mono {
+	return newMonoDoFinally(m, fn)
+}
+
 func (m monoFilter) DoOnNext(fn rs.FnOnNext) Mono {
 	return newMonoPeek(m, peekNext(fn))
 }

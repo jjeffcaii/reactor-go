@@ -40,6 +40,10 @@ type monoMap struct {
 	mapper rs.Transformer
 }
 
+func (m monoMap) DoFinally(fn rs.FnOnFinally) Mono {
+	return newMonoDoFinally(m, fn)
+}
+
 func (m monoMap) DoOnNext(fn rs.FnOnNext) Mono {
 	return newMonoPeek(m, peekNext(fn))
 }
