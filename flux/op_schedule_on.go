@@ -12,13 +12,17 @@ type fluxSubscribeOn struct {
 	sc     scheduler.Scheduler
 }
 
-func (p *fluxSubscribeOn) Subscribe(ctx context.Context, s rs.Subscriber) {
+func (p *fluxSubscribeOn) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
+	p.SubscribeRaw(ctx, rs.NewSubscriber(options...))
+}
+
+func (p *fluxSubscribeOn) SubscribeRaw(ctx context.Context, s rs.Subscriber) {
 	w := p.sc.Worker()
 	w.Do(func() {
 		defer func() {
 			_ = w.Close()
 		}()
-		p.source.Subscribe(ctx, s)
+		p.source.SubscribeRaw(ctx, s)
 	})
 }
 

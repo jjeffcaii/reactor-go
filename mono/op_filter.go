@@ -35,6 +35,10 @@ type monoFilter struct {
 	f rs.Predicate
 }
 
+func (m monoFilter) DoOnNext(fn rs.FnOnNext) Mono {
+	return newMonoPeek(m, peekNext(fn))
+}
+
 func (m monoFilter) Block(ctx context.Context) (interface{}, error) {
 	return toBlock(ctx, m)
 }
@@ -51,8 +55,12 @@ func (m monoFilter) Filter(p rs.Predicate) Mono {
 	return newMonoFilter(m, p)
 }
 
-func (m monoFilter) Subscribe(ctx context.Context, s rs.Subscriber) {
-	m.s.Subscribe(ctx, filterSubscriber{
+func (m monoFilter) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
+	m.SubscribeRaw(ctx, rs.NewSubscriber(options...))
+}
+
+func (m monoFilter) SubscribeRaw(ctx context.Context, s rs.Subscriber) {
+	m.s.SubscribeRaw(ctx, filterSubscriber{
 		s: s,
 		f: m.f,
 	})

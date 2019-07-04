@@ -12,6 +12,10 @@ type monoScheduleOn struct {
 	sc     scheduler.Scheduler
 }
 
+func (m monoScheduleOn) DoOnNext(fn rs.FnOnNext) Mono {
+	return newMonoPeek(m, peekNext(fn))
+}
+
 func (m monoScheduleOn) Block(ctx context.Context) (interface{}, error) {
 	return toBlock(ctx, m)
 }
@@ -24,13 +28,17 @@ func (m monoScheduleOn) SubscribeOn(sc scheduler.Scheduler) Mono {
 	return newMonoScheduleOn(m, sc)
 }
 
-func (m monoScheduleOn) Subscribe(ctx context.Context, s rs.Subscriber) {
+func (m monoScheduleOn) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
+	m.SubscribeRaw(ctx, rs.NewSubscriber(options...))
+}
+
+func (m monoScheduleOn) SubscribeRaw(ctx context.Context, s rs.Subscriber) {
 	w := m.sc.Worker()
 	w.Do(func() {
 		defer func() {
 			_ = w.Close()
 		}()
-		m.source.Subscribe(ctx, s)
+		m.source.SubscribeRaw(ctx, s)
 	})
 }
 

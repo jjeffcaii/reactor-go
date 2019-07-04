@@ -72,15 +72,6 @@ type sliceFlux struct {
 	slice []interface{}
 }
 
-func (p *sliceFlux) Subscribe(ctx context.Context, s rs.Subscriber) {
-	if len(p.slice) < 1 {
-		s.OnComplete()
-		return
-	}
-	subscription := newSliceSubscription(s, p.slice)
-	s.OnSubscribe(subscription)
-}
-
 func (p *sliceFlux) Filter(filter rs.Predicate) Flux {
 	return newFluxFilter(p, filter)
 }
@@ -91,4 +82,17 @@ func (p *sliceFlux) Map(t rs.Transformer) Flux {
 
 func (p *sliceFlux) SubscribeOn(sc scheduler.Scheduler) Flux {
 	return newFluxSubscribeOn(p, sc)
+}
+
+func (p *sliceFlux) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
+	p.SubscribeRaw(ctx, rs.NewSubscriber(options...))
+}
+
+func (p *sliceFlux) SubscribeRaw(ctx context.Context, s rs.Subscriber) {
+	if len(p.slice) < 1 {
+		s.OnComplete()
+		return
+	}
+	subscription := newSliceSubscription(s, p.slice)
+	s.OnSubscribe(subscription)
 }

@@ -23,7 +23,7 @@ func TestJust(t *testing.T) {
 		Map(func(i interface{}) interface{} {
 			return i.(int64) * 2
 		}).
-		Subscribe(context.Background(), rs.NewSubscriber(
+		Subscribe(context.Background(),
 			rs.OnNext(func(s rs.Subscription, v interface{}) {
 				log.Println("next:", v)
 				assert.Equal(t, now.UnixNano()*2, v, "bad result")
@@ -32,7 +32,7 @@ func TestJust(t *testing.T) {
 				log.Println("complete")
 				complete = true
 			}),
-		))
+		)
 	assert.True(t, complete, "not complete")
 }
 

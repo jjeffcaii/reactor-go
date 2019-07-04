@@ -42,10 +42,6 @@ type fluxFilter struct {
 	predicate rs.Predicate
 }
 
-func (f fluxFilter) Subscribe(ctx context.Context, s rs.Subscriber) {
-	f.source.Subscribe(ctx, newFilterSubscriber(s, f.predicate))
-}
-
 func (f fluxFilter) Filter(p rs.Predicate) Flux {
 	return newFluxFilter(f, p)
 }
@@ -56,6 +52,13 @@ func (f fluxFilter) Map(t rs.Transformer) Flux {
 
 func (f fluxFilter) SubscribeOn(sc scheduler.Scheduler) Flux {
 	return newFluxSubscribeOn(f, sc)
+}
+
+func (f fluxFilter) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
+	f.SubscribeRaw(ctx, rs.NewSubscriber(options...))
+}
+func (f fluxFilter) SubscribeRaw(ctx context.Context, s rs.Subscriber) {
+	f.source.SubscribeRaw(ctx, newFilterSubscriber(s, f.predicate))
 }
 
 func newFluxFilter(source Flux, predicate rs.Predicate) Flux {

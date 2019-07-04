@@ -55,6 +55,10 @@ type monoCreate struct {
 	sinker func(context.Context, Sink)
 }
 
+func (m monoCreate) DoOnNext(fn rs.FnOnNext) Mono {
+	return newMonoPeek(m, peekNext(fn))
+}
+
 func (m monoCreate) Block(ctx context.Context) (interface{}, error) {
 	return toBlock(ctx, m)
 }
@@ -75,7 +79,11 @@ func (m monoCreate) Map(t rs.Transformer) Mono {
 	return newMonoMap(m, t)
 }
 
-func (m monoCreate) Subscribe(ctx context.Context, s rs.Subscriber) {
+func (m monoCreate) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
+	m.SubscribeRaw(ctx, rs.NewSubscriber(options...))
+}
+
+func (m monoCreate) SubscribeRaw(ctx context.Context, s rs.Subscriber) {
 	sink := &defaultSink{
 		s: s,
 	}

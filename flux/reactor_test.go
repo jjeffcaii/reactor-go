@@ -26,7 +26,7 @@ func Example() {
 			return fmt.Sprintf("#HELLO_%04d", i.(int))
 		}).
 		SubscribeOn(scheduler.Elastic()).
-		Subscribe(context.Background(), rs.NewSubscriber(
+		Subscribe(context.Background(),
 			rs.OnSubscribe(func(s rs.Subscription) {
 				s.Request(1)
 			}),
@@ -37,6 +37,6 @@ func Example() {
 			rs.OnComplete(func() {
 				close(done)
 			}),
-		))
+		)
 	<-done
 }

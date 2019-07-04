@@ -23,7 +23,7 @@ func TestMonoCreate_Subscribe(t *testing.T) {
 		Map(func(i interface{}) interface{} {
 			return i.(int) * 2
 		}).
-		Subscribe(context.Background(), rs.NewSubscriber(
+		Subscribe(context.Background(),
 			rs.OnNext(func(s rs.Subscription, v interface{}) {
 				log.Println("next:", v)
 				assert.Equal(t, 4, v, "bad result")
@@ -32,7 +32,7 @@ func TestMonoCreate_Subscribe(t *testing.T) {
 				log.Println("complete")
 				complete = true
 			}),
-		))
+		)
 	assert.True(t, complete, "not complete")
 }
 
@@ -48,7 +48,7 @@ func TestMonoCreate_Filter(t *testing.T) {
 		Filter(func(i interface{}) bool {
 			return i.(int) < 10
 		}).
-		Subscribe(context.Background(), rs.NewSubscriber(
+		Subscribe(context.Background(),
 			rs.OnNext(func(s rs.Subscription, v interface{}) {
 				log.Println("next:", v)
 				next = true
@@ -57,7 +57,7 @@ func TestMonoCreate_Filter(t *testing.T) {
 				log.Println("complete")
 				complete = true
 			}),
-		))
+		)
 	assert.False(t, next, "bad next")
 	assert.True(t, complete, "bad complete")
 }
@@ -69,14 +69,14 @@ func TestMonoCreate_SubscribeOn(t *testing.T) {
 	done := make(chan struct{})
 	mono.Create(gen).
 		SubscribeOn(scheduler.Elastic()).
-		Subscribe(context.Background(), rs.NewSubscriber(
+		Subscribe(context.Background(),
 			rs.OnNext(func(s rs.Subscription, v interface{}) {
 				log.Println("next:", v)
 			}),
 			rs.OnComplete(func() {
 				close(done)
 			}),
-		))
+		)
 	<-done
 }
 
@@ -92,4 +92,24 @@ func TestBlock(t *testing.T) {
 		Block(context.Background())
 	assert.NoError(t, err, "an error occurred")
 	assert.Equal(t, 2, v, "bad result")
+}
+
+func TestMonoCreate_Peek(t *testing.T) {
+	gen := func(i context.Context, sink mono.Sink) {
+		sink.Success(333)
+	}
+	mono.Create(gen).
+		DoOnNext(func(s rs.Subscription, v interface{}) {
+			log.Println("doOnNext1:", v)
+			assert.Equal(t, 333, v, "bad next 1")
+		}).
+		Map(func(i interface{}) interface{} {
+			return i.(int) * 2
+		}).
+		DoOnNext(func(s rs.Subscription, v interface{}) {
+			log.Println("doOnNext2:", v)
+			assert.Equal(t, 666, v, "bad next 2")
+		}).
+		Subscribe(context.Background())
+
 }

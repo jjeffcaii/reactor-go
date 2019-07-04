@@ -16,4 +16,5 @@ type Mono interface {
 	FlatMap(flatMapper) Mono
 	SubscribeOn(scheduler.Scheduler) Mono
 	Block(context.Context) (interface{}, error)
+	DoOnNext(rs.FnOnNext) Mono
 }

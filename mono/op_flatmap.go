@@ -76,7 +76,7 @@ func (p *flatMapSubscriber) OnNext(s rs.Subscription, v interface{}) {
 	inner := &innerFlatMapSubscriber{
 		parent: p,
 	}
-	m.Subscribe(p.ctx, inner)
+	m.SubscribeRaw(p.ctx, inner)
 }
 
 func (p *flatMapSubscriber) OnSubscribe(s rs.Subscription) {
@@ -99,6 +99,10 @@ type monoFlatMap struct {
 	mapper flatMapper
 }
 
+func (m monoFlatMap) DoOnNext(fn rs.FnOnNext) Mono {
+	return newMonoPeek(m, peekNext(fn))
+}
+
 func (m monoFlatMap) Block(ctx context.Context) (interface{}, error) {
 	return toBlock(ctx, m)
 }
@@ -107,10 +111,14 @@ func (m monoFlatMap) FlatMap(f flatMapper) Mono {
 	return newMonoFlatMap(m, f)
 }
 
-func (m monoFlatMap) Subscribe(ctx context.Context, actual rs.Subscriber) {
+func (m monoFlatMap) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
+	m.SubscribeRaw(ctx, rs.NewSubscriber(options...))
+}
+
+func (m monoFlatMap) SubscribeRaw(ctx context.Context, actual rs.Subscriber) {
 	s := newFlatMapSubscriber(actual, m.mapper)
 	actual.OnSubscribe(s)
-	m.source.Subscribe(ctx, s)
+	m.source.SubscribeRaw(ctx, s)
 }
 
 func (m monoFlatMap) Filter(f rs.Predicate) Mono {

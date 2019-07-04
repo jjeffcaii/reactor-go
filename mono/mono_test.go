@@ -17,11 +17,11 @@ func Example() {
 		Map(func(i interface{}) interface{} {
 			return "Hello " + i.(string) + "!"
 		}).
-		Subscribe(context.Background(), rs.NewSubscriber(
+		Subscribe(context.Background(),
 			rs.OnNext(func(s rs.Subscription, v interface{}) {
 				fmt.Println(v)
 			}),
-		))
+		)
 }
 
 // Should print

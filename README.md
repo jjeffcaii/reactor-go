@@ -39,11 +39,11 @@ func Example() {
 		Map(func(i interface{}) interface{} {
 			return "Hello " + i.(string) + "!"
 		}).
-		Subscribe(context.Background(), rs.NewSubscriber(
+		Subscribe(context.Background(), 
 			rs.OnNext(func(s rs.Subscription, v interface{}) {
 				fmt.Println(v)
 			}),
-		))
+		)
 }
 
 // Should print
@@ -81,7 +81,7 @@ func Example() {
 			return fmt.Sprintf("#HELLO_%04d", i.(int))
 		}).
 		SubscribeOn(scheduler.Elastic()).
-		Subscribe(context.Background(), rs.NewSubscriber(
+		Subscribe(context.Background(), 
 			rs.OnSubscribe(func(s rs.Subscription) {
 				s.Request(1)
 			}),
@@ -92,7 +92,7 @@ func Example() {
 			rs.OnComplete(func() {
 				close(done)
 			}),
-		))
+		)
 	<-done
 }
 // Should print:

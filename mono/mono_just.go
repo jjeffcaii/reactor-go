@@ -34,6 +34,10 @@ type monoJust struct {
 	value interface{}
 }
 
+func (m *monoJust) DoOnNext(fn rs.FnOnNext) Mono {
+	return newMonoPeek(m, peekNext(fn))
+}
+
 func (m *monoJust) Block(ctx context.Context) (interface{}, error) {
 	return toBlock(ctx, m)
 }
@@ -54,7 +58,11 @@ func (m *monoJust) Map(t rs.Transformer) Mono {
 	return newMonoMap(m, t)
 }
 
-func (m *monoJust) Subscribe(ctx context.Context, s rs.Subscriber) {
+func (m *monoJust) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
+	m.SubscribeRaw(ctx, rs.NewSubscriber(options...))
+}
+
+func (m *monoJust) SubscribeRaw(ctx context.Context, s rs.Subscriber) {
 	s.OnSubscribe(&justSubscriber{
 		s: s,
 		v: m.value,

@@ -23,13 +23,13 @@ func TestJust2(t *testing.T) {
 			return fmt.Sprintf("A%04d", i.(int))
 		}).
 		SubscribeOn(scheduler.Elastic()).
-		Subscribe(context.Background(), rs.NewSubscriber(
+		Subscribe(context.Background(),
 			rs.OnNext(func(s rs.Subscription, i interface{}) {
 				log.Println("next:", i)
 			}),
 			rs.OnComplete(func() {
 				close(done)
 			}),
-		))
+		)
 	<-done
 }

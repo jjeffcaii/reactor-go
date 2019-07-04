@@ -40,6 +40,10 @@ type monoMap struct {
 	mapper rs.Transformer
 }
 
+func (m monoMap) DoOnNext(fn rs.FnOnNext) Mono {
+	return newMonoPeek(m, peekNext(fn))
+}
+
 func (m monoMap) Block(ctx context.Context) (interface{}, error) {
 	return toBlock(ctx, m)
 }
@@ -60,8 +64,12 @@ func (m monoMap) Map(t rs.Transformer) Mono {
 	return newMonoMap(m, t)
 }
 
-func (m monoMap) Subscribe(ctx context.Context, sub rs.Subscriber) {
-	m.source.Subscribe(ctx, newMapSubscriber(sub, m.mapper))
+func (m monoMap) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
+	m.SubscribeRaw(ctx, rs.NewSubscriber(options...))
+}
+
+func (m monoMap) SubscribeRaw(ctx context.Context, sub rs.Subscriber) {
+	m.source.SubscribeRaw(ctx, newMapSubscriber(sub, m.mapper))
 }
 
 func newMonoMap(source Mono, tf rs.Transformer) Mono {
