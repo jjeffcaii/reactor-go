@@ -1,12 +1,12 @@
 # reactor-go 🚀🚀🚀
 
 [![Build Status](https://travis-ci.com/jjeffcaii/reactor-go.svg?branch=master)](https://travis-ci.com/jjeffcaii/reactor-go)
-![GoDoc](https://godoc.org/github.com/jjeffcaii/reactor-go?status.svg)
+[![GoDoc](https://godoc.org/github.com/jjeffcaii/reactor-go?status.svg)](https://godoc.org/github.com/jjeffcaii/reactor-go)
 [![Go Report Card](https://goreportcard.com/badge/github.com/jjeffcaii/reactor-go)](https://goreportcard.com/report/github.com/jjeffcaii/reactor-go)
-![License](https://img.shields.io/github/license/jjeffcaii/reactor-go.svg)
-![GitHub Release](https://img.shields.io/github/release-pre/jjeffcaii/reactor-go.svg)
+[![License](https://img.shields.io/github/license/jjeffcaii/reactor-go.svg)](https://github.com/jjeffcaii/reactor-go/blob/master/LICENSE)
+[![GitHub Release](https://img.shields.io/github/release-pre/jjeffcaii/reactor-go.svg)](https://github.com/jjeffcaii/reactor-go/releases)
 
-> A golang implementation for reactive-streams. ***[WARNNING] IT IS STILL UNDER DEVELOPMENT!!!***
+> A golang implementation for reactive-streams. ***[WARNNING] IT IS UNDER ACTIVE DEVELOPMENT!!! DO NOT USE IN ANY PRODUCTION ENVIRONMENT!!!***
 
 ### 🏠 [Homepage](https://github.com/jjeffcaii/reactor-go)
 
