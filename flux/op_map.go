@@ -4,7 +4,6 @@ import (
 	"context"
 
 	rs "github.com/jjeffcaii/reactor-go"
-	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
 type mapSubscriber struct {
@@ -40,28 +39,12 @@ type fluxMap struct {
 	mapper rs.Transformer
 }
 
-func (p fluxMap) Filter(filter rs.Predicate) Flux {
-	return newFluxFilter(p, filter)
-}
-
-func (p fluxMap) Map(tf rs.Transformer) Flux {
-	return newFluxMap(p, tf)
-}
-
-func (p fluxMap) SubscribeOn(sc scheduler.Scheduler) Flux {
-	return newFluxSubscribeOn(p, sc)
-}
-
-func (p fluxMap) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
-	p.SubscribeWith(ctx, rs.NewSubscriber(options...))
-}
-
-func (p fluxMap) SubscribeWith(ctx context.Context, sub rs.Subscriber) {
+func (p *fluxMap) SubscribeWith(ctx context.Context, sub rs.Subscriber) {
 	p.source.SubscribeWith(ctx, newMapSubscriber(sub, p.mapper))
 }
 
-func newFluxMap(source Flux, mapper rs.Transformer) Flux {
-	return fluxMap{
+func newFluxMap(source Flux, mapper rs.Transformer) *fluxMap {
+	return &fluxMap{
 		source: source,
 		mapper: mapper,
 	}

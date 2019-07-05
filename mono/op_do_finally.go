@@ -7,20 +7,6 @@ import (
 	rs "github.com/jjeffcaii/reactor-go"
 )
 
-type monoDoFinally struct {
-	*baseMono
-	source    Mono
-	onFinally rs.FnOnFinally
-}
-
-func (m *monoDoFinally) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
-	m.SubscribeWith(ctx, rs.NewSubscriber(options...))
-}
-
-func (m *monoDoFinally) SubscribeWith(ctx context.Context, s rs.Subscriber) {
-	m.source.SubscribeWith(ctx, newDoFinallySubscriber(s, m.onFinally))
-}
-
 type doFinallySubscriber struct {
 	actual    rs.Subscriber
 	onFinally rs.FnOnFinally
@@ -69,13 +55,18 @@ func newDoFinallySubscriber(actual rs.Subscriber, onFinally rs.FnOnFinally) *doF
 	}
 }
 
-func newMonoDoFinally(source Mono, onFinally rs.FnOnFinally) Mono {
-	m := &monoDoFinally{
+type monoDoFinally struct {
+	source    Mono
+	onFinally rs.FnOnFinally
+}
+
+func (m *monoDoFinally) SubscribeWith(ctx context.Context, s rs.Subscriber) {
+	m.source.SubscribeWith(ctx, newDoFinallySubscriber(s, m.onFinally))
+}
+
+func newMonoDoFinally(source Mono, onFinally rs.FnOnFinally) *monoDoFinally {
+	return &monoDoFinally{
 		source:    source,
 		onFinally: onFinally,
 	}
-	m.baseMono = &baseMono{
-		child: m,
-	}
-	return m
 }

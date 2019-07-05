@@ -8,13 +8,8 @@ import (
 )
 
 type monoScheduleOn struct {
-	*baseMono
 	source Mono
 	sc     scheduler.Scheduler
-}
-
-func (m *monoScheduleOn) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
-	m.SubscribeWith(ctx, rs.NewSubscriber(options...))
 }
 
 func (m *monoScheduleOn) SubscribeWith(ctx context.Context, s rs.Subscriber) {
@@ -27,13 +22,9 @@ func (m *monoScheduleOn) SubscribeWith(ctx context.Context, s rs.Subscriber) {
 	})
 }
 
-func newMonoScheduleOn(s Mono, sc scheduler.Scheduler) Mono {
-	m := &monoScheduleOn{
+func newMonoScheduleOn(s Mono, sc scheduler.Scheduler) *monoScheduleOn {
+	return &monoScheduleOn{
 		source: s,
 		sc:     sc,
 	}
-	m.baseMono = &baseMono{
-		child: m,
-	}
-	return m
 }

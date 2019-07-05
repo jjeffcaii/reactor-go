@@ -12,10 +12,6 @@ type fluxSubscribeOn struct {
 	sc     scheduler.Scheduler
 }
 
-func (p *fluxSubscribeOn) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
-	p.SubscribeWith(ctx, rs.NewSubscriber(options...))
-}
-
 func (p *fluxSubscribeOn) SubscribeWith(ctx context.Context, s rs.Subscriber) {
 	w := p.sc.Worker()
 	w.Do(func() {
@@ -26,20 +22,7 @@ func (p *fluxSubscribeOn) SubscribeWith(ctx context.Context, s rs.Subscriber) {
 	})
 }
 
-func (p *fluxSubscribeOn) Filter(filter rs.Predicate) Flux {
-	return newFluxFilter(p, filter)
-}
-
-func (p *fluxSubscribeOn) Map(t rs.Transformer) Flux {
-	return newFluxMap(p, t)
-}
-
-func (p *fluxSubscribeOn) SubscribeOn(sc scheduler.Scheduler) Flux {
-	p.sc = sc
-	return p
-}
-
-func newFluxSubscribeOn(source Flux, sc scheduler.Scheduler) Flux {
+func newFluxSubscribeOn(source Flux, sc scheduler.Scheduler) *fluxSubscribeOn {
 	return &fluxSubscribeOn{
 		source: source,
 		sc:     sc,

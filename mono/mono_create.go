@@ -53,12 +53,7 @@ func (s *defaultSink) Next(v interface{}) {
 }
 
 type monoCreate struct {
-	*baseMono
 	sinker func(context.Context, Sink)
-}
-
-func (m *monoCreate) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
-	m.SubscribeWith(ctx, rs.NewSubscriber(options...))
 }
 
 func (m *monoCreate) SubscribeWith(ctx context.Context, s rs.Subscriber) {
@@ -69,12 +64,8 @@ func (m *monoCreate) SubscribeWith(ctx context.Context, s rs.Subscriber) {
 	m.sinker(ctx, sink)
 }
 
-func Create(gen func(context.Context, Sink)) Mono {
-	m := &monoCreate{
+func newMonoCreate(gen func(context.Context, Sink)) *monoCreate {
+	return &monoCreate{
 		sinker: gen,
 	}
-	m.baseMono = &baseMono{
-		child: m,
-	}
-	return m
 }

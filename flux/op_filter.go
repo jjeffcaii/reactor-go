@@ -4,7 +4,6 @@ import (
 	"context"
 
 	rs "github.com/jjeffcaii/reactor-go"
-	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
 type filterSubscriber struct {
@@ -42,27 +41,12 @@ type fluxFilter struct {
 	predicate rs.Predicate
 }
 
-func (f fluxFilter) Filter(p rs.Predicate) Flux {
-	return newFluxFilter(f, p)
-}
-
-func (f fluxFilter) Map(t rs.Transformer) Flux {
-	return newFluxMap(f, t)
-}
-
-func (f fluxFilter) SubscribeOn(sc scheduler.Scheduler) Flux {
-	return newFluxSubscribeOn(f, sc)
-}
-
-func (f fluxFilter) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
-	f.SubscribeWith(ctx, rs.NewSubscriber(options...))
-}
-func (f fluxFilter) SubscribeWith(ctx context.Context, s rs.Subscriber) {
+func (f *fluxFilter) SubscribeWith(ctx context.Context, s rs.Subscriber) {
 	f.source.SubscribeWith(ctx, newFilterSubscriber(s, f.predicate))
 }
 
-func newFluxFilter(source Flux, predicate rs.Predicate) Flux {
-	return fluxFilter{
+func newFluxFilter(source Flux, predicate rs.Predicate) *fluxFilter {
+	return &fluxFilter{
 		source:    source,
 		predicate: predicate,
 	}

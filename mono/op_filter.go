@@ -30,13 +30,8 @@ func (f filterSubscriber) OnSubscribe(s rs.Subscription) {
 }
 
 type monoFilter struct {
-	*baseMono
 	s Mono
 	f rs.Predicate
-}
-
-func (m *monoFilter) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
-	m.SubscribeWith(ctx, rs.NewSubscriber(options...))
 }
 
 func (m *monoFilter) SubscribeWith(ctx context.Context, s rs.Subscriber) {
@@ -46,13 +41,9 @@ func (m *monoFilter) SubscribeWith(ctx context.Context, s rs.Subscriber) {
 	})
 }
 
-func newMonoFilter(s Mono, f rs.Predicate) Mono {
-	m := &monoFilter{
+func newMonoFilter(s Mono, f rs.Predicate) *monoFilter {
+	return &monoFilter{
 		s: s,
 		f: f,
 	}
-	m.baseMono = &baseMono{
-		child: m,
-	}
-	return m
 }

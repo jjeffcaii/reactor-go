@@ -3,14 +3,16 @@ package flux_test
 import (
 	"context"
 	"fmt"
+	"log"
+	"testing"
 
 	"github.com/jjeffcaii/reactor-go"
-	. "github.com/jjeffcaii/reactor-go/flux"
+	"github.com/jjeffcaii/reactor-go/flux"
 	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
 func Example() {
-	gen := func(ctx context.Context, sink Sink) {
+	gen := func(ctx context.Context, sink flux.Sink) {
 		for i := 0; i < 10; i++ {
 			v := i
 			sink.Next(v)
@@ -18,7 +20,7 @@ func Example() {
 		sink.Complete()
 	}
 	done := make(chan struct{})
-	Create(gen).
+	flux.Create(gen).
 		Filter(func(i interface{}) bool {
 			return i.(int)%2 == 0
 		}).
@@ -39,4 +41,16 @@ func Example() {
 			}),
 		)
 	<-done
+}
+
+func TestEmpty(t *testing.T) {
+	flux.Just().Subscribe(
+		context.Background(),
+		rs.OnNext(func(s rs.Subscription, v interface{}) {
+			log.Println("next:", v)
+		}),
+		rs.OnComplete(func() {
+			log.Println("complete")
+		}),
+	)
 }

@@ -32,7 +32,6 @@ func (j *justSubscriber) Cancel() {
 }
 
 type monoJust struct {
-	*baseMono
 	value interface{}
 }
 
@@ -47,12 +46,8 @@ func (m *monoJust) SubscribeWith(ctx context.Context, s rs.Subscriber) {
 	})
 }
 
-func Just(v interface{}) Mono {
-	m := &monoJust{
+func newMonoJust(v interface{}) *monoJust {
+	return &monoJust{
 		value: v,
 	}
-	m.baseMono = &baseMono{
-		child: m,
-	}
-	return m
 }

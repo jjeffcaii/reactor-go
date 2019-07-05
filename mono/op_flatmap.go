@@ -94,13 +94,8 @@ func newFlatMapSubscriber(actual rs.Subscriber, mapper flatMapper) *flatMapSubsc
 }
 
 type monoFlatMap struct {
-	*baseMono
 	source Mono
 	mapper flatMapper
-}
-
-func (m *monoFlatMap) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
-	m.SubscribeWith(ctx, rs.NewSubscriber(options...))
 }
 
 func (m *monoFlatMap) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
@@ -109,13 +104,9 @@ func (m *monoFlatMap) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
 	m.source.SubscribeWith(ctx, s)
 }
 
-func newMonoFlatMap(source Mono, mapper flatMapper) Mono {
-	m := &monoFlatMap{
+func newMonoFlatMap(source Mono, mapper flatMapper) *monoFlatMap {
+	return &monoFlatMap{
 		source: source,
 		mapper: mapper,
 	}
-	m.baseMono = &baseMono{
-		child: m,
-	}
-	return m
 }

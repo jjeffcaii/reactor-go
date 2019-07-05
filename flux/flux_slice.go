@@ -7,7 +7,6 @@ import (
 	"sync/atomic"
 
 	"github.com/jjeffcaii/reactor-go"
-	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
 type sliceSubscription struct {
@@ -62,30 +61,8 @@ func newSliceSubscription(s rs.Subscriber, values []interface{}) *sliceSubscript
 	}
 }
 
-func newSliceFlux(values []interface{}) *sliceFlux {
-	return &sliceFlux{
-		slice: values,
-	}
-}
-
 type sliceFlux struct {
 	slice []interface{}
-}
-
-func (p *sliceFlux) Filter(filter rs.Predicate) Flux {
-	return newFluxFilter(p, filter)
-}
-
-func (p *sliceFlux) Map(t rs.Transformer) Flux {
-	return newFluxMap(p, t)
-}
-
-func (p *sliceFlux) SubscribeOn(sc scheduler.Scheduler) Flux {
-	return newFluxSubscribeOn(p, sc)
-}
-
-func (p *sliceFlux) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
-	p.SubscribeWith(ctx, rs.NewSubscriber(options...))
 }
 
 func (p *sliceFlux) SubscribeWith(ctx context.Context, s rs.Subscriber) {
@@ -95,4 +72,10 @@ func (p *sliceFlux) SubscribeWith(ctx context.Context, s rs.Subscriber) {
 	}
 	subscription := newSliceSubscription(s, p.slice)
 	s.OnSubscribe(subscription)
+}
+
+func newSliceFlux(values []interface{}) *sliceFlux {
+	return &sliceFlux{
+		slice: values,
+	}
 }

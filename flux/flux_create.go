@@ -4,20 +4,11 @@ import (
 	"context"
 
 	"github.com/jjeffcaii/reactor-go"
-	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
 type fluxCreate struct {
 	source       func(context.Context, Sink)
 	backpressure OverflowStrategy
-}
-
-func (m fluxCreate) SubscribeOn(sc scheduler.Scheduler) Flux {
-	return newFluxSubscribeOn(m, sc)
-}
-
-func (m fluxCreate) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
-	m.SubscribeWith(ctx, rs.NewSubscriber(options...))
 }
 
 func (m fluxCreate) SubscribeWith(ctx context.Context, s rs.Subscriber) {
@@ -32,17 +23,10 @@ func (m fluxCreate) SubscribeWith(ctx context.Context, s rs.Subscriber) {
 	m.source(ctx, sink)
 }
 
-func (m fluxCreate) Filter(predicate rs.Predicate) Flux {
-	return newFluxFilter(m, predicate)
-}
-
-func (m fluxCreate) Map(tf rs.Transformer) Flux {
-	return newFluxMap(m, tf)
-}
-
-func Create(c func(ctx context.Context, sink Sink)) Flux {
+func newFluxCreate(c func(ctx context.Context, sink Sink)) *fluxCreate {
 	return &fluxCreate{
 		source:       c,
 		backpressure: OverflowBuffer,
 	}
 }
+

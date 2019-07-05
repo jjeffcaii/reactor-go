@@ -78,7 +78,6 @@ func newPeekSubscriber(parent *monoPeek, actual rs.Subscriber) *peekSubscriber {
 }
 
 type monoPeek struct {
-	*baseMono
 	source          Mono
 	onSubscribeCall rs.FnOnSubscribe
 	onNextCall      rs.FnOnNext
@@ -133,16 +132,13 @@ func peekSubscribe(fn rs.FnOnSubscribe) monoPeekOption {
 	}
 }
 
-func newMonoPeek(source Mono, first monoPeekOption, others ...monoPeekOption) Mono {
+func newMonoPeek(source Mono, first monoPeekOption, others ...monoPeekOption) *monoPeek {
 	m := &monoPeek{
 		source: source,
 	}
 	first(m)
 	for _, value := range others {
 		value(m)
-	}
-	m.baseMono = &baseMono{
-		child: m,
 	}
 	return m
 }

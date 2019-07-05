@@ -2,36 +2,30 @@ package mono
 
 import (
 	"context"
-
-	rs "github.com/jjeffcaii/reactor-go"
+	"errors"
 )
 
-var emptyMono = Just(nil)
+var empty Mono = wrapper{newMonoJust(nil)}
+var errJustNilValue = errors.New("require non nil value")
 
 func Empty() Mono {
-	return emptyMono
+	return empty
 }
 
-func toBlock(ctx context.Context, pub rs.Publisher) (v interface{}, err error) {
-	chValue := make(chan interface{}, 1)
-	chError := make(chan error, 1)
-	pub.Subscribe(ctx,
-		rs.OnNext(func(s rs.Subscription, v interface{}) {
-			chValue <- v
-		}),
-		rs.OnComplete(func() {
-			close(chValue)
-		}),
-		rs.OnError(func(e error) {
-			chError <- e
-			close(chError)
-		}),
-	)
-	select {
-	case v = <-chValue:
-		close(chError)
-	case err = <-chError:
-		close(chValue)
+func JustOrEmpty(v interface{}) Mono {
+	if v == nil {
+		return empty
 	}
-	return
+	return Just(v)
+}
+
+func Just(v interface{}) Mono {
+	if v == nil {
+		panic(errJustNilValue)
+	}
+	return wrapper{newMonoJust(v)}
+}
+
+func Create(gen func(context.Context, Sink)) Mono {
+	return wrapper{newMonoCreate(gen)}
 }
