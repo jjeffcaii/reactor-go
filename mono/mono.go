@@ -2,6 +2,7 @@ package mono
 
 import (
 	"context"
+	"time"
 
 	rs "github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/scheduler"
@@ -25,4 +26,5 @@ type Mono interface {
 	DoOnComplete(rs.FnOnComplete) Mono
 	DoFinally(rs.FnOnFinally) Mono
 	SwitchIfEmpty(alternative Mono) Mono
+	DelayElement(delay time.Duration) Mono
 }

@@ -2,6 +2,7 @@ package mono
 
 import (
 	"context"
+	"time"
 
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/scheduler"
@@ -53,6 +54,10 @@ func (p wrapper) DoOnCancel(fn rs.FnOnCancel) Mono {
 
 func (p wrapper) DoFinally(fn rs.FnOnFinally) Mono {
 	return wrapper{newMonoDoFinally(p, fn)}
+}
+
+func (p wrapper) DelayElement(delay time.Duration) Mono {
+	return wrapper{newMonoDelayElement(p, delay, scheduler.Elastic())}
 }
 
 func (p wrapper) Block(ctx context.Context) (v interface{}, err error) {

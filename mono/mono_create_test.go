@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"testing"
+	"time"
 
 	rs "github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/mono"
@@ -115,4 +116,21 @@ func TestMonoCreate_Peek(t *testing.T) {
 		}).
 		Subscribe(context.Background())
 
+}
+
+func TestMonoCreateDelayElement(t *testing.T) {
+	begin := time.Now()
+	v, err := mono.
+		Create(func(i context.Context, sink mono.Sink) {
+			sink.Success(333)
+		}).
+		DelayElement(2 * time.Second).
+		Map(func(i interface{}) interface{} {
+			return i.(int) * 2
+		}).
+		DelayElement(1 * time.Second).
+		Block(context.Background())
+	assert.NoError(t, err, "err occurred")
+	assert.Equal(t, 666, v, "bad value")
+	assert.Equal(t, 3, int(time.Since(begin).Seconds()), "bad delay")
 }
