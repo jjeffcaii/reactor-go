@@ -18,6 +18,9 @@ go get -u github.com/jjeffcaii/reactor-go
 
 ## Example
 
+> NOTICE: We can only use `func(interface{})interface{}` for most operations because Golang has not Generics. 😭
+> If you have any better idea, please let me know. 😀
+
 ### Mono
 ```go
 package mono_test
@@ -80,7 +83,7 @@ func Example() {
 			return fmt.Sprintf("#HELLO_%04d", i.(int))
 		}).
 		SubscribeOn(scheduler.Elastic()).
-		Subscribe(context.Background(), 
+		Subscribe(context.Background(),
 			rs.OnSubscribe(func(s rs.Subscription) {
 				s.Request(1)
 			}),
