@@ -7,7 +7,6 @@ import (
 	"sync/atomic"
 
 	"github.com/jjeffcaii/reactor-go"
-	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
 type Sink interface {
@@ -21,7 +20,9 @@ type defaultSink struct {
 }
 
 func (s *defaultSink) Success(v interface{}) {
-	s.Next(v)
+	if v != nil {
+		s.Next(v)
+	}
 	s.Complete()
 }
 
@@ -52,42 +53,15 @@ func (s *defaultSink) Next(v interface{}) {
 }
 
 type monoCreate struct {
+	*baseMono
 	sinker func(context.Context, Sink)
 }
 
-func (m monoCreate) DoFinally(fn rs.FnOnFinally) Mono {
-	return newMonoDoFinally(m, fn)
+func (m *monoCreate) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
+	m.SubscribeWith(ctx, rs.NewSubscriber(options...))
 }
 
-func (m monoCreate) DoOnNext(fn rs.FnOnNext) Mono {
-	return newMonoPeek(m, peekNext(fn))
-}
-
-func (m monoCreate) Block(ctx context.Context) (interface{}, error) {
-	return toBlock(ctx, m)
-}
-
-func (m monoCreate) FlatMap(f flatMapper) Mono {
-	return newMonoFlatMap(m, f)
-}
-
-func (m monoCreate) SubscribeOn(sc scheduler.Scheduler) Mono {
-	return newMonoScheduleOn(m, sc)
-}
-
-func (m monoCreate) Filter(f rs.Predicate) Mono {
-	return newMonoFilter(m, f)
-}
-
-func (m monoCreate) Map(t rs.Transformer) Mono {
-	return newMonoMap(m, t)
-}
-
-func (m monoCreate) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
-	m.SubscribeRaw(ctx, rs.NewSubscriber(options...))
-}
-
-func (m monoCreate) SubscribeRaw(ctx context.Context, s rs.Subscriber) {
+func (m *monoCreate) SubscribeWith(ctx context.Context, s rs.Subscriber) {
 	sink := &defaultSink{
 		s: s,
 	}
@@ -96,7 +70,11 @@ func (m monoCreate) SubscribeRaw(ctx context.Context, s rs.Subscriber) {
 }
 
 func Create(gen func(context.Context, Sink)) Mono {
-	return monoCreate{
+	m := &monoCreate{
 		sinker: gen,
 	}
+	m.baseMono = &baseMono{
+		child: m,
+	}
+	return m
 }

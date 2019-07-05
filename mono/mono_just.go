@@ -6,7 +6,6 @@ import (
 	"sync/atomic"
 
 	"github.com/jjeffcaii/reactor-go"
-	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
 type justSubscriber struct {
@@ -31,42 +30,15 @@ func (j *justSubscriber) Cancel() {
 }
 
 type monoJust struct {
+	*baseMono
 	value interface{}
 }
 
-func (m *monoJust) DoFinally(fn rs.FnOnFinally) Mono {
-	return newMonoDoFinally(m, fn)
-}
-
-func (m *monoJust) DoOnNext(fn rs.FnOnNext) Mono {
-	return newMonoPeek(m, peekNext(fn))
-}
-
-func (m *monoJust) Block(ctx context.Context) (interface{}, error) {
-	return toBlock(ctx, m)
-}
-
-func (m *monoJust) FlatMap(f flatMapper) Mono {
-	return newMonoFlatMap(m, f)
-}
-
-func (m *monoJust) SubscribeOn(sc scheduler.Scheduler) Mono {
-	return newMonoScheduleOn(m, sc)
-}
-
-func (m *monoJust) Filter(f rs.Predicate) Mono {
-	return newMonoFilter(m, f)
-}
-
-func (m *monoJust) Map(t rs.Transformer) Mono {
-	return newMonoMap(m, t)
-}
-
 func (m *monoJust) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
-	m.SubscribeRaw(ctx, rs.NewSubscriber(options...))
+	m.SubscribeWith(ctx, rs.NewSubscriber(options...))
 }
 
-func (m *monoJust) SubscribeRaw(ctx context.Context, s rs.Subscriber) {
+func (m *monoJust) SubscribeWith(ctx context.Context, s rs.Subscriber) {
 	s.OnSubscribe(&justSubscriber{
 		s: s,
 		v: m.value,
@@ -74,7 +46,11 @@ func (m *monoJust) SubscribeRaw(ctx context.Context, s rs.Subscriber) {
 }
 
 func Just(v interface{}) Mono {
-	return &monoJust{
+	m := &monoJust{
 		value: v,
 	}
+	m.baseMono = &baseMono{
+		child: m,
+	}
+	return m
 }

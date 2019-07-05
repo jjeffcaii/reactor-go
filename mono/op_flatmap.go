@@ -5,7 +5,6 @@ import (
 	"sync/atomic"
 
 	"github.com/jjeffcaii/reactor-go"
-	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
 const (
@@ -76,7 +75,7 @@ func (p *flatMapSubscriber) OnNext(s rs.Subscription, v interface{}) {
 	inner := &innerFlatMapSubscriber{
 		parent: p,
 	}
-	m.SubscribeRaw(p.ctx, inner)
+	m.SubscribeWith(p.ctx, inner)
 }
 
 func (p *flatMapSubscriber) OnSubscribe(s rs.Subscription) {
@@ -95,51 +94,28 @@ func newFlatMapSubscriber(actual rs.Subscriber, mapper flatMapper) *flatMapSubsc
 }
 
 type monoFlatMap struct {
+	*baseMono
 	source Mono
 	mapper flatMapper
 }
 
-func (m monoFlatMap) DoFinally(fn rs.FnOnFinally) Mono {
-	return newMonoDoFinally(m, fn)
+func (m *monoFlatMap) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
+	m.SubscribeWith(ctx, rs.NewSubscriber(options...))
 }
 
-func (m monoFlatMap) DoOnNext(fn rs.FnOnNext) Mono {
-	return newMonoPeek(m, peekNext(fn))
-}
-
-func (m monoFlatMap) Block(ctx context.Context) (interface{}, error) {
-	return toBlock(ctx, m)
-}
-
-func (m monoFlatMap) FlatMap(f flatMapper) Mono {
-	return newMonoFlatMap(m, f)
-}
-
-func (m monoFlatMap) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
-	m.SubscribeRaw(ctx, rs.NewSubscriber(options...))
-}
-
-func (m monoFlatMap) SubscribeRaw(ctx context.Context, actual rs.Subscriber) {
+func (m *monoFlatMap) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
 	s := newFlatMapSubscriber(actual, m.mapper)
 	actual.OnSubscribe(s)
-	m.source.SubscribeRaw(ctx, s)
-}
-
-func (m monoFlatMap) Filter(f rs.Predicate) Mono {
-	return newMonoFilter(m, f)
-}
-
-func (m monoFlatMap) Map(t rs.Transformer) Mono {
-	return newMonoMap(m, t)
-}
-
-func (m monoFlatMap) SubscribeOn(sc scheduler.Scheduler) Mono {
-	return newMonoScheduleOn(m, sc)
+	m.source.SubscribeWith(ctx, s)
 }
 
 func newMonoFlatMap(source Mono, mapper flatMapper) Mono {
-	return monoFlatMap{
+	m := &monoFlatMap{
 		source: source,
 		mapper: mapper,
 	}
+	m.baseMono = &baseMono{
+		child: m,
+	}
+	return m
 }

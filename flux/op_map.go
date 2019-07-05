@@ -53,11 +53,11 @@ func (p fluxMap) SubscribeOn(sc scheduler.Scheduler) Flux {
 }
 
 func (p fluxMap) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
-	p.SubscribeRaw(ctx, rs.NewSubscriber(options...))
+	p.SubscribeWith(ctx, rs.NewSubscriber(options...))
 }
 
-func (p fluxMap) SubscribeRaw(ctx context.Context, sub rs.Subscriber) {
-	p.source.SubscribeRaw(ctx, newMapSubscriber(sub, p.mapper))
+func (p fluxMap) SubscribeWith(ctx context.Context, sub rs.Subscriber) {
+	p.source.SubscribeWith(ctx, newMapSubscriber(sub, p.mapper))
 }
 
 func newFluxMap(source Flux, mapper rs.Transformer) Flux {

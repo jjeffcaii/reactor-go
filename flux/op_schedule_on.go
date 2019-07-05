@@ -13,16 +13,16 @@ type fluxSubscribeOn struct {
 }
 
 func (p *fluxSubscribeOn) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
-	p.SubscribeRaw(ctx, rs.NewSubscriber(options...))
+	p.SubscribeWith(ctx, rs.NewSubscriber(options...))
 }
 
-func (p *fluxSubscribeOn) SubscribeRaw(ctx context.Context, s rs.Subscriber) {
+func (p *fluxSubscribeOn) SubscribeWith(ctx context.Context, s rs.Subscriber) {
 	w := p.sc.Worker()
 	w.Do(func() {
 		defer func() {
 			_ = w.Close()
 		}()
-		p.source.SubscribeRaw(ctx, s)
+		p.source.SubscribeWith(ctx, s)
 	})
 }
 

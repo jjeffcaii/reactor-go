@@ -85,10 +85,10 @@ func (p *sliceFlux) SubscribeOn(sc scheduler.Scheduler) Flux {
 }
 
 func (p *sliceFlux) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
-	p.SubscribeRaw(ctx, rs.NewSubscriber(options...))
+	p.SubscribeWith(ctx, rs.NewSubscriber(options...))
 }
 
-func (p *sliceFlux) SubscribeRaw(ctx context.Context, s rs.Subscriber) {
+func (p *sliceFlux) SubscribeWith(ctx context.Context, s rs.Subscriber) {
 	if len(p.slice) < 1 {
 		s.OnComplete()
 		return

@@ -17,10 +17,10 @@ func (m fluxCreate) SubscribeOn(sc scheduler.Scheduler) Flux {
 }
 
 func (m fluxCreate) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
-	m.SubscribeRaw(ctx, rs.NewSubscriber(options...))
+	m.SubscribeWith(ctx, rs.NewSubscriber(options...))
 }
 
-func (m fluxCreate) SubscribeRaw(ctx context.Context, s rs.Subscriber) {
+func (m fluxCreate) SubscribeWith(ctx context.Context, s rs.Subscriber) {
 	var sink Sink
 	switch m.backpressure {
 	case OverflowBuffer:

@@ -55,10 +55,10 @@ func (f fluxFilter) SubscribeOn(sc scheduler.Scheduler) Flux {
 }
 
 func (f fluxFilter) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
-	f.SubscribeRaw(ctx, rs.NewSubscriber(options...))
+	f.SubscribeWith(ctx, rs.NewSubscriber(options...))
 }
-func (f fluxFilter) SubscribeRaw(ctx context.Context, s rs.Subscriber) {
-	f.source.SubscribeRaw(ctx, newFilterSubscriber(s, f.predicate))
+func (f fluxFilter) SubscribeWith(ctx context.Context, s rs.Subscriber) {
+	f.source.SubscribeWith(ctx, newFilterSubscriber(s, f.predicate))
 }
 
 func newFluxFilter(source Flux, predicate rs.Predicate) Flux {

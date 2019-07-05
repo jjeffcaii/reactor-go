@@ -6,7 +6,6 @@ import (
 	"sync/atomic"
 
 	"github.com/jjeffcaii/reactor-go"
-	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
 type peekSubscriber struct {
@@ -79,6 +78,7 @@ func newPeekSubscriber(parent *monoPeek, actual rs.Subscriber) *peekSubscriber {
 }
 
 type monoPeek struct {
+	*baseMono
 	source          Mono
 	onSubscribeCall rs.FnOnSubscribe
 	onNextCall      rs.FnOnNext
@@ -88,40 +88,12 @@ type monoPeek struct {
 	onCancelCall    rs.FnOnCancel
 }
 
-func (p *monoPeek) DoFinally(fn rs.FnOnFinally) Mono {
-	return newMonoDoFinally(p, fn)
-}
-
-func (p *monoPeek) DoOnNext(fn rs.FnOnNext) Mono {
-	return newMonoPeek(p, peekNext(fn))
-}
-
 func (p *monoPeek) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
-	p.SubscribeRaw(ctx, rs.NewSubscriber(options...))
+	p.SubscribeWith(ctx, rs.NewSubscriber(options...))
 }
 
-func (p *monoPeek) SubscribeRaw(ctx context.Context, s rs.Subscriber) {
-	p.source.SubscribeRaw(ctx, newPeekSubscriber(p, s))
-}
-
-func (p *monoPeek) Filter(f rs.Predicate) Mono {
-	return newMonoFilter(p, f)
-}
-
-func (p *monoPeek) Map(t rs.Transformer) Mono {
-	return newMonoMap(p, t)
-}
-
-func (p *monoPeek) FlatMap(m flatMapper) Mono {
-	return newMonoFlatMap(p, m)
-}
-
-func (p *monoPeek) SubscribeOn(sc scheduler.Scheduler) Mono {
-	return newMonoScheduleOn(p, sc)
-}
-
-func (p *monoPeek) Block(ctx context.Context) (interface{}, error) {
-	return toBlock(ctx, p)
+func (p *monoPeek) SubscribeWith(ctx context.Context, s rs.Subscriber) {
+	p.source.SubscribeWith(ctx, newPeekSubscriber(p, s))
 }
 
 type monoPeekOption func(*monoPeek)
@@ -168,6 +140,9 @@ func newMonoPeek(source Mono, first monoPeekOption, others ...monoPeekOption) Mo
 	first(m)
 	for _, value := range others {
 		value(m)
+	}
+	m.baseMono = &baseMono{
+		child: m,
 	}
 	return m
 }

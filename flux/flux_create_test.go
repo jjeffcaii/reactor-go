@@ -56,13 +56,13 @@ func TestCreate(t *testing.T) {
 	sinker := createSinker(totals)
 	s := createSubscriber()
 	log.Println("---test1")
-	flux.Create(sinker).SubscribeRaw(context.Background(), s)
+	flux.Create(sinker).SubscribeWith(context.Background(), s)
 	log.Println("---test2")
 	flux.Create(sinker).
 		Map(func(i interface{}) interface{} {
 			return i.(int) * 2
 		}).
-		SubscribeRaw(context.Background(), s)
+		SubscribeWith(context.Background(), s)
 
 	log.Println("---test3")
 	flux.Create(sinker).

@@ -5,48 +5,20 @@ import (
 	"sync"
 
 	rs "github.com/jjeffcaii/reactor-go"
-	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
 type monoDoFinally struct {
+	*baseMono
 	source    Mono
 	onFinally rs.FnOnFinally
 }
 
-func (m monoDoFinally) DoFinally(fn rs.FnOnFinally) Mono {
-	return newMonoDoFinally(m, fn)
+func (m *monoDoFinally) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
+	m.SubscribeWith(ctx, rs.NewSubscriber(options...))
 }
 
-func (m monoDoFinally) Filter(f rs.Predicate) Mono {
-	return newMonoFilter(m, f)
-}
-
-func (m monoDoFinally) Map(t rs.Transformer) Mono {
-	return newMonoMap(m, t)
-}
-
-func (m monoDoFinally) FlatMap(mapper flatMapper) Mono {
-	return newMonoFlatMap(m, mapper)
-}
-
-func (m monoDoFinally) SubscribeOn(sc scheduler.Scheduler) Mono {
-	return newMonoScheduleOn(m, sc)
-}
-
-func (m monoDoFinally) Block(ctx context.Context) (interface{}, error) {
-	return toBlock(ctx, m)
-}
-
-func (m monoDoFinally) DoOnNext(fn rs.FnOnNext) Mono {
-	return newMonoPeek(m, peekNext(fn))
-}
-
-func (m monoDoFinally) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
-	m.SubscribeRaw(ctx, rs.NewSubscriber(options...))
-}
-
-func (m monoDoFinally) SubscribeRaw(ctx context.Context, s rs.Subscriber) {
-	m.source.SubscribeRaw(ctx, newDoFinallySubscriber(s, m.onFinally))
+func (m *monoDoFinally) SubscribeWith(ctx context.Context, s rs.Subscriber) {
+	m.source.SubscribeWith(ctx, newDoFinallySubscriber(s, m.onFinally))
 }
 
 type doFinallySubscriber struct {
@@ -98,8 +70,12 @@ func newDoFinallySubscriber(actual rs.Subscriber, onFinally rs.FnOnFinally) *doF
 }
 
 func newMonoDoFinally(source Mono, onFinally rs.FnOnFinally) Mono {
-	return monoDoFinally{
+	m := &monoDoFinally{
 		source:    source,
 		onFinally: onFinally,
 	}
+	m.baseMono = &baseMono{
+		child: m,
+	}
+	return m
 }

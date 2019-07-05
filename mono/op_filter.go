@@ -4,7 +4,6 @@ import (
 	"context"
 
 	rs "github.com/jjeffcaii/reactor-go"
-	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
 type filterSubscriber struct {
@@ -31,52 +30,29 @@ func (f filterSubscriber) OnSubscribe(s rs.Subscription) {
 }
 
 type monoFilter struct {
+	*baseMono
 	s Mono
 	f rs.Predicate
 }
 
-func (m monoFilter) DoFinally(fn rs.FnOnFinally) Mono {
-	return newMonoDoFinally(m, fn)
+func (m *monoFilter) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
+	m.SubscribeWith(ctx, rs.NewSubscriber(options...))
 }
 
-func (m monoFilter) DoOnNext(fn rs.FnOnNext) Mono {
-	return newMonoPeek(m, peekNext(fn))
-}
-
-func (m monoFilter) Block(ctx context.Context) (interface{}, error) {
-	return toBlock(ctx, m)
-}
-
-func (m monoFilter) FlatMap(f flatMapper) Mono {
-	return newMonoFlatMap(m, f)
-}
-
-func (m monoFilter) SubscribeOn(sc scheduler.Scheduler) Mono {
-	return newMonoScheduleOn(m, sc)
-}
-
-func (m monoFilter) Filter(p rs.Predicate) Mono {
-	return newMonoFilter(m, p)
-}
-
-func (m monoFilter) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
-	m.SubscribeRaw(ctx, rs.NewSubscriber(options...))
-}
-
-func (m monoFilter) SubscribeRaw(ctx context.Context, s rs.Subscriber) {
-	m.s.SubscribeRaw(ctx, filterSubscriber{
+func (m *monoFilter) SubscribeWith(ctx context.Context, s rs.Subscriber) {
+	m.s.SubscribeWith(ctx, filterSubscriber{
 		s: s,
 		f: m.f,
 	})
 }
 
-func (m monoFilter) Map(t rs.Transformer) Mono {
-	return newMonoMap(m, t)
-}
-
 func newMonoFilter(s Mono, f rs.Predicate) Mono {
-	return monoFilter{
+	m := &monoFilter{
 		s: s,
 		f: f,
 	}
+	m.baseMono = &baseMono{
+		child: m,
+	}
+	return m
 }
