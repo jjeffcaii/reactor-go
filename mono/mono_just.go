@@ -18,15 +18,17 @@ func (j *justSubscriber) Request(n int) {
 	if n < 1 {
 		panic(fmt.Errorf("negative request %d", n))
 	}
-	if !atomic.CompareAndSwapInt32(&(j.n), 0, 1) {
+	if !atomic.CompareAndSwapInt32(&(j.n), 0, statComplete) {
 		return
 	}
 	defer j.s.OnComplete()
-	j.s.OnNext(j, j.v)
+	if j.v != nil {
+		j.s.OnNext(j, j.v)
+	}
 }
 
 func (j *justSubscriber) Cancel() {
-	atomic.CompareAndSwapInt32(&(j.n), 0, -1)
+	atomic.CompareAndSwapInt32(&(j.n), 0, statCancel)
 }
 
 type monoJust struct {

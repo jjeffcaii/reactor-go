@@ -39,6 +39,18 @@ func (p *baseMono) DoOnNext(fn rs.FnOnNext) Mono {
 	return newMonoPeek(p.child, peekNext(fn))
 }
 
+func (p *baseMono) DoOnError(fn rs.FnOnError) Mono {
+	return newMonoPeek(p.child, peekError(fn))
+}
+
+func (p *baseMono) DoOnComplete(fn rs.FnOnComplete) Mono {
+	return newMonoPeek(p.child, peekComplete(fn))
+}
+
+func (p *baseMono) DoOnCancel(fn rs.FnOnCancel) Mono {
+	return newMonoPeek(p.child, peekCancel(fn))
+}
+
 func (p *baseMono) DoFinally(fn rs.FnOnFinally) Mono {
 	return newMonoDoFinally(p.child, fn)
 }

@@ -6,6 +6,12 @@ import (
 	rs "github.com/jjeffcaii/reactor-go"
 )
 
+var emptyMono = Just(nil)
+
+func Empty() Mono {
+	return emptyMono
+}
+
 func toBlock(ctx context.Context, pub rs.Publisher) (v interface{}, err error) {
 	chValue := make(chan interface{}, 1)
 	chError := make(chan error, 1)

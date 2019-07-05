@@ -11,10 +11,8 @@ import (
 )
 
 func TestSwitchIfEmpty(t *testing.T) {
-	m := mono.Create(func(ctx context.Context, sink mono.Sink) {
-		sink.Success(nil)
-	})
-	m.SwitchIfEmpty(mono.Just(333)).
+	mono.Empty().
+		SwitchIfEmpty(mono.Just(333)).
 		Map(func(i interface{}) interface{} {
 			return i.(int) * 2
 		}).
