@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	rs "github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/mono"
 )
 
@@ -35,11 +35,10 @@ func Example() {
 		Map(func(i interface{}) interface{} {
 			return "Hello " + i.(string) + "!"
 		}).
-		Subscribe(context.Background(),
-			rs.OnNext(func(s rs.Subscription, v interface{}) {
-				fmt.Println(v)
-			}),
-		)
+		DoOnNext(func(s rs.Subscription, v interface{}) {
+			fmt.Println(v)
+		}).
+		Subscribe(context.Background())
 }
 
 // Should print
