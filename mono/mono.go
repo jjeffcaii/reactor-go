@@ -10,10 +10,6 @@ import (
 
 type flatMapper = func(interface{}) Mono
 
-type raw interface {
-	SubscribeWith(context.Context, rs.Subscriber)
-}
-
 type Mono interface {
 	rs.Publisher
 	Filter(rs.Predicate) Mono

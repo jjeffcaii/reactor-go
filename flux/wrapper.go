@@ -8,7 +8,7 @@ import (
 )
 
 type wrapper struct {
-	raw
+	rs.RawPublisher
 }
 
 func (p wrapper) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
@@ -16,13 +16,17 @@ func (p wrapper) Subscribe(ctx context.Context, options ...rs.SubscriberOption) 
 }
 
 func (p wrapper) Filter(f rs.Predicate) Flux {
-	return wrapper{newFluxFilter(p, f)}
+	return wrap(newFluxFilter(p, f))
 }
 
 func (p wrapper) Map(t rs.Transformer) Flux {
-	return wrapper{newFluxMap(p, t)}
+	return wrap(newFluxMap(p, t))
 }
 
 func (p wrapper) SubscribeOn(sc scheduler.Scheduler) Flux {
-	return wrapper{newFluxSubscribeOn(p, sc)}
+	return wrap(newFluxSubscribeOn(p, sc))
+}
+
+func wrap(r rs.RawPublisher) Flux {
+	return wrapper{r}
 }

@@ -2,6 +2,7 @@ package mono
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"sync/atomic"
@@ -49,6 +50,20 @@ func (s *defaultSink) Error(err error) {
 }
 
 func (s *defaultSink) Next(v interface{}) {
+	defer func() {
+		re := recover()
+		if re == nil {
+			return
+		}
+		switch v := re.(type) {
+		case error:
+			s.Error(v)
+		case string:
+			s.Error(errors.New(v))
+		default:
+			s.Error(fmt.Errorf("%s", v))
+		}
+	}()
 	s.s.OnNext(s, v)
 }
 

@@ -2,7 +2,11 @@ package rs
 
 import "context"
 
-type Publisher interface {
-	Subscribe(context.Context, ...SubscriberOption)
+type RawPublisher interface {
 	SubscribeWith(context.Context, Subscriber)
+}
+
+type Publisher interface {
+	RawPublisher
+	Subscribe(context.Context, ...SubscriberOption)
 }

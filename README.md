@@ -18,8 +18,9 @@ go get -u github.com/jjeffcaii/reactor-go
 
 ## Example
 
-> NOTICE: We can only use `func(interface{})interface{}` for most operations because Golang has not Generics. 😭
-> If you have any better idea, please let me know. 😀
+> NOTICE:
+<br> We can only use `func(interface{})interface{}` for most operations because Golang has not Generics. 😭
+<br> If you have any better idea, please let me know. 😀
 
 ### Mono
 ```go

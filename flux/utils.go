@@ -1,6 +1,9 @@
 package flux
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 type OverflowStrategy int8
 
@@ -12,7 +15,7 @@ const (
 	OverflowLatest
 )
 
-var empty Flux = just(nil)
+var empty = just(nil)
 
 func Empty() Flux {
 	return empty
@@ -26,9 +29,13 @@ func Just(values ...interface{}) Flux {
 }
 
 func Create(c func(ctx context.Context, sink Sink)) Flux {
-	return wrapper{newFluxCreate(c)}
+	return wrap(newFluxCreate(c))
+}
+
+func Interval(period time.Duration) Flux {
+	return wrap(newFluxInterval(period, 0, nil))
 }
 
 func just(values []interface{}) Flux {
-	return wrapper{newSliceFlux(values)}
+	return wrap(newSliceFlux(values))
 }

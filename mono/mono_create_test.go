@@ -2,6 +2,7 @@ package mono_test
 
 import (
 	"context"
+	"errors"
 	"log"
 	"testing"
 	"time"
@@ -133,4 +134,31 @@ func TestMonoCreateDelayElement(t *testing.T) {
 	assert.NoError(t, err, "err occurred")
 	assert.Equal(t, 666, v, "bad value")
 	assert.Equal(t, 3, int(time.Since(begin).Seconds()), "bad delay")
+}
+
+func TestError(t *testing.T) {
+	mono.
+		Create(func(i context.Context, sink mono.Sink) {
+			sink.Error(errors.New("oops"))
+		}).
+		DoOnError(func(e error) {
+			assert.Error(t, e)
+		}).
+		DoFinally(func(signal rs.Signal) {
+			assert.Equal(t, rs.SignalError, signal, "bad signal")
+		}).
+		Subscribe(context.Background())
+}
+
+func TestMapPanic(t *testing.T) {
+	mono.Just(0).
+		Map(func(i interface{}) interface{} {
+			// make a panic
+			return 0 / i.(int)
+		}).
+		DoOnError(func(e error) {
+			assert.Error(t, e)
+			log.Println(e)
+		}).
+		Subscribe(context.Background())
 }
