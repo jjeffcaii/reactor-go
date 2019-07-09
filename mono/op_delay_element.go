@@ -35,13 +35,13 @@ func (p *delayElementSubscriber) OnError(err error) {
 	p.actual.OnError(err)
 }
 
-func (p *delayElementSubscriber) OnNext(s rs.Subscription, v interface{}) {
+func (p *delayElementSubscriber) OnNext(v interface{}) {
 	if !atomic.CompareAndSwapInt32(&(p.stat), 0, statComplete) {
 		return
 	}
 	p.v = v
 	time.AfterFunc(p.delay, func() {
-		p.actual.OnNext(s, v)
+		p.actual.OnNext(v)
 	})
 }
 

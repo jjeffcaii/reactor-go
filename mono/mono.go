@@ -25,3 +25,8 @@ type Mono interface {
 	SwitchIfEmpty(alternative Mono) Mono
 	DelayElement(delay time.Duration) Mono
 }
+
+type Processor interface {
+	Mono
+	Sink
+}

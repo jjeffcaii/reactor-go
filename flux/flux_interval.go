@@ -45,7 +45,7 @@ func (p *intervalSubscription) runOnce() {
 		return
 	}
 	current := atomic.AddInt64(&(p.count), 1)
-	p.actual.OnNext(p, current-1)
+	p.actual.OnNext(current - 1)
 	if atomic.LoadInt64(&(p.requested)) >= rs.RequestInfinite {
 		return
 	}

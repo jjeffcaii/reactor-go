@@ -24,7 +24,7 @@ func TestJust(t *testing.T) {
 			return i.(int64) * 2
 		}).
 		Subscribe(context.Background(),
-			rs.OnNext(func(s rs.Subscription, v interface{}) {
+			rs.OnNext(func(v interface{}) {
 				log.Println("next:", v)
 				assert.Equal(t, now.UnixNano()*2, v, "bad result")
 			}),

@@ -19,9 +19,9 @@ func (f filterSubscriber) OnError(err error) {
 	f.s.OnError(err)
 }
 
-func (f filterSubscriber) OnNext(s rs.Subscription, v interface{}) {
+func (f filterSubscriber) OnNext(v interface{}) {
 	if f.f(v) {
-		f.s.OnNext(s, v)
+		f.s.OnNext(v)
 	}
 }
 

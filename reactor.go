@@ -33,7 +33,7 @@ type (
 	Transformer func(interface{}) interface{}
 
 	FnOnComplete = func()
-	FnOnNext = func(s Subscription, v interface{})
+	FnOnNext = func(v interface{})
 	FnOnCancel = func()
 	FnOnSubscribe = func(Subscription)
 	FnOnRequest = func(int)

@@ -35,11 +35,11 @@ func (s *SwitchIfEmptySubscriber) OnError(err error) {
 	s.actual.OnError(err)
 }
 
-func (s *SwitchIfEmptySubscriber) OnNext(su rs.Subscription, v interface{}) {
+func (s *SwitchIfEmptySubscriber) OnNext(v interface{}) {
 	if !s.nextOnce {
 		s.nextOnce = true
 	}
-	s.actual.OnNext(su, v)
+	s.actual.OnNext(v)
 }
 
 func (s *SwitchIfEmptySubscriber) OnSubscribe(su rs.Subscription) {

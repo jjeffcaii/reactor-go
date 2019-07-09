@@ -41,7 +41,7 @@ func (j *justSubscriber) Request(n int) {
 			j.s.OnError(fmt.Errorf("%s", v))
 		}
 	}()
-	j.s.OnNext(j, j.v)
+	j.s.OnNext(j.v)
 }
 
 func (j *justSubscriber) Cancel() {

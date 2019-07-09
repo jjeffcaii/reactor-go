@@ -26,7 +26,7 @@ func TestMonoCreate_Subscribe(t *testing.T) {
 			return i.(int) * 2
 		}).
 		Subscribe(context.Background(),
-			rs.OnNext(func(s rs.Subscription, v interface{}) {
+			rs.OnNext(func(v interface{}) {
 				log.Println("next:", v)
 				assert.Equal(t, 4, v, "bad result")
 			}),
@@ -51,7 +51,7 @@ func TestMonoCreate_Filter(t *testing.T) {
 			return i.(int) < 10
 		}).
 		Subscribe(context.Background(),
-			rs.OnNext(func(s rs.Subscription, v interface{}) {
+			rs.OnNext(func(v interface{}) {
 				log.Println("next:", v)
 				next = true
 			}),
@@ -72,7 +72,7 @@ func TestMonoCreate_SubscribeOn(t *testing.T) {
 	mono.Create(gen).
 		SubscribeOn(scheduler.Elastic()).
 		Subscribe(context.Background(),
-			rs.OnNext(func(s rs.Subscription, v interface{}) {
+			rs.OnNext(func(v interface{}) {
 				log.Println("next:", v)
 			}),
 			rs.OnComplete(func() {
@@ -104,14 +104,14 @@ func TestMonoCreate_Peek(t *testing.T) {
 		DoFinally(func(signal rs.Signal) {
 			log.Println("onFinally:", signal)
 		}).
-		DoOnNext(func(s rs.Subscription, v interface{}) {
+		DoOnNext(func(v interface{}) {
 			log.Println("doOnNext1:", v)
 			assert.Equal(t, 333, v, "bad next 1")
 		}).
 		Map(func(i interface{}) interface{} {
 			return i.(int) * 2
 		}).
-		DoOnNext(func(s rs.Subscription, v interface{}) {
+		DoOnNext(func(v interface{}) {
 			log.Println("doOnNext2:", v)
 			assert.Equal(t, 666, v, "bad next 2")
 		}).

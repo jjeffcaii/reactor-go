@@ -2,6 +2,7 @@ package mono
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/jjeffcaii/reactor-go"
@@ -10,6 +11,22 @@ import (
 
 type wrapper struct {
 	rs.RawPublisher
+}
+
+func (p wrapper) mustProcessor() *processor {
+	pp, ok := p.RawPublisher.(*processor)
+	if !ok {
+		panic(errors.New("publisher is not a Processor"))
+	}
+	return pp
+}
+
+func (p wrapper) Success(v interface{}) {
+	p.mustProcessor().Success(v)
+}
+
+func (p wrapper) Error(e error) {
+	p.mustProcessor().Error(e)
 }
 
 func (p wrapper) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
@@ -68,7 +85,7 @@ func (p wrapper) Block(ctx context.Context) (v interface{}, err error) {
 	p.DoFinally(func(signal rs.Signal) {
 		close(ch)
 	}).Subscribe(ctx,
-		rs.OnNext(func(s rs.Subscription, v interface{}) {
+		rs.OnNext(func(v interface{}) {
 			ch <- struct {
 				e error
 				v interface{}
@@ -91,4 +108,8 @@ func (p wrapper) Block(ctx context.Context) (v interface{}, err error) {
 
 func wrap(r rs.RawPublisher) Mono {
 	return wrapper{r}
+}
+
+func wrapProcessor(origin *processor) Processor {
+	return wrapper{origin}
 }

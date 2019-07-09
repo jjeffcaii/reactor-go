@@ -91,7 +91,7 @@ func (p *bufferedSink) drain() {
 			atomic.AddInt32(&(p.n), 1)
 			break
 		}
-		p.s.OnNext(p, v)
+		p.s.OnNext(v)
 	}
 	atomic.CompareAndSwapInt32(&(p.n), -1, 0)
 }

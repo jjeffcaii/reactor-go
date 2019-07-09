@@ -23,11 +23,11 @@ func (p *innerFlatMapSubscriber) OnError(err error) {
 	}
 }
 
-func (p *innerFlatMapSubscriber) OnNext(s rs.Subscription, v interface{}) {
+func (p *innerFlatMapSubscriber) OnNext(v interface{}) {
 	if atomic.LoadInt32(&(p.parent.stat)) != 0 {
 		return
 	}
-	p.parent.actual.OnNext(s, v)
+	p.parent.actual.OnNext(v)
 	p.OnComplete()
 }
 
@@ -67,7 +67,7 @@ func (p *flatMapSubscriber) OnError(err error) {
 	}
 }
 
-func (p *flatMapSubscriber) OnNext(s rs.Subscription, v interface{}) {
+func (p *flatMapSubscriber) OnNext(v interface{}) {
 	if atomic.LoadInt32(&(p.stat)) != 0 {
 		return
 	}

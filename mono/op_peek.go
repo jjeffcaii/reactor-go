@@ -49,14 +49,14 @@ func (p *peekSubscriber) OnError(err error) {
 	p.actual.OnError(err)
 }
 
-func (p *peekSubscriber) OnNext(s rs.Subscription, v interface{}) {
+func (p *peekSubscriber) OnNext(v interface{}) {
 	if atomic.LoadInt32(&(p.stat)) != 0 {
 		return
 	}
 	if call := p.parent.onNextCall; call != nil {
-		call(s, v)
+		call(v)
 	}
-	p.actual.OnNext(s, v)
+	p.actual.OnNext(v)
 }
 
 func (p *peekSubscriber) OnSubscribe(s rs.Subscription) {

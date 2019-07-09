@@ -24,7 +24,7 @@ func TestJust2(t *testing.T) {
 		}).
 		SubscribeOn(scheduler.Elastic()).
 		Subscribe(context.Background(),
-			rs.OnNext(func(s rs.Subscription, i interface{}) {
+			rs.OnNext(func(i interface{}) {
 				log.Println("next:", i)
 			}),
 			rs.OnComplete(func() {

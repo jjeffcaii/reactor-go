@@ -15,7 +15,7 @@ import (
 func TestInterval(t *testing.T) {
 	var amount int32
 	flux.Interval(100*time.Millisecond).Subscribe(context.Background(),
-		rs.OnNext(func(s rs.Subscription, v interface{}) {
+		rs.OnNext(func(v interface{}) {
 			log.Println("next:", v)
 			atomic.AddInt32(&amount, 1)
 		}),

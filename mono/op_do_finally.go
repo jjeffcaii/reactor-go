@@ -28,8 +28,8 @@ func (p *doFinallySubscriber) OnError(err error) {
 	p.runFinally(rs.SignalError)
 }
 
-func (p *doFinallySubscriber) OnNext(s rs.Subscription, v interface{}) {
-	p.actual.OnNext(s, v)
+func (p *doFinallySubscriber) OnNext(v interface{}) {
+	p.actual.OnNext(v)
 }
 
 func (p *doFinallySubscriber) OnSubscribe(s rs.Subscription) {

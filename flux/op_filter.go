@@ -19,9 +19,9 @@ func (s filterSubscriber) OnError(err error) {
 	s.source.OnError(err)
 }
 
-func (s filterSubscriber) OnNext(su rs.Subscription, in interface{}) {
+func (s filterSubscriber) OnNext(in interface{}) {
 	if s.predicate(in) {
-		s.source.OnNext(su, in)
+		s.source.OnNext(in)
 	}
 }
 

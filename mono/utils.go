@@ -29,3 +29,7 @@ func Just(v interface{}) Mono {
 func Create(gen func(context.Context, Sink)) Mono {
 	return wrap(newMonoCreate(gen))
 }
+
+func CreateProcessor() Processor {
+	return wrapProcessor(&processor{})
+}

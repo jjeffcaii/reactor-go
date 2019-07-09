@@ -64,7 +64,7 @@ func (s *defaultSink) Next(v interface{}) {
 			s.Error(fmt.Errorf("%s", v))
 		}
 	}()
-	s.s.OnNext(s, v)
+	s.s.OnNext(v)
 }
 
 type monoCreate struct {

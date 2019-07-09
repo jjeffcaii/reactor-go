@@ -46,7 +46,7 @@ func (p *sliceSubscription) fastPath() {
 			p.s.OnError(fmt.Errorf("the %dth slice element was null", i))
 			return
 		}
-		p.s.OnNext(p, v)
+		p.s.OnNext(v)
 	}
 	if p.isCancelled() {
 		return

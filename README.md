@@ -43,7 +43,7 @@ func Example() {
 		Map(func(i interface{}) interface{} {
 			return "Hello " + i.(string) + "!"
 		}).
-		DoOnNext(func(s rs.Subscription, v interface{}) {
+		DoOnNext(func(v interface{}) {
 			fmt.Println(v)
 		}).
 		Subscribe(context.Background())
@@ -76,6 +76,8 @@ func Example() {
 		sink.Complete()
 	}
 	done := make(chan struct{})
+	
+	var su rs.Subscription
 	flux.Create(gen).
 		Filter(func(i interface{}) bool {
 			return i.(int)%2 == 0
@@ -86,11 +88,12 @@ func Example() {
 		SubscribeOn(scheduler.Elastic()).
 		Subscribe(context.Background(),
 			rs.OnSubscribe(func(s rs.Subscription) {
+				su = s
 				s.Request(1)
 			}),
-			rs.OnNext(func(s rs.Subscription, v interface{}) {
+			rs.OnNext(func(v interface{}) {
 				fmt.Println("next:", v)
-				s.Request(1)
+				su.Request(1)
 			}),
 			rs.OnComplete(func() {
 				close(done)

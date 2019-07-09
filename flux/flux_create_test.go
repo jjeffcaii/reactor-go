@@ -22,13 +22,15 @@ func createSinker(totals int) func(context.Context, flux.Sink) {
 }
 
 func createSubscriber() rs.Subscriber {
+	var su rs.Subscription
 	return rs.NewSubscriber(
-		rs.OnNext(func(s rs.Subscription, i interface{}) {
+		rs.OnNext(func(i interface{}) {
 			log.Println("next:", i)
-			s.Request(1)
+			su.Request(1)
 		}),
 		rs.OnSubscribe(func(s rs.Subscription) {
 			s.Request(1)
+			su = s
 		}),
 	)
 }
@@ -41,7 +43,7 @@ func TestFluxCreate_SubscribeOn(t *testing.T) {
 		}).
 		SubscribeOn(scheduler.Elastic()).
 		Subscribe(context.Background(),
-			rs.OnNext(func(s rs.Subscription, v interface{}) {
+			rs.OnNext(func(v interface{}) {
 				log.Println("next:", v)
 			}),
 			rs.OnComplete(func() {
@@ -65,6 +67,9 @@ func TestCreate(t *testing.T) {
 		SubscribeWith(context.Background(), s)
 
 	log.Println("---test3")
+
+	var su rs.Subscription
+
 	flux.Create(sinker).
 		Filter(func(i interface{}) bool {
 			return i.(int) >= totals-1
@@ -73,13 +78,14 @@ func TestCreate(t *testing.T) {
 			return i.(int) * 2
 		}).
 		Subscribe(context.Background(),
-			rs.OnNext(func(s rs.Subscription, i interface{}) {
+			rs.OnNext(func(i interface{}) {
 				log.Println("next:", i)
 				assert.Equal(t, (totals-1)*2, i.(int), "bad value")
-				s.Request(1)
+				su.Request(1)
 			}),
 			rs.OnSubscribe(func(s rs.Subscription) {
 				s.Request(1)
+				su = s
 			}),
 		)
 }

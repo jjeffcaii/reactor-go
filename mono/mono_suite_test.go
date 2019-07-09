@@ -21,10 +21,10 @@ func runMap(m mono.Mono, t *testing.T) {
 		Map(func(i interface{}) interface{} {
 			return i.(int) * 2
 		}).
-		DoOnNext(func(s rs.Subscription, v interface{}) {
+		DoOnNext(func(v interface{}) {
 			assert.Equal(t, 2, v.(int), "bad doOnNext result")
 		}).
-		Subscribe(context.Background(), rs.OnNext(func(s rs.Subscription, v interface{}) {
+		Subscribe(context.Background(), rs.OnNext(func(v interface{}) {
 			assert.Equal(t, 2, v.(int), "bad onNext result")
 		}))
 

@@ -19,8 +19,8 @@ func (s mapSubscriber) OnError(err error) {
 	s.source.OnError(err)
 }
 
-func (s mapSubscriber) OnNext(su rs.Subscription, v interface{}) {
-	s.source.OnNext(su, s.mapper(v))
+func (s mapSubscriber) OnNext(v interface{}) {
+	s.source.OnNext(s.mapper(v))
 }
 
 func (s mapSubscriber) OnSubscribe(subscription rs.Subscription) {
