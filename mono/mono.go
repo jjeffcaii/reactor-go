@@ -22,6 +22,7 @@ type Mono interface {
 	DoOnError(rs.FnOnError) Mono
 	DoOnCancel(rs.FnOnCancel) Mono
 	DoFinally(rs.FnOnFinally) Mono
+	DoOnDiscard(rs.FnOnDiscard) Mono
 	SwitchIfEmpty(alternative Mono) Mono
 	DelayElement(delay time.Duration) Mono
 }

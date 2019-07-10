@@ -23,7 +23,7 @@ type intervalSubscription struct {
 
 func (p *intervalSubscription) Request(n int) {
 	if n < 1 {
-		panic(fmt.Errorf("negative request %d", n))
+		panic(rs.ErrNegativeRequest)
 	}
 	if p.cancelled {
 		return

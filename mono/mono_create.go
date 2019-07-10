@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"sync/atomic"
 
 	"github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go/hooks"
 )
 
 type Sink interface {
@@ -21,6 +21,10 @@ type defaultSink struct {
 }
 
 func (s *defaultSink) Success(v interface{}) {
+	if atomic.LoadInt32(&(s.stat)) != 0 {
+		hooks.Global().OnNextDrop(v)
+		return
+	}
 	if v != nil {
 		s.Next(v)
 	}
@@ -29,12 +33,12 @@ func (s *defaultSink) Success(v interface{}) {
 
 func (s *defaultSink) Request(n int) {
 	if n < 1 {
-		panic(fmt.Errorf("negative request %d", n))
+		panic(rs.ErrNegativeRequest)
 	}
 }
 
 func (s *defaultSink) Cancel() {
-	atomic.StoreInt32(&(s.stat), math.MinInt32)
+	atomic.StoreInt32(&(s.stat), statCancel)
 }
 
 func (s *defaultSink) Complete() {
@@ -46,7 +50,9 @@ func (s *defaultSink) Complete() {
 func (s *defaultSink) Error(err error) {
 	if atomic.CompareAndSwapInt32(&(s.stat), 0, statError) {
 		s.s.OnError(err)
+		return
 	}
+	hooks.Global().OnErrorDrop(err)
 }
 
 func (s *defaultSink) Next(v interface{}) {

@@ -2,7 +2,6 @@ package subscribers
 
 import (
 	"context"
-	"fmt"
 
 	rs "github.com/jjeffcaii/reactor-go"
 )
@@ -19,7 +18,7 @@ type SwitchIfEmptySubscriber struct {
 
 func (s *SwitchIfEmptySubscriber) Request(n int) {
 	if n < 1 {
-		panic(fmt.Errorf("negative request %d", n))
+		panic(rs.ErrNegativeRequest)
 	}
 	s.requested = n
 	if s.su != nil {

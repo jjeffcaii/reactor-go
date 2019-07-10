@@ -13,22 +13,6 @@ type wrapper struct {
 	rs.RawPublisher
 }
 
-func (p wrapper) mustProcessor() *processor {
-	pp, ok := p.RawPublisher.(*processor)
-	if !ok {
-		panic(errors.New("publisher is not a Processor"))
-	}
-	return pp
-}
-
-func (p wrapper) Success(v interface{}) {
-	p.mustProcessor().Success(v)
-}
-
-func (p wrapper) Error(e error) {
-	p.mustProcessor().Error(e)
-}
-
 func (p wrapper) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
 	p.SubscribeWith(ctx, rs.NewSubscriber(options...))
 }
@@ -69,6 +53,10 @@ func (p wrapper) DoOnCancel(fn rs.FnOnCancel) Mono {
 	return wrap(newMonoPeek(p, peekCancel(fn)))
 }
 
+func (p wrapper) DoOnDiscard(fn rs.FnOnDiscard) Mono {
+	return wrap(newMonoContext(p, withContextDiscard(fn)))
+}
+
 func (p wrapper) DoFinally(fn rs.FnOnFinally) Mono {
 	return wrap(newMonoDoFinally(p, fn))
 }
@@ -104,6 +92,22 @@ func (p wrapper) Block(ctx context.Context) (v interface{}, err error) {
 	}
 	v, err = vv.v, vv.e
 	return
+}
+
+func (p wrapper) mustProcessor() *processor {
+	pp, ok := p.RawPublisher.(*processor)
+	if !ok {
+		panic(errors.New("publisher is not a Processor"))
+	}
+	return pp
+}
+
+func (p wrapper) Success(v interface{}) {
+	p.mustProcessor().Success(v)
+}
+
+func (p wrapper) Error(e error) {
+	p.mustProcessor().Error(e)
 }
 
 func wrap(r rs.RawPublisher) Mono {

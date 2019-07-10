@@ -5,6 +5,7 @@ import (
 	"sync/atomic"
 
 	"github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go/hooks"
 )
 
 type processor struct {
@@ -15,21 +16,25 @@ type processor struct {
 }
 
 func (p *processor) Success(v interface{}) {
-	if atomic.CompareAndSwapInt32(&(p.stat), 0, statComplete) {
-		p.v = v
-		for _, it := range p.subs {
-			it.OnNext(v)
-			it.OnComplete()
-		}
+	if !atomic.CompareAndSwapInt32(&(p.stat), 0, statComplete) {
+		hooks.Global().OnNextDrop(v)
+		return
+	}
+	p.v = v
+	for _, it := range p.subs {
+		it.OnNext(v)
+		it.OnComplete()
 	}
 }
 
 func (p *processor) Error(e error) {
-	if atomic.CompareAndSwapInt32(&(p.stat), 0, statError) {
-		p.e = e
-		for _, it := range p.subs {
-			it.OnError(e)
-		}
+	if !atomic.CompareAndSwapInt32(&(p.stat), 0, statError) {
+		hooks.Global().OnErrorDrop(e)
+		return
+	}
+	p.e = e
+	for _, it := range p.subs {
+		it.OnError(e)
 	}
 }
 
@@ -74,12 +79,14 @@ func (p *processorSubscriber) OnComplete() {
 func (p *processorSubscriber) OnError(e error) {
 	if atomic.CompareAndSwapInt32(&(p.stat), 0, statError) {
 		p.actual.OnError(e)
+		return
 	}
+	hooks.Global().OnErrorDrop(e)
 }
 
 func (p *processorSubscriber) OnNext(v interface{}) {
 	if atomic.LoadInt32(&(p.stat)) != 0 {
-		// TODO: discard data
+		hooks.Global().OnNextDrop(v)
 		return
 	}
 	p.actual.OnNext(v)

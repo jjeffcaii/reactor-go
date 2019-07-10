@@ -1,9 +1,5 @@
 package rs
 
-import "errors"
-
-var ErrCancelled = errors.New("subscriber has been cancelled")
-
 type Signal int8
 
 func (s Signal) String() string {
@@ -39,6 +35,7 @@ type (
 	FnOnRequest = func(int)
 	FnOnError = func(error)
 	FnOnFinally = func(Signal)
+	FnOnDiscard = func(interface{})
 )
 
 type (

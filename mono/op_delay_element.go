@@ -6,6 +6,7 @@ import (
 	"time"
 
 	rs "github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go/hooks"
 	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
@@ -28,15 +29,16 @@ func (p *delayElementSubscriber) Cancel() {
 }
 
 func (p *delayElementSubscriber) OnError(err error) {
-	if !atomic.CompareAndSwapInt32(&(p.stat), 0, statError) {
-		// TODO: on drop error
+	if atomic.CompareAndSwapInt32(&(p.stat), 0, statError) {
+		p.actual.OnError(err)
 		return
 	}
-	p.actual.OnError(err)
+	hooks.Global().OnErrorDrop(err)
 }
 
 func (p *delayElementSubscriber) OnNext(v interface{}) {
 	if !atomic.CompareAndSwapInt32(&(p.stat), 0, statComplete) {
+		hooks.Global().OnNextDrop(v)
 		return
 	}
 	p.v = v

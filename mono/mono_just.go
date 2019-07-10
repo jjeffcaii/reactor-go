@@ -17,7 +17,7 @@ type justSubscriber struct {
 
 func (j *justSubscriber) Request(n int) {
 	if n < 1 {
-		panic(fmt.Errorf("negative request %d", n))
+		panic(rs.ErrNegativeRequest)
 	}
 	if !atomic.CompareAndSwapInt32(&(j.n), 0, statComplete) {
 		return

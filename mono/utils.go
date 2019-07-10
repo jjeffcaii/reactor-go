@@ -3,6 +3,9 @@ package mono
 import (
 	"context"
 	"errors"
+	"time"
+
+	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
 var empty = wrap(newMonoJust(nil))
@@ -28,6 +31,10 @@ func Just(v interface{}) Mono {
 
 func Create(gen func(context.Context, Sink)) Mono {
 	return wrap(newMonoCreate(gen))
+}
+
+func Delay(delay time.Duration) Mono {
+	return wrap(newMonoDelay(delay, scheduler.Elastic()))
 }
 
 func CreateProcessor() Processor {
