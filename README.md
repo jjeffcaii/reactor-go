@@ -6,7 +6,7 @@
 [![License](https://img.shields.io/github/license/jjeffcaii/reactor-go.svg)](https://github.com/jjeffcaii/reactor-go/blob/master/LICENSE)
 [![GitHub Release](https://img.shields.io/github/release-pre/jjeffcaii/reactor-go.svg)](https://github.com/jjeffcaii/reactor-go/releases)
 
-> A golang implementation for reactive-streams. ***[WARNNING] IT IS UNDER ACTIVE DEVELOPMENT!!! DO NOT USE IN ANY PRODUCTION ENVIRONMENT!!!***
+> A golang implementation for reactive-streams.<br>***🚧🚧🚧[WARNING]IT IS UNDER ACTIVE DEVELOPMENT!!! DO NOT USE IN ANY PRODUCTION ENVIRONMENT!!!***
 
 ### 🏠 [Homepage](https://github.com/jjeffcaii/reactor-go)
 
