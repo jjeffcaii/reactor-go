@@ -16,7 +16,7 @@ func (p *monoContext) SubscribeWith(ctx context.Context, s rs.Subscriber) {
 	for i := 0; i < len(p.kv); i += 2 {
 		ctx = context.WithValue(ctx, p.kv[i], p.kv[i+1])
 	}
-	p.source.SubscribeWith(ctx, s)
+	p.source.SubscribeWith(ctx, internal.NewCoreSubscriber(ctx, s))
 }
 
 type monoContextOption func(*monoContext)

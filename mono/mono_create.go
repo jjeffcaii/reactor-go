@@ -16,8 +16,8 @@ type Sink interface {
 }
 
 type defaultSink struct {
-	s    rs.Subscriber
-	stat int32
+	actual rs.Subscriber
+	stat   int32
 }
 
 func (s *defaultSink) Success(v interface{}) {
@@ -38,18 +38,18 @@ func (s *defaultSink) Request(n int) {
 }
 
 func (s *defaultSink) Cancel() {
-	atomic.StoreInt32(&(s.stat), statCancel)
+	atomic.CompareAndSwapInt32(&(s.stat), 0, statCancel)
 }
 
 func (s *defaultSink) Complete() {
 	if atomic.CompareAndSwapInt32(&(s.stat), 0, statComplete) {
-		s.s.OnComplete()
+		s.actual.OnComplete()
 	}
 }
 
 func (s *defaultSink) Error(err error) {
 	if atomic.CompareAndSwapInt32(&(s.stat), 0, statError) {
-		s.s.OnError(err)
+		s.actual.OnError(err)
 		return
 	}
 	hooks.Global().OnErrorDrop(err)
@@ -70,7 +70,7 @@ func (s *defaultSink) Next(v interface{}) {
 			s.Error(fmt.Errorf("%s", v))
 		}
 	}()
-	s.s.OnNext(v)
+	s.actual.OnNext(v)
 }
 
 type monoCreate struct {
@@ -79,7 +79,7 @@ type monoCreate struct {
 
 func (m *monoCreate) SubscribeWith(ctx context.Context, s rs.Subscriber) {
 	sink := &defaultSink{
-		s: s,
+		actual: s,
 	}
 	s.OnSubscribe(sink)
 	m.sinker(ctx, sink)

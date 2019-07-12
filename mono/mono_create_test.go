@@ -162,4 +162,3 @@ func TestMapPanic(t *testing.T) {
 		}).
 		Subscribe(context.Background())
 }
-

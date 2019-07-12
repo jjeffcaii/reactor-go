@@ -29,4 +29,3 @@ func newFluxCreate(c func(ctx context.Context, sink Sink)) *fluxCreate {
 		backpressure: OverflowBuffer,
 	}
 }
-

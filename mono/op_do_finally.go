@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	rs "github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go/internal"
 )
 
 type doFinallySubscriber struct {
@@ -60,8 +61,10 @@ type monoDoFinally struct {
 	onFinally rs.FnOnFinally
 }
 
-func (m *monoDoFinally) SubscribeWith(ctx context.Context, s rs.Subscriber) {
-	m.source.SubscribeWith(ctx, newDoFinallySubscriber(s, m.onFinally))
+func (m *monoDoFinally) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
+	actual = internal.ExtractRawSubscriber(actual)
+	actual = internal.NewCoreSubscriber(ctx, newDoFinallySubscriber(actual, m.onFinally))
+	m.source.SubscribeWith(ctx, actual)
 }
 
 func newMonoDoFinally(source Mono, onFinally rs.FnOnFinally) *monoDoFinally {

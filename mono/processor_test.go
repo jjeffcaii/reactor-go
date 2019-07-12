@@ -1,15 +1,18 @@
-package mono
+package mono_test
 
 import (
 	"context"
+	"log"
 	"testing"
 	"time"
 
+	"github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go/mono"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestProcessor(t *testing.T) {
-	p := CreateProcessor()
+	p := mono.CreateProcessor()
 
 	time.AfterFunc(100*time.Millisecond, func() {
 		p.Success(333)
@@ -30,4 +33,24 @@ func TestProcessor(t *testing.T) {
 		}).
 		Subscribe(context.Background())
 	assert.Equal(t, 333, actual, "bad result")
+}
+
+func TestProcessor_Context(t *testing.T) {
+	p := mono.CreateProcessor()
+	ctx, _ := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	time.AfterFunc(300*time.Millisecond, func() {
+		p.Success(77778888)
+	})
+	done := make(chan struct{})
+	p.
+		DoOnError(func(e error) {
+			assert.Equal(t, rs.ErrSubscribeCancelled, e, "bad error")
+			log.Println("error:", e)
+		}).
+		DoFinally(func(signal rs.Signal) {
+			close(done)
+			assert.Equal(t, rs.SignalError, signal)
+		}).
+		Subscribe(ctx)
+	<-done
 }

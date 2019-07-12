@@ -6,6 +6,7 @@ import (
 
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/hooks"
+	"github.com/jjeffcaii/reactor-go/internal"
 )
 
 type processor struct {
@@ -39,12 +40,13 @@ func (p *processor) Error(e error) {
 }
 
 func (p *processor) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
+	actual = internal.ExtractRawSubscriber(actual)
 	s := &processorSubscriber{
 		actual: actual,
 		parent: p,
 	}
 	actual.OnSubscribe(s)
-	p.subs = append(p.subs, s)
+	p.subs = append(p.subs, internal.NewCoreSubscriber(ctx, s))
 }
 
 type processorSubscriber struct {

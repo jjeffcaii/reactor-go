@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 
 	"github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go/internal"
 )
 
 type justSubscriber struct {
@@ -58,7 +59,7 @@ func (m *monoJust) Subscribe(ctx context.Context, options ...rs.SubscriberOption
 
 func (m *monoJust) SubscribeWith(ctx context.Context, s rs.Subscriber) {
 	s.OnSubscribe(&justSubscriber{
-		s: s,
+		s: internal.NewCoreSubscriber(ctx, s),
 		v: m.value,
 	})
 }

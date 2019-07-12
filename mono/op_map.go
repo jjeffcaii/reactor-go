@@ -4,33 +4,34 @@ import (
 	"context"
 
 	"github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go/internal"
 )
 
 type mapSubscriber struct {
-	s rs.Subscriber
-	t rs.Transformer
+	actual rs.Subscriber
+	t      rs.Transformer
 }
 
 func (m mapSubscriber) OnComplete() {
-	m.s.OnComplete()
+	m.actual.OnComplete()
 }
 
 func (m mapSubscriber) OnError(err error) {
-	m.s.OnError(err)
+	m.actual.OnError(err)
 }
 
 func (m mapSubscriber) OnNext(v interface{}) {
-	m.s.OnNext(m.t(v))
+	m.actual.OnNext(m.t(v))
 }
 
 func (m mapSubscriber) OnSubscribe(s rs.Subscription) {
-	m.s.OnSubscribe(s)
+	m.actual.OnSubscribe(s)
 }
 
 func newMapSubscriber(s rs.Subscriber, t rs.Transformer) mapSubscriber {
 	return mapSubscriber{
-		s: s,
-		t: t,
+		actual: s,
+		t:      t,
 	}
 }
 
@@ -39,8 +40,10 @@ type monoMap struct {
 	mapper rs.Transformer
 }
 
-func (m *monoMap) SubscribeWith(ctx context.Context, sub rs.Subscriber) {
-	m.source.SubscribeWith(ctx, newMapSubscriber(sub, m.mapper))
+func (m *monoMap) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
+	actual = internal.ExtractRawSubscriber(actual)
+	actual = internal.NewCoreSubscriber(ctx, newMapSubscriber(actual, m.mapper))
+	m.source.SubscribeWith(ctx, actual)
 }
 
 func newMonoMap(source Mono, tf rs.Transformer) *monoMap {

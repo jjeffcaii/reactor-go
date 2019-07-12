@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 
 	"github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go/internal"
 )
 
 type peekSubscriber struct {
@@ -65,7 +66,7 @@ func (p *peekSubscriber) OnSubscribe(s rs.Subscription) {
 	}
 	p.s = s
 	if call := p.parent.onSubscribeCall; call != nil {
-		call(s)
+		call(p)
 	}
 	p.actual.OnSubscribe(p)
 }
@@ -87,12 +88,21 @@ type monoPeek struct {
 	onCancelCall    rs.FnOnCancel
 }
 
-func (p *monoPeek) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
-	p.SubscribeWith(ctx, rs.NewSubscriber(options...))
+func (p *monoPeek) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
+	actual = internal.ExtractRawSubscriber(actual)
+	actual = internal.NewCoreSubscriber(ctx, newPeekSubscriber(p, actual))
+	p.source.SubscribeWith(ctx, actual)
 }
 
-func (p *monoPeek) SubscribeWith(ctx context.Context, s rs.Subscriber) {
-	p.source.SubscribeWith(ctx, newPeekSubscriber(p, s))
+func newMonoPeek(source Mono, first monoPeekOption, others ...monoPeekOption) *monoPeek {
+	m := &monoPeek{
+		source: source,
+	}
+	first(m)
+	for _, value := range others {
+		value(m)
+	}
+	return m
 }
 
 type monoPeekOption func(*monoPeek)
@@ -130,15 +140,4 @@ func peekSubscribe(fn rs.FnOnSubscribe) monoPeekOption {
 	return func(peek *monoPeek) {
 		peek.onSubscribeCall = fn
 	}
-}
-
-func newMonoPeek(source Mono, first monoPeekOption, others ...monoPeekOption) *monoPeek {
-	m := &monoPeek{
-		source: source,
-	}
-	first(m)
-	for _, value := range others {
-		value(m)
-	}
-	return m
 }

@@ -8,7 +8,6 @@ import (
 
 	rs "github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/mono"
-	"github.com/jjeffcaii/reactor-go/scheduler"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -43,8 +42,8 @@ func TestMonoJust_FlatMap(t *testing.T) {
 				Map(func(i interface{}) interface{} {
 					time.Sleep(200 * time.Millisecond)
 					return i.(int) * 2
-				}).
-				SubscribeOn(scheduler.Elastic())
+				})
+				//SubscribeOn(scheduler.Elastic())
 		}).
 		Block(context.Background())
 	assert.NoError(t, err, "an error occurred")

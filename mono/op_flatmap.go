@@ -5,6 +5,7 @@ import (
 	"sync/atomic"
 
 	"github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go/internal"
 )
 
 const (
@@ -86,8 +87,9 @@ func (p *flatMapSubscriber) isDone() bool {
 	return atomic.LoadInt32(&(p.stat)) != 0
 }
 
-func newFlatMapSubscriber(actual rs.Subscriber, mapper flatMapper) *flatMapSubscriber {
+func newFlatMapSubscriber(ctx context.Context, actual rs.Subscriber, mapper flatMapper) *flatMapSubscriber {
 	return &flatMapSubscriber{
+		ctx:    ctx,
 		actual: actual,
 		mapper: mapper,
 	}
@@ -99,7 +101,8 @@ type monoFlatMap struct {
 }
 
 func (m *monoFlatMap) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
-	s := newFlatMapSubscriber(actual, m.mapper)
+	actual = internal.ExtractRawSubscriber(actual)
+	s := newFlatMapSubscriber(ctx, actual, m.mapper)
 	actual.OnSubscribe(s)
 	m.source.SubscribeWith(ctx, s)
 }

@@ -8,7 +8,7 @@ import (
 )
 
 type filterSubscriber struct {
-	*internal.ContextSupport
+	ctx    context.Context
 	actual rs.Subscriber
 	f      rs.Predicate
 }
@@ -26,7 +26,7 @@ func (f filterSubscriber) OnNext(v interface{}) {
 		f.actual.OnNext(v)
 		return
 	}
-	internal.TryDiscard(f.ContextSupport, v)
+	internal.TryDiscard(f.ctx, v)
 }
 
 func (f filterSubscriber) OnSubscribe(s rs.Subscription) {
@@ -38,15 +38,17 @@ type monoFilter struct {
 	f rs.Predicate
 }
 
-func (m *monoFilter) SubscribeWith(ctx context.Context, s rs.Subscriber) {
-	m.s.SubscribeWith(ctx, newFilterSubscriber(ctx, s, m.f))
+func (m *monoFilter) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
+	actual = internal.ExtractRawSubscriber(actual)
+	actual = internal.NewCoreSubscriber(ctx, newFilterSubscriber(ctx, actual, m.f))
+	m.s.SubscribeWith(ctx, actual)
 }
 
 func newFilterSubscriber(ctx context.Context, actual rs.Subscriber, predicate rs.Predicate) filterSubscriber {
 	return filterSubscriber{
-		ContextSupport: internal.NewContextSupport(ctx),
-		actual:         actual,
-		f:              predicate,
+		ctx:    ctx,
+		actual: actual,
+		f:      predicate,
 	}
 }
 

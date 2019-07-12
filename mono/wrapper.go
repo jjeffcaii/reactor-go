@@ -9,6 +9,8 @@ import (
 	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
+var errNotProcessor = errors.New("publisher is not a Processor")
+
 type wrapper struct {
 	rs.RawPublisher
 }
@@ -65,41 +67,28 @@ func (p wrapper) DelayElement(delay time.Duration) Mono {
 	return wrap(newMonoDelayElement(p, delay, scheduler.Elastic()))
 }
 
-func (p wrapper) Block(ctx context.Context) (v interface{}, err error) {
-	ch := make(chan struct {
-		e error
-		v interface{}
-	}, 1)
-	p.DoFinally(func(signal rs.Signal) {
-		close(ch)
-	}).Subscribe(ctx,
-		rs.OnNext(func(v interface{}) {
-			ch <- struct {
-				e error
-				v interface{}
-			}{e: nil, v: v}
-		}),
-		rs.OnError(func(e error) {
-			ch <- struct {
-				e error
-				v interface{}
-			}{e: e}
-		}),
-	)
-	vv, ok := <-ch
+func (p wrapper) Block(ctx context.Context) (interface{}, error) {
+	ch := make(chan interface{}, 1)
+	p.
+		DoFinally(func(signal rs.Signal) {
+			close(ch)
+		}).
+		Subscribe(ctx,
+			rs.OnNext(func(v interface{}) {
+				ch <- v
+			}),
+			rs.OnError(func(e error) {
+				ch <- e
+			}),
+		)
+	v, ok := <-ch
 	if !ok {
-		return
+		return nil, nil
 	}
-	v, err = vv.v, vv.e
-	return
-}
-
-func (p wrapper) mustProcessor() *processor {
-	pp, ok := p.RawPublisher.(*processor)
-	if !ok {
-		panic(errors.New("publisher is not a Processor"))
+	if err, ok := v.(error); ok {
+		return nil, err
 	}
-	return pp
+	return v, nil
 }
 
 func (p wrapper) Success(v interface{}) {
@@ -108,6 +97,14 @@ func (p wrapper) Success(v interface{}) {
 
 func (p wrapper) Error(e error) {
 	p.mustProcessor().Error(e)
+}
+
+func (p wrapper) mustProcessor() *processor {
+	pp, ok := p.RawPublisher.(*processor)
+	if !ok {
+		panic(errNotProcessor)
+	}
+	return pp
 }
 
 func wrap(r rs.RawPublisher) Mono {

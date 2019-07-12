@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go/internal"
 	"github.com/jjeffcaii/reactor-go/internal/subscribers"
 )
 
@@ -13,6 +14,7 @@ type monoSwitchIfEmpty struct {
 }
 
 func (m *monoSwitchIfEmpty) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
+	actual = internal.ExtractRawSubscriber(actual)
 	s := subscribers.NewSwitchIfEmptySubscriber(m.other, actual)
 	actual.OnSubscribe(s)
 	m.source.SubscribeWith(ctx, s)
