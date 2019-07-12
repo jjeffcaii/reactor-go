@@ -45,8 +45,9 @@ func (p *processor) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
 		actual: actual,
 		parent: p,
 	}
+	actual = internal.NewCoreSubscriber(ctx, s)
 	actual.OnSubscribe(s)
-	p.subs = append(p.subs, internal.NewCoreSubscriber(ctx, s))
+	p.subs = append(p.subs, actual)
 }
 
 type processorSubscriber struct {

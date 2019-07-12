@@ -22,6 +22,11 @@ func (f filterSubscriber) OnError(err error) {
 }
 
 func (f filterSubscriber) OnNext(v interface{}) {
+	defer func() {
+		if err := tryRecoverError(recover()); err != nil {
+			f.OnError(err)
+		}
+	}()
 	if f.f(v) {
 		f.actual.OnNext(v)
 		return

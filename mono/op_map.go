@@ -21,6 +21,11 @@ func (m mapSubscriber) OnError(err error) {
 }
 
 func (m mapSubscriber) OnNext(v interface{}) {
+	defer func() {
+		if err := tryRecoverError(recover()); err != nil {
+			m.OnError(err)
+		}
+	}()
 	m.actual.OnNext(m.t(v))
 }
 

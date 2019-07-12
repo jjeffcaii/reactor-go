@@ -2,7 +2,6 @@ package internal
 
 import (
 	"context"
-	"log"
 
 	rs "github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/hooks"
@@ -13,10 +12,16 @@ type CoreSubscriber struct {
 	ctx context.Context
 }
 
-func (p *CoreSubscriber) OnNext(v interface{}) {
-	if p.ctx == nil {
-		log.Println("fuck")
+func (p *CoreSubscriber) OnSubscribe(su rs.Subscription) {
+	select {
+	case <-p.ctx.Done():
+		p.Subscriber.OnError(rs.ErrSubscribeCancelled)
+	default:
+		p.Subscriber.OnSubscribe(su)
 	}
+}
+
+func (p *CoreSubscriber) OnNext(v interface{}) {
 	select {
 	case <-p.ctx.Done():
 		hooks.Global().OnNextDrop(v)
@@ -27,9 +32,6 @@ func (p *CoreSubscriber) OnNext(v interface{}) {
 }
 
 func NewCoreSubscriber(ctx context.Context, actual rs.Subscriber) *CoreSubscriber {
-	if ctx == nil {
-		log.Println("fuckfuck")
-	}
 	if cs, ok := actual.(*CoreSubscriber); ok {
 		return cs
 	}

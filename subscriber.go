@@ -1,6 +1,8 @@
 package rs
 
-import "math"
+import (
+	"math"
+)
 
 const RequestInfinite = math.MaxInt32
 

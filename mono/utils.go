@@ -3,6 +3,7 @@ package mono
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jjeffcaii/reactor-go/scheduler"
@@ -39,4 +40,18 @@ func Delay(delay time.Duration) Mono {
 
 func CreateProcessor() Processor {
 	return wrapProcessor(&processor{})
+}
+
+func tryRecoverError(re interface{}) error {
+	if re == nil {
+		return nil
+	}
+	switch e := re.(type) {
+	case error:
+		return e
+	case string:
+		return errors.New(e)
+	default:
+		return fmt.Errorf("%s", e)
+	}
 }

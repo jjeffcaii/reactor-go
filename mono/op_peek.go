@@ -55,6 +55,11 @@ func (p *peekSubscriber) OnNext(v interface{}) {
 		return
 	}
 	if call := p.parent.onNextCall; call != nil {
+		defer func() {
+			if err := tryRecoverError(recover()); err != nil {
+				p.OnError(err)
+			}
+		}()
 		call(v)
 	}
 	p.actual.OnNext(v)
