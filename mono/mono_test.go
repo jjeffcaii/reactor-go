@@ -15,7 +15,8 @@ import (
 
 func BenchmarkNative(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		time.Now().Add(-24 * time.Hour)
+		var i interface{} = time.Now()
+		i.(time.Time).Add(-24 * time.Hour)
 	}
 }
 
@@ -48,6 +49,21 @@ func Example() {
 // Hello World!
 
 const num = 333
+
+func TestCreate_Panic(t *testing.T) {
+	mock := errors.New("mock error")
+	var catches error
+	mono.
+		Create(func(i context.Context, sink mono.Sink) {
+			panic(mock)
+		}).
+		DoOnError(func(e error) {
+			catches = e
+		}).
+		SubscribeOn(scheduler.Immediate()).
+		Subscribe(context.Background())
+	assert.Equal(t, mock, catches, "bad catches")
+}
 
 func TestDelay(t *testing.T) {
 	begin := time.Now()

@@ -69,7 +69,7 @@ func (p *bufferedSink) Error(err error) {
 
 func (p *bufferedSink) Next(v interface{}) {
 	if fs, ok := p.s.(filterSubscriber); ok {
-		if !fs.predicate(v) {
+		if !fs.f(v) {
 			return
 		}
 	}

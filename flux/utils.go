@@ -15,6 +15,12 @@ const (
 	OverflowLatest
 )
 
+const (
+	statCancel   = -1
+	statError    = -2
+	statComplete = 2
+)
+
 var empty = just(nil)
 
 func Empty() Flux {

@@ -2,12 +2,11 @@ package mono
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"sync/atomic"
 
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/hooks"
+	"github.com/jjeffcaii/reactor-go/internal"
 )
 
 type Sink interface {
@@ -57,17 +56,8 @@ func (s *defaultSink) Error(err error) {
 
 func (s *defaultSink) Next(v interface{}) {
 	defer func() {
-		re := recover()
-		if re == nil {
-			return
-		}
-		switch v := re.(type) {
-		case error:
-			s.Error(v)
-		case string:
-			s.Error(errors.New(v))
-		default:
-			s.Error(fmt.Errorf("%s", v))
+		if err := internal.TryRecoverError(recover()); err != nil {
+			s.Error(err)
 		}
 	}()
 	s.actual.OnNext(v)
@@ -87,6 +77,13 @@ func (m *monoCreate) SubscribeWith(ctx context.Context, s rs.Subscriber) {
 
 func newMonoCreate(gen func(context.Context, Sink)) *monoCreate {
 	return &monoCreate{
-		sinker: gen,
+		sinker: func(i context.Context, sink Sink) {
+			defer func() {
+				if err := internal.TryRecoverError(recover()); err != nil {
+					sink.Error(err)
+				}
+			}()
+			gen(i, sink)
+		},
 	}
 }

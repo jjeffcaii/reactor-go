@@ -74,6 +74,10 @@ func TestCreate(t *testing.T) {
 		Filter(func(i interface{}) bool {
 			return i.(int) >= totals-1
 		}).
+		DoOnDiscard(func(i interface{}) {
+			// TODO: auto
+			su.Request(1)
+		}).
 		Map(func(i interface{}) interface{} {
 			return i.(int) * 2
 		}).
@@ -84,8 +88,8 @@ func TestCreate(t *testing.T) {
 				su.Request(1)
 			}),
 			rs.OnSubscribe(func(s rs.Subscription) {
-				s.Request(1)
 				su = s
+				su.Request(1)
 			}),
 		)
 }

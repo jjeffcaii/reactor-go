@@ -23,7 +23,7 @@ func (f filterSubscriber) OnError(err error) {
 
 func (f filterSubscriber) OnNext(v interface{}) {
 	defer func() {
-		if err := tryRecoverError(recover()); err != nil {
+		if err := internal.TryRecoverError(recover()); err != nil {
 			f.OnError(err)
 		}
 	}()

@@ -1,16 +1,16 @@
-package mono
+package flux
 
 import (
 	"context"
 	"sync/atomic"
 
-	"github.com/jjeffcaii/reactor-go"
+	rs "github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/internal"
 )
 
 type peekSubscriber struct {
+	parent *fluxPeek
 	actual rs.Subscriber
-	parent *monoPeek
 	s      rs.Subscription
 	stat   int32
 }
@@ -39,14 +39,14 @@ func (p *peekSubscriber) OnComplete() {
 	p.actual.OnComplete()
 }
 
-func (p *peekSubscriber) OnError(err error) {
+func (p *peekSubscriber) OnError(e error) {
 	if !atomic.CompareAndSwapInt32(&(p.stat), 0, statError) {
 		return
 	}
 	if call := p.parent.onErrorCall; call != nil {
-		call(err)
+		call(e)
 	}
-	p.actual.OnError(err)
+	p.actual.OnError(e)
 }
 
 func (p *peekSubscriber) OnNext(v interface{}) {
@@ -75,15 +75,15 @@ func (p *peekSubscriber) OnSubscribe(s rs.Subscription) {
 	p.actual.OnSubscribe(p)
 }
 
-func newPeekSubscriber(parent *monoPeek, actual rs.Subscriber) *peekSubscriber {
+func newPeekSubscriber(peek *fluxPeek, actual rs.Subscriber) *peekSubscriber {
 	return &peekSubscriber{
-		parent: parent,
+		parent: peek,
 		actual: actual,
 	}
 }
 
-type monoPeek struct {
-	source          Mono
+type fluxPeek struct {
+	source          Flux
 	onSubscribeCall rs.FnOnSubscribe
 	onNextCall      rs.FnOnNext
 	onErrorCall     rs.FnOnError
@@ -92,56 +92,55 @@ type monoPeek struct {
 	onCancelCall    rs.FnOnCancel
 }
 
-func (p *monoPeek) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
+func (p *fluxPeek) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
 	actual = internal.ExtractRawSubscriber(actual)
 	actual = internal.NewCoreSubscriber(ctx, newPeekSubscriber(p, actual))
 	p.source.SubscribeWith(ctx, actual)
 }
 
-func newMonoPeek(source Mono, first monoPeekOption, others ...monoPeekOption) *monoPeek {
-	m := &monoPeek{
+func newFluxPeek(source Flux, options ...fluxPeekOption) *fluxPeek {
+	ret := &fluxPeek{
 		source: source,
 	}
-	first(m)
-	for _, value := range others {
-		value(m)
+	for i := range options {
+		options[i](ret)
 	}
-	return m
+	return ret
 }
 
-type monoPeekOption func(*monoPeek)
+type fluxPeekOption func(*fluxPeek)
 
-func peekNext(fn rs.FnOnNext) monoPeekOption {
-	return func(peek *monoPeek) {
+func peekNext(fn rs.FnOnNext) fluxPeekOption {
+	return func(peek *fluxPeek) {
 		peek.onNextCall = fn
 	}
 }
 
-func peekComplete(fn rs.FnOnComplete) monoPeekOption {
-	return func(peek *monoPeek) {
+func peekComplete(fn rs.FnOnComplete) fluxPeekOption {
+	return func(peek *fluxPeek) {
 		peek.onCompleteCall = fn
 	}
 }
 
-func peekCancel(fn rs.FnOnCancel) monoPeekOption {
-	return func(peek *monoPeek) {
+func peekCancel(fn rs.FnOnCancel) fluxPeekOption {
+	return func(peek *fluxPeek) {
 		peek.onCancelCall = fn
 	}
 }
-func peekRequest(fn rs.FnOnRequest) monoPeekOption {
-	return func(peek *monoPeek) {
+func peekRequest(fn rs.FnOnRequest) fluxPeekOption {
+	return func(peek *fluxPeek) {
 		peek.onRequestCall = fn
 	}
 }
 
-func peekError(fn rs.FnOnError) monoPeekOption {
-	return func(peek *monoPeek) {
+func peekError(fn rs.FnOnError) fluxPeekOption {
+	return func(peek *fluxPeek) {
 		peek.onErrorCall = fn
 	}
 }
 
-func peekSubscribe(fn rs.FnOnSubscribe) monoPeekOption {
-	return func(peek *monoPeek) {
+func peekSubscribe(fn rs.FnOnSubscribe) fluxPeekOption {
+	return func(peek *fluxPeek) {
 		peek.onSubscribeCall = fn
 	}
 }
