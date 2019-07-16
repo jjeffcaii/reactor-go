@@ -30,6 +30,10 @@ func Error(e error) Flux {
 	})
 }
 
+func Range(beginInclude, endExclude int64) Flux {
+	return wrap(newFluxRange(beginInclude, endExclude))
+}
+
 func Empty() Flux {
 	return empty
 }
