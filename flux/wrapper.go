@@ -2,6 +2,7 @@ package flux
 
 import (
 	"context"
+	"errors"
 
 	rs "github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/scheduler"
@@ -42,6 +43,33 @@ func (p wrapper) DoOnDiscard(fn rs.FnOnDiscard) Flux {
 	return wrap(newFluxContext(p, withContextDiscard(fn)))
 }
 
+func (p wrapper) DoFinally(fn rs.FnOnFinally) Flux {
+	return wrap(newFluxFinally(p, fn))
+}
+
+func (p wrapper) Complete() {
+	p.mustProcessor().Complete()
+}
+
+func (p wrapper) Error(e error) {
+	p.mustProcessor().Error(e)
+}
+
+func (p wrapper) Next(v interface{}) {
+	p.mustProcessor().Next(v)
+}
+
+func (p wrapper) mustProcessor() rawProcessor {
+	v, ok := p.RawPublisher.(rawProcessor)
+	if !ok {
+		panic(errors.New("require a processor"))
+	}
+	return v
+}
+
 func wrap(r rs.RawPublisher) Flux {
+	return wrapper{r}
+}
+func wrapProcessor(r rawProcessor) Processor {
 	return wrapper{r}
 }

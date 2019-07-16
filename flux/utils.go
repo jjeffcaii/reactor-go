@@ -23,6 +23,13 @@ const (
 
 var empty = just(nil)
 
+func Error(e error) Flux {
+	// TODO: need implementation
+	return Create(func(ctx context.Context, sink Sink) {
+		sink.Error(e)
+	})
+}
+
 func Empty() Flux {
 	return empty
 }
@@ -40,6 +47,10 @@ func Create(c func(ctx context.Context, sink Sink)) Flux {
 
 func Interval(period time.Duration) Flux {
 	return wrap(newFluxInterval(period, 0, nil))
+}
+
+func NewUnicastProcessor() Processor {
+	return wrapProcessor(newUnicastProcessor(BuffSizeSM))
 }
 
 func just(values []interface{}) Flux {

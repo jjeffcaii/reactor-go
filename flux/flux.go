@@ -13,6 +13,7 @@ type Flux interface {
 	DoOnNext(rs.FnOnNext) Flux
 	DoOnComplete(rs.FnOnComplete) Flux
 	DoOnRequest(rs.FnOnRequest) Flux
+	DoFinally(rs.FnOnFinally) Flux
 	SubscribeOn(scheduler.Scheduler) Flux
 }
 

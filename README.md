@@ -6,9 +6,9 @@
 [![License](https://img.shields.io/github/license/jjeffcaii/reactor-go.svg)](https://github.com/jjeffcaii/reactor-go/blob/master/LICENSE)
 [![GitHub Release](https://img.shields.io/github/release-pre/jjeffcaii/reactor-go.svg)](https://github.com/jjeffcaii/reactor-go/releases)
 
-> A golang implementation for reactive-streams.<br>***🚧🚧🚧[WARNING]IT IS UNDER ACTIVE DEVELOPMENT!!! DO NOT USE IN ANY PRODUCTION ENVIRONMENT!!!***
-
-### 🏠 [Homepage](https://github.com/jjeffcaii/reactor-go)
+> A golang implementation for [reactive-streams](https://www.reactive-streams.org/).
+<br>🚧🚧🚧 ***IT IS UNDER ACTIVE DEVELOPMENT!!!*** 
+<br>***[WARNING] DO NOT USE IN ANY PRODUCTION ENVIRONMENT!!!***
 
 ## Install
 
@@ -109,15 +109,3 @@ func Example() {
 // next: #HELLO_0008
 ```
 
-## Author
-
-👤 **Jeffsky**
-
-* Github: [@jjeffcaii](https://github.com/jjeffcaii)
-
-## Show your support
-
-Give a ⭐️ if this project helped you!
-
-***
-_This README was generated with ❤️ by [readme-md-generator](https://github.com/kefranabg/readme-md-generator)_

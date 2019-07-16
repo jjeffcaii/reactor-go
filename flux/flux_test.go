@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"testing"
+	"time"
 
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/flux"
@@ -62,19 +63,33 @@ func TestSuite(t *testing.T) {
 		}
 		sink.Complete()
 	})
-
+	all["unicast"] = nil
 	for k, v := range all {
+		gen := func() flux.Flux {
+			if k == "unicast" {
+				vv := flux.NewUnicastProcessor()
+				go func() {
+					for _, it := range testData {
+						vv.Next(it)
+					}
+					vv.Complete()
+				}()
+				time.Sleep(100 * time.Millisecond)
+				return vv
+			}
+			return v
+		}
 		t.Run(fmt.Sprintf("%s_Request", k), func(t *testing.T) {
-			testRequest(v, t)
+			testRequest(gen(), t)
 		})
 		t.Run(fmt.Sprintf("%s_Peek", k), func(t *testing.T) {
-			testPeek(v, t)
+			testPeek(gen(), t)
 		})
 		t.Run(fmt.Sprintf("%s_Discard", k), func(t *testing.T) {
-			testDiscard(v, t)
+			testDiscard(gen(), t)
 		})
 		t.Run(fmt.Sprintf("%s_FilterRequest", k), func(t *testing.T) {
-			testFilterRequest(v, t)
+			testFilterRequest(gen(), t)
 		})
 	}
 }
@@ -82,24 +97,35 @@ func TestSuite(t *testing.T) {
 func testFilterRequest(f flux.Flux, t *testing.T) {
 	var s rs.Subscription
 	var totals, discards, nexts, requests, filter int
-	f.Filter(func(i interface{}) (ok bool) {
-		totals++
-		ok = i.(int)&1 == 0
-		if ok {
-			filter++
-		}
-		return
-	}).DoOnDiscard(func(v interface{}) {
-		discards++
-	}).DoOnNext(func(v interface{}) {
-		nexts++
-		s.Request(1)
-	}).DoOnRequest(func(n int) {
-		requests++
-	}).Subscribe(context.Background(), rs.OnSubscribe(func(su rs.Subscription) {
-		s = su
-		s.Request(1)
-	}))
+	done := make(chan struct{})
+	f.
+		DoFinally(func(s rs.Signal) {
+			assert.Equal(t, rs.SignalComplete, s, "bad signal")
+			close(done)
+		}).
+		Filter(func(i interface{}) (ok bool) {
+			totals++
+			ok = i.(int)&1 == 0
+			if ok {
+				filter++
+			}
+			return
+		}).
+		DoOnDiscard(func(v interface{}) {
+			discards++
+		}).
+		DoOnNext(func(v interface{}) {
+			nexts++
+			s.Request(1)
+		}).
+		DoOnRequest(func(n int) {
+			requests++
+		}).
+		Subscribe(context.Background(), rs.OnSubscribe(func(su rs.Subscription) {
+			s = su
+			s.Request(1)
+		}))
+	<-done
 	assert.Equal(t, totals, discards+nexts, "bad discards+nexts")
 	assert.Equal(t, filter, nexts, "bad nexts")
 	assert.Equal(t, nexts+1, requests, "bad requests")
@@ -107,7 +133,11 @@ func testFilterRequest(f flux.Flux, t *testing.T) {
 
 func testDiscard(f flux.Flux, t *testing.T) {
 	var next, next2, discard []int
+	done := make(chan struct{})
 	f.
+		DoFinally(func(s rs.Signal) {
+			close(done)
+		}).
 		DoOnNext(func(v interface{}) {
 			next = append(next, v.(int))
 		}).
@@ -121,6 +151,7 @@ func testDiscard(f flux.Flux, t *testing.T) {
 			discard = append(discard, i.(int))
 		}).
 		Subscribe(context.Background())
+	<-done
 	assert.Equal(t, testData, next, "bad next")
 	assert.Equal(t, len(next), len(next2)+len(discard), "bad amount")
 	assert.Equal(t, []int{4, 5}, next2, "bad next2")
@@ -132,6 +163,7 @@ func testPeek(f flux.Flux, t *testing.T) {
 	var a, b []int
 	var requests int
 	var ss rs.Subscription
+	done := make(chan struct{})
 	f.
 		DoOnNext(func(v interface{}) {
 			log.Println("peek next:", v)
@@ -144,6 +176,9 @@ func testPeek(f flux.Flux, t *testing.T) {
 			log.Println("peek complete")
 			complete++
 		}).
+		DoFinally(func(s rs.Signal) {
+			close(done)
+		}).
 		Subscribe(context.Background(), rs.OnSubscribe(func(su rs.Subscription) {
 			ss = su
 			ss.Request(1)
@@ -151,21 +186,30 @@ func testPeek(f flux.Flux, t *testing.T) {
 			b = append(b, v.(int))
 			ss.Request(1)
 		}))
+	<-done
 	assert.Equal(t, b, a, "values doesn't match")
 	assert.Equal(t, len(a)+1, requests, "bad requests")
 	assert.Equal(t, 1, complete, "bad complete")
 }
 
 func testRequest(f flux.Flux, t *testing.T) {
+	var nexts []int
 	var su rs.Subscription
-	f.Subscribe(context.Background(), rs.OnSubscribe(func(s rs.Subscription) {
-		su = s
-		su.Request(1)
-	}), rs.OnNext(func(v interface{}) {
-		log.Println("next:", v)
-		su.Request(1)
-	}))
-
+	done := make(chan struct{})
+	f.
+		DoFinally(func(s rs.Signal) {
+			close(done)
+		}).
+		SubscribeOn(scheduler.Elastic()).
+		Subscribe(context.Background(), rs.OnSubscribe(func(s rs.Subscription) {
+			su = s
+			su.Request(1)
+		}), rs.OnNext(func(v interface{}) {
+			nexts = append(nexts, v.(int))
+			su.Request(1)
+		}))
+	<-done
+	assert.Equal(t, testData, nexts, "bad results")
 }
 
 func TestEmpty(t *testing.T) {
