@@ -3,47 +3,65 @@ package flux
 import (
 	"context"
 	"fmt"
-	"math"
+	"sync"
 	"sync/atomic"
 
 	"github.com/jjeffcaii/reactor-go"
 )
 
+const (
+	flagCancel uint8 = 1 << iota
+	flagFast
+)
+
 type sliceSubscription struct {
-	actual    rs.Subscriber
-	values    []interface{}
-	cursor    int32
-	cancelled int32
+	actual rs.Subscriber
+	values []interface{}
+	cursor int32
+	flags  uint8
+	locker sync.Mutex
 }
 
 func (p *sliceSubscription) Request(n int) {
 	if n < 1 {
 		panic(rs.ErrNegativeRequest)
 	}
-	if n >= rs.RequestInfinite {
-		p.fastPath()
-	} else {
-		p.slowPath(n)
+	p.locker.Lock()
+	if p.flags&flagFast != 0 {
+		p.locker.Unlock()
+		return
 	}
+	if n < rs.RequestInfinite {
+		p.locker.Unlock()
+		p.slowPath(n)
+		return
+	}
+	p.flags |= flagFast
+	p.locker.Unlock()
+	p.fastPath()
 }
 
 func (p *sliceSubscription) Cancel() {
-	atomic.StoreInt32(&(p.cancelled), math.MinInt32)
+	p.locker.Lock()
+	p.flags |= flagCancel
+	p.locker.Unlock()
 }
 
-func (p *sliceSubscription) isCancelled() bool {
-	return atomic.LoadInt32(&(p.cancelled)) != 0
+func (p *sliceSubscription) isCancelled() (cancelled bool) {
+	p.locker.Lock()
+	cancelled = p.flags&flagCancel != 0
+	p.locker.Unlock()
+	return
 }
 
 func (p *sliceSubscription) slowPath(n int) {
-	l := len(p.values)
 	for n > 0 {
 		next := int(atomic.AddInt32(&(p.cursor), 1))
-		if next > l {
+		if next > len(p.values) {
 			return
 		}
 		v := p.values[next-1]
-		if next == l {
+		if next == len(p.values) {
 			p.actual.OnNext(v)
 			p.actual.OnComplete()
 			return
@@ -78,11 +96,11 @@ func newSliceSubscription(s rs.Subscriber, values []interface{}) *sliceSubscript
 	}
 }
 
-type sliceFlux struct {
+type fluxSlice struct {
 	slice []interface{}
 }
 
-func (p *sliceFlux) SubscribeWith(ctx context.Context, s rs.Subscriber) {
+func (p *fluxSlice) SubscribeWith(ctx context.Context, s rs.Subscriber) {
 	if len(p.slice) < 1 {
 		s.OnComplete()
 		return
@@ -91,8 +109,8 @@ func (p *sliceFlux) SubscribeWith(ctx context.Context, s rs.Subscriber) {
 	s.OnSubscribe(subscription)
 }
 
-func newSliceFlux(values []interface{}) *sliceFlux {
-	return &sliceFlux{
+func newSliceFlux(values []interface{}) *fluxSlice {
+	return &fluxSlice{
 		slice: values,
 	}
 }

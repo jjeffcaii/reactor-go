@@ -56,6 +56,12 @@ func TestSuite(t *testing.T) {
 	}
 	all := make(map[string]flux.Flux)
 	all["just"] = flux.Just(inputs...)
+	all["create"] = flux.Create(func(ctx context.Context, sink flux.Sink) {
+		for _, it := range testData {
+			sink.Next(it)
+		}
+		sink.Complete()
+	})
 
 	for k, v := range all {
 		t.Run(fmt.Sprintf("%s_Request", k), func(t *testing.T) {
@@ -67,7 +73,36 @@ func TestSuite(t *testing.T) {
 		t.Run(fmt.Sprintf("%s_Discard", k), func(t *testing.T) {
 			testDiscard(v, t)
 		})
+		t.Run(fmt.Sprintf("%s_FilterRequest", k), func(t *testing.T) {
+			testFilterRequest(v, t)
+		})
 	}
+}
+
+func testFilterRequest(f flux.Flux, t *testing.T) {
+	var s rs.Subscription
+	var totals, discards, nexts, requests, filter int
+	f.Filter(func(i interface{}) (ok bool) {
+		totals++
+		ok = i.(int)&1 == 0
+		if ok {
+			filter++
+		}
+		return
+	}).DoOnDiscard(func(v interface{}) {
+		discards++
+	}).DoOnNext(func(v interface{}) {
+		nexts++
+		s.Request(1)
+	}).DoOnRequest(func(n int) {
+		requests++
+	}).Subscribe(context.Background(), rs.OnSubscribe(func(su rs.Subscription) {
+		s = su
+		s.Request(1)
+	}))
+	assert.Equal(t, totals, discards+nexts, "bad discards+nexts")
+	assert.Equal(t, filter, nexts, "bad nexts")
+	assert.Equal(t, nexts+1, requests, "bad requests")
 }
 
 func testDiscard(f flux.Flux, t *testing.T) {
@@ -122,13 +157,13 @@ func testPeek(f flux.Flux, t *testing.T) {
 }
 
 func testRequest(f flux.Flux, t *testing.T) {
-	var ss rs.Subscription
-	f.Subscribe(context.Background(), rs.OnSubscribe(func(su rs.Subscription) {
-		ss = su
-		su.Request(2)
+	var su rs.Subscription
+	f.Subscribe(context.Background(), rs.OnSubscribe(func(s rs.Subscription) {
+		su = s
+		su.Request(1)
 	}), rs.OnNext(func(v interface{}) {
 		log.Println("next:", v)
-		ss.Request(2)
+		su.Request(1)
 	}))
 
 }

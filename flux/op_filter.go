@@ -11,35 +11,38 @@ type filterSubscriber struct {
 	ctx    context.Context
 	actual rs.Subscriber
 	f      rs.Predicate
+	su     rs.Subscription
 }
 
-func (s filterSubscriber) OnComplete() {
-	s.actual.OnComplete()
+func (p *filterSubscriber) OnComplete() {
+	p.actual.OnComplete()
 }
 
-func (s filterSubscriber) OnError(err error) {
-	s.actual.OnError(err)
+func (p *filterSubscriber) OnError(err error) {
+	p.actual.OnError(err)
 }
 
-func (s filterSubscriber) OnNext(v interface{}) {
+func (p *filterSubscriber) OnNext(v interface{}) {
 	defer func() {
 		if err := internal.TryRecoverError(recover()); err != nil {
-			s.OnError(err)
+			p.OnError(err)
 		}
 	}()
-	if s.f(v) {
-		s.actual.OnNext(v)
+	if p.f(v) {
+		p.actual.OnNext(v)
 		return
 	}
-	internal.TryDiscard(s.ctx, v)
+	p.su.Request(1)
+	internal.TryDiscard(p.ctx, v)
 }
 
-func (s filterSubscriber) OnSubscribe(ss rs.Subscription) {
-	s.actual.OnSubscribe(ss)
+func (p *filterSubscriber) OnSubscribe(su rs.Subscription) {
+	p.su = su
+	p.actual.OnSubscribe(su)
 }
 
-func newFilterSubscriber(ctx context.Context, s rs.Subscriber, p rs.Predicate) rs.Subscriber {
-	return filterSubscriber{
+func newFilterSubscriber(ctx context.Context, s rs.Subscriber, p rs.Predicate) *filterSubscriber {
+	return &filterSubscriber{
 		ctx:    ctx,
 		actual: s,
 		f:      p,

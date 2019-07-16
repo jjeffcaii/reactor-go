@@ -35,7 +35,7 @@ type (
 	FnOnRequest = func(n int)
 	FnOnError = func(e error)
 	FnOnFinally = func(s Signal)
-	FnOnDiscard = func(interface{})
+	FnOnDiscard = func(v interface{})
 )
 
 type (

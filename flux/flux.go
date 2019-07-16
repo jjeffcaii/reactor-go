@@ -15,3 +15,14 @@ type Flux interface {
 	DoOnRequest(rs.FnOnRequest) Flux
 	SubscribeOn(scheduler.Scheduler) Flux
 }
+
+type Sink interface {
+	Complete()
+	Error(error)
+	Next(interface{})
+}
+
+type Processor interface {
+	Flux
+	Sink
+}

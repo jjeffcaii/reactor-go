@@ -76,7 +76,7 @@ func Example() {
 		sink.Complete()
 	}
 	done := make(chan struct{})
-	
+
 	var su rs.Subscription
 	flux.Create(gen).
 		Filter(func(i interface{}) bool {

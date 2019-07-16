@@ -1,18 +1,12 @@
 package flux
 
 import (
+	"context"
 	"io"
 	"sync/atomic"
 
 	rs "github.com/jjeffcaii/reactor-go"
 )
-
-type Sink interface {
-	rs.Subscription
-	Complete()
-	Error(error)
-	Next(interface{})
-}
 
 type queue interface {
 	offer(interface{})
@@ -42,6 +36,7 @@ func (q simpleQueue) poll() (v interface{}, ok bool) {
 }
 
 type bufferedSink struct {
+	ctx      context.Context
 	s        rs.Subscriber
 	q        queue
 	n        int32
@@ -68,11 +63,6 @@ func (p *bufferedSink) Error(err error) {
 }
 
 func (p *bufferedSink) Next(v interface{}) {
-	if fs, ok := p.s.(filterSubscriber); ok {
-		if !fs.f(v) {
-			return
-		}
-	}
 	p.q.offer(v)
 	p.drain()
 }
@@ -103,7 +93,7 @@ func (p *bufferedSink) dispose() {
 	}
 }
 
-func newBufferedSink(s rs.Subscriber, cap int) Sink {
+func newBufferedSink(s rs.Subscriber, cap int) *bufferedSink {
 	return &bufferedSink{
 		s: s,
 		q: simpleQueue{
