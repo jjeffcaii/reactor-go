@@ -92,7 +92,16 @@ func TestSuite(t *testing.T) {
 		t.Run(fmt.Sprintf("%s_FilterRequest", k), func(t *testing.T) {
 			testFilterRequest(gen(), t)
 		})
+		t.Run(fmt.Sprintf("%s_BlockLast", k), func(t *testing.T) {
+			testBlockLast(gen(), t)
+		})
 	}
+}
+
+func testBlockLast(f flux.Flux, t *testing.T) {
+	last, err := f.BlockLast(context.Background())
+	assert.NoError(t, err, "block last failed")
+	assert.Equal(t, testData[len(testData)-1], last, "value doesn't match")
 }
 
 func testFilterRequest(f flux.Flux, t *testing.T) {

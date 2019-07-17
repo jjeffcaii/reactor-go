@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	rs "github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go/hooks"
 	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
@@ -53,6 +54,30 @@ func (p wrapper) DoFinally(fn rs.FnOnFinally) Flux {
 
 func (p wrapper) SwitchOnFirst(fn FnSwitchOnFirst) Flux {
 	return wrap(newFluxSwitchOnFirst(p, fn))
+}
+
+func (p wrapper) BlockLast(ctx context.Context) (last interface{}, err error) {
+	done := make(chan struct{})
+	p.
+		DoFinally(func(s rs.SignalType) {
+			close(done)
+		}).
+		DoOnCancel(func() {
+			err = rs.ErrSubscribeCancelled
+		}).
+		Subscribe(ctx,
+			rs.OnNext(func(v interface{}) {
+				if old := last; old != nil {
+					hooks.Global().OnNextDrop(old)
+				}
+				last = v
+			}),
+			rs.OnError(func(e error) {
+				err = e
+			}),
+		)
+	<-done
+	return
 }
 
 func (p wrapper) Complete() {

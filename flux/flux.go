@@ -1,6 +1,8 @@
 package flux
 
 import (
+	"context"
+
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/scheduler"
 )
@@ -29,6 +31,7 @@ type Flux interface {
 	DoFinally(rs.FnOnFinally) Flux
 	SwitchOnFirst(FnSwitchOnFirst) Flux
 	SubscribeOn(scheduler.Scheduler) Flux
+	BlockLast(context.Context) (interface{}, error)
 }
 
 type Sink interface {
