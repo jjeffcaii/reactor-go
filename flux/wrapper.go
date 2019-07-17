@@ -43,6 +43,10 @@ func (p wrapper) DoOnDiscard(fn rs.FnOnDiscard) Flux {
 	return wrap(newFluxContext(p, withContextDiscard(fn)))
 }
 
+func (p wrapper) DoOnCancel(fn rs.FnOnCancel) Flux {
+	return wrap(newFluxPeek(p, peekCancel(fn)))
+}
+
 func (p wrapper) DoFinally(fn rs.FnOnFinally) Flux {
 	return wrap(newFluxFinally(p, fn))
 }

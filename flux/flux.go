@@ -24,6 +24,7 @@ type Flux interface {
 	DoOnDiscard(rs.FnOnDiscard) Flux
 	DoOnNext(rs.FnOnNext) Flux
 	DoOnComplete(rs.FnOnComplete) Flux
+	DoOnCancel(rs.FnOnCancel) Flux
 	DoOnRequest(rs.FnOnRequest) Flux
 	DoFinally(rs.FnOnFinally) Flux
 	SwitchOnFirst(FnSwitchOnFirst) Flux
