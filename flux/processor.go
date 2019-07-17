@@ -2,7 +2,6 @@ package flux
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"sync/atomic"
 
@@ -10,8 +9,6 @@ import (
 	"github.com/jjeffcaii/reactor-go/hooks"
 	"github.com/jjeffcaii/reactor-go/internal"
 )
-
-var errDuplicatedSubscriber = errors.New("UnicastProcessor allows only a single Subscriber")
 
 type rawProcessor interface {
 	rs.RawPublisher
@@ -64,7 +61,7 @@ func (p *unicastProcessor) SubscribeWith(ctx context.Context, s rs.Subscriber) {
 	p.locker.Lock()
 	if p.actual != nil {
 		p.locker.Unlock()
-		panic(errDuplicatedSubscriber)
+		panic(errSubscribeOnce)
 	}
 	raw := internal.ExtractRawSubscriber(s)
 	p.actual = raw

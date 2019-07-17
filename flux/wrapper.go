@@ -47,6 +47,10 @@ func (p wrapper) DoFinally(fn rs.FnOnFinally) Flux {
 	return wrap(newFluxFinally(p, fn))
 }
 
+func (p wrapper) SwitchOnFirst(fn FnSwitchOnFirst) Flux {
+	return wrap(newFluxSwitchOnFirst(p, fn))
+}
+
 func (p wrapper) Complete() {
 	p.mustProcessor().Complete()
 }

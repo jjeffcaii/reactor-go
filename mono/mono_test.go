@@ -185,9 +185,9 @@ func testFilter(m mono.Mono, t *testing.T) {
 	var next bool
 	var step []string
 	m.
-		DoFinally(func(signal rs.Signal) {
+		DoFinally(func(signal rs.SignalType) {
 			step = append(step, "finally")
-			assert.Equal(t, rs.SignalComplete, signal)
+			assert.Equal(t, rs.SignalTypeComplete, signal)
 			close(done)
 		}).
 		DoOnNext(func(v interface{}) {

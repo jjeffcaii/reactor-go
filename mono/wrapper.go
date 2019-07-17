@@ -70,7 +70,7 @@ func (p wrapper) DelayElement(delay time.Duration) Mono {
 func (p wrapper) Block(ctx context.Context) (interface{}, error) {
 	ch := make(chan interface{}, 1)
 	p.
-		DoFinally(func(signal rs.Signal) {
+		DoFinally(func(signal rs.SignalType) {
 			close(ch)
 		}).
 		Subscribe(ctx,

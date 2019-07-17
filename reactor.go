@@ -1,16 +1,16 @@
 package rs
 
-type Signal int8
+type SignalType int8
 
-func (s Signal) String() string {
+func (s SignalType) String() string {
 	switch s {
-	case SignalComplete:
+	case SignalTypeComplete:
 		return "COMPLETE"
-	case SignalDefault:
+	case SignalTypeDefault:
 		return "DEFAULT"
-	case SignalCancel:
+	case SignalTypeCancel:
 		return "CANCEL"
-	case SignalError:
+	case SignalTypeError:
 		return "ERROR"
 	default:
 		return "UNKNOWN"
@@ -18,10 +18,10 @@ func (s Signal) String() string {
 }
 
 const (
-	SignalDefault Signal = iota
-	SignalComplete
-	SignalCancel
-	SignalError
+	SignalTypeDefault SignalType = iota
+	SignalTypeComplete
+	SignalTypeCancel
+	SignalTypeError
 )
 
 type (
@@ -34,7 +34,7 @@ type (
 	FnOnSubscribe = func(su Subscription)
 	FnOnRequest = func(n int)
 	FnOnError = func(e error)
-	FnOnFinally = func(s Signal)
+	FnOnFinally = func(s SignalType)
 	FnOnDiscard = func(v interface{})
 )
 

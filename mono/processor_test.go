@@ -47,9 +47,9 @@ func TestProcessor_Context(t *testing.T) {
 			assert.Equal(t, rs.ErrSubscribeCancelled, e, "bad error")
 			log.Println("error:", e)
 		}).
-		DoFinally(func(signal rs.Signal) {
+		DoFinally(func(signal rs.SignalType) {
 			close(done)
-			assert.Equal(t, rs.SignalError, signal)
+			assert.Equal(t, rs.SignalTypeError, signal)
 		}).
 		Subscribe(ctx)
 	<-done

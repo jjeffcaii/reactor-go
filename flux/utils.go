@@ -6,22 +6,6 @@ import (
 	"time"
 )
 
-type OverflowStrategy int8
-
-const (
-	OverflowBuffer OverflowStrategy = iota
-	OverflowIgnore
-	OverflowError
-	OverflowDrop
-	OverflowLatest
-)
-
-const (
-	statCancel   = -1
-	statError    = -2
-	statComplete = 2
-)
-
 var empty = just(nil)
 
 func Error(e error) Flux {

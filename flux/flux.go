@@ -5,6 +5,18 @@ import (
 	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
+type OverflowStrategy int8
+
+const (
+	OverflowBuffer OverflowStrategy = iota
+	OverflowIgnore
+	OverflowError
+	OverflowDrop
+	OverflowLatest
+)
+
+type FnSwitchOnFirst = func(s Signal, f Flux) Flux
+
 type Flux interface {
 	rs.Publisher
 	Filter(rs.Predicate) Flux
@@ -14,6 +26,7 @@ type Flux interface {
 	DoOnComplete(rs.FnOnComplete) Flux
 	DoOnRequest(rs.FnOnRequest) Flux
 	DoFinally(rs.FnOnFinally) Flux
+	SwitchOnFirst(FnSwitchOnFirst) Flux
 	SubscribeOn(scheduler.Scheduler) Flux
 }
 

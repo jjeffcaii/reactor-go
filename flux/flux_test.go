@@ -100,8 +100,8 @@ func testFilterRequest(f flux.Flux, t *testing.T) {
 	var totals, discards, nexts, requests, filter int
 	done := make(chan struct{})
 	f.
-		DoFinally(func(s rs.Signal) {
-			assert.Equal(t, rs.SignalComplete, s, "bad signal")
+		DoFinally(func(s rs.SignalType) {
+			assert.Equal(t, rs.SignalTypeComplete, s, "bad signal")
 			close(done)
 		}).
 		Filter(func(i interface{}) (ok bool) {
@@ -136,7 +136,7 @@ func testDiscard(f flux.Flux, t *testing.T) {
 	var next, next2, discard []int
 	done := make(chan struct{})
 	f.
-		DoFinally(func(s rs.Signal) {
+		DoFinally(func(s rs.SignalType) {
 			close(done)
 		}).
 		DoOnNext(func(v interface{}) {
@@ -175,7 +175,7 @@ func testPeek(f flux.Flux, t *testing.T) {
 		DoOnComplete(func() {
 			complete++
 		}).
-		DoFinally(func(s rs.Signal) {
+		DoFinally(func(s rs.SignalType) {
 			close(done)
 		}).
 		Subscribe(context.Background(), rs.OnSubscribe(func(su rs.Subscription) {
@@ -196,7 +196,7 @@ func testRequest(f flux.Flux, t *testing.T) {
 	var su rs.Subscription
 	done := make(chan struct{})
 	f.
-		DoFinally(func(s rs.Signal) {
+		DoFinally(func(s rs.SignalType) {
 			close(done)
 		}).
 		SubscribeOn(scheduler.Elastic()).

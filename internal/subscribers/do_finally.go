@@ -19,12 +19,12 @@ func (p *DoFinallySubscriber) Request(n int) {
 
 func (p *DoFinallySubscriber) Cancel() {
 	p.s.Cancel()
-	p.runFinally(rs.SignalCancel)
+	p.runFinally(rs.SignalTypeCancel)
 }
 
 func (p *DoFinallySubscriber) OnError(err error) {
 	p.actual.OnError(err)
-	p.runFinally(rs.SignalError)
+	p.runFinally(rs.SignalTypeError)
 }
 
 func (p *DoFinallySubscriber) OnNext(v interface{}) {
@@ -38,10 +38,10 @@ func (p *DoFinallySubscriber) OnSubscribe(s rs.Subscription) {
 
 func (p *DoFinallySubscriber) OnComplete() {
 	p.actual.OnComplete()
-	p.runFinally(rs.SignalComplete)
+	p.runFinally(rs.SignalTypeComplete)
 }
 
-func (p *DoFinallySubscriber) runFinally(sig rs.Signal) {
+func (p *DoFinallySubscriber) runFinally(sig rs.SignalType) {
 	p.once.Do(func() {
 		p.onFinally(sig)
 	})
