@@ -40,4 +40,3 @@ func Delay(delay time.Duration) Mono {
 func CreateProcessor() Processor {
 	return wrapProcessor(&processor{})
 }
-

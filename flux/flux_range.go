@@ -10,7 +10,7 @@ import (
 )
 
 type fluxRange struct {
-	begin, end int64
+	begin, end int
 }
 
 func (r fluxRange) SubscribeWith(ctx context.Context, s rs.Subscriber) {
@@ -20,10 +20,11 @@ func (r fluxRange) SubscribeWith(ctx context.Context, s rs.Subscriber) {
 }
 
 type rangeSubscription struct {
-	cursor, begin, end int64
-	actual             rs.Subscriber
-	flags              uint8
-	locker             sync.Mutex
+	cursor     int32
+	begin, end int
+	actual     rs.Subscriber
+	flags      uint8
+	locker     sync.Mutex
 }
 
 func (p *rangeSubscription) Request(n int) {
@@ -53,7 +54,7 @@ func (p *rangeSubscription) Cancel() {
 
 func (p *rangeSubscription) slowPath(n int) {
 	for n > 0 {
-		next := p.begin + atomic.AddInt64(&(p.cursor), 1)
+		next := p.begin + int(atomic.AddInt32(&(p.cursor), 1))
 		if next > p.end {
 			return
 		}
@@ -89,7 +90,7 @@ func (p *rangeSubscription) isCancelled() (cancelled bool) {
 	return
 }
 
-func newRangeSubscription(actual rs.Subscriber, begin, end int64) *rangeSubscription {
+func newRangeSubscription(actual rs.Subscriber, begin, end int) *rangeSubscription {
 	return &rangeSubscription{
 		actual: actual,
 		begin:  begin,
@@ -97,7 +98,7 @@ func newRangeSubscription(actual rs.Subscriber, begin, end int64) *rangeSubscrip
 	}
 }
 
-func newFluxRange(begin, end int64) fluxRange {
+func newFluxRange(begin, end int) fluxRange {
 	return fluxRange{
 		begin: begin,
 		end:   end,

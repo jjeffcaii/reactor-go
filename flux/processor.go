@@ -3,7 +3,6 @@ package flux
 import (
 	"context"
 	"errors"
-	"log"
 	"sync"
 	"sync/atomic"
 
@@ -38,18 +37,8 @@ func (p *unicastProcessor) Cancel() {
 }
 
 func (p *unicastProcessor) OnComplete() {
-	println("....begin complete")
-	if p == nil {
-		log.Println("A")
-	}
 	if p.dispose(statComplete) {
 		p.drain()
-		if p == nil {
-			println("C")
-		}
-		if p.actual == nil {
-			println("B")
-		}
 		p.actual.OnComplete()
 	}
 }

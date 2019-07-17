@@ -64,6 +64,7 @@ func TestSuite(t *testing.T) {
 		sink.Complete()
 	})
 	all["unicast"] = nil
+	all["range"] = flux.Range(1, 5)
 	for k, v := range all {
 		gen := func() flux.Flux {
 			if k == "unicast" {
@@ -166,14 +167,12 @@ func testPeek(f flux.Flux, t *testing.T) {
 	done := make(chan struct{})
 	f.
 		DoOnNext(func(v interface{}) {
-			log.Println("peek next:", v)
 			a = append(a, v.(int))
 		}).
 		DoOnRequest(func(n int) {
 			requests++
 		}).
 		DoOnComplete(func() {
-			log.Println("peek complete")
 			complete++
 		}).
 		DoFinally(func(s rs.Signal) {

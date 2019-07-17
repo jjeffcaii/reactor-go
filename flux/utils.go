@@ -2,6 +2,7 @@ package flux
 
 import (
 	"context"
+	"fmt"
 	"time"
 )
 
@@ -30,8 +31,14 @@ func Error(e error) Flux {
 	})
 }
 
-func Range(beginInclude, endExclude int64) Flux {
-	return wrap(newFluxRange(beginInclude, endExclude))
+func Range(start, count int) Flux {
+	if count < 0 {
+		panic(fmt.Errorf("count >= 0 but is was %d", count))
+	}
+	if count == 0 {
+		return empty
+	}
+	return wrap(newFluxRange(start, start+count))
 }
 
 func Empty() Flux {
