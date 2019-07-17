@@ -26,8 +26,10 @@ type Flux interface {
 	DoOnDiscard(rs.FnOnDiscard) Flux
 	DoOnNext(rs.FnOnNext) Flux
 	DoOnComplete(rs.FnOnComplete) Flux
+	DoOnError(rs.FnOnError) Flux
 	DoOnCancel(rs.FnOnCancel) Flux
 	DoOnRequest(rs.FnOnRequest) Flux
+	DoOnSubscribe(rs.FnOnSubscribe) Flux
 	DoFinally(rs.FnOnFinally) Flux
 	SwitchOnFirst(FnSwitchOnFirst) Flux
 	SubscribeOn(scheduler.Scheduler) Flux

@@ -63,7 +63,7 @@ func TestSuite(t *testing.T) {
 		}
 		sink.Complete()
 	})
-	all["unicast"] = nil
+	//all["unicast"] = nil
 	all["range"] = flux.Range(1, 5)
 	for k, v := range all {
 		gen := func() flux.Flux {
@@ -95,7 +95,27 @@ func TestSuite(t *testing.T) {
 		t.Run(fmt.Sprintf("%s_BlockLast", k), func(t *testing.T) {
 			testBlockLast(gen(), t)
 		})
+		//t.Run(fmt.Sprintf("%s_DoSubscribeOn", k), func(t *testing.T) {
+		//	testDoOnSubscribe(gen(), t)
+		//})
 	}
+}
+
+func testDoOnSubscribe(f flux.Flux, t *testing.T) {
+	var su rs.Subscription
+	var got int
+	f.
+		DoOnSubscribe(func(s rs.Subscription) {
+			su = s
+			su.Request(1)
+		}).
+		DoOnNext(func(v interface{}) {
+			log.Println("next:", v)
+			got++
+			su.Request(1)
+		}).
+		Subscribe(context.Background())
+	assert.Equal(t, len(testData), got, "bad amount")
 }
 
 func testBlockLast(f flux.Flux, t *testing.T) {

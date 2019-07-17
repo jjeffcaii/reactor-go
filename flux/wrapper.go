@@ -48,8 +48,16 @@ func (p wrapper) DoOnCancel(fn rs.FnOnCancel) Flux {
 	return wrap(newFluxPeek(p, peekCancel(fn)))
 }
 
+func (p wrapper) DoOnError(fn rs.FnOnError) Flux {
+	return wrap(newFluxPeek(p, peekError(fn)))
+}
+
 func (p wrapper) DoFinally(fn rs.FnOnFinally) Flux {
 	return wrap(newFluxFinally(p, fn))
+}
+
+func (p wrapper) DoOnSubscribe(fn rs.FnOnSubscribe) Flux {
+	return wrap(newFluxPeek(p, peekSubscribe(fn)))
 }
 
 func (p wrapper) SwitchOnFirst(fn FnSwitchOnFirst) Flux {

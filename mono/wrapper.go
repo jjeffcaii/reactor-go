@@ -63,6 +63,10 @@ func (p wrapper) DoFinally(fn rs.FnOnFinally) Mono {
 	return wrap(newMonoDoFinally(p, fn))
 }
 
+func (p wrapper) DoOnSubscribe(fn rs.FnOnSubscribe) Mono {
+	return wrap(newMonoPeek(p, peekSubscribe(fn)))
+}
+
 func (p wrapper) DelayElement(delay time.Duration) Mono {
 	return wrap(newMonoDelayElement(p, delay, scheduler.Elastic()))
 }

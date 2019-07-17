@@ -19,6 +19,7 @@ type Mono interface {
 	Block(context.Context) (interface{}, error)
 	DoOnNext(rs.FnOnNext) Mono
 	DoOnComplete(rs.FnOnComplete) Mono
+	DoOnSubscribe(rs.FnOnSubscribe) Mono
 	DoOnError(rs.FnOnError) Mono
 	DoOnCancel(rs.FnOnCancel) Mono
 	DoFinally(rs.FnOnFinally) Mono
