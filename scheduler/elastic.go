@@ -9,13 +9,7 @@ import (
 var elastic Scheduler
 
 func init() {
-	pool, err := ants.NewPool(math.MaxInt32)
-	if err != nil {
-		panic(err)
-	}
-	elastic = &elasticScheduler{
-		pool: pool,
-	}
+	elastic = NewElastic(math.MaxInt32)
 }
 
 type elasticScheduler struct {
@@ -30,6 +24,16 @@ func (p *elasticScheduler) Do(job Job) {
 
 func (p *elasticScheduler) Worker() Worker {
 	return p
+}
+
+func NewElastic(size int) Scheduler {
+	pool, err := ants.NewPool(size)
+	if err != nil {
+		panic(err)
+	}
+	return &elasticScheduler{
+		pool: pool,
+	}
 }
 
 func Elastic() Scheduler {
