@@ -16,6 +16,10 @@ type elasticScheduler struct {
 	pool *ants.Pool
 }
 
+func (p *elasticScheduler) Close() error {
+	return p.pool.Release()
+}
+
 func (p *elasticScheduler) Do(job Job) {
 	if err := p.pool.Submit(job); err != nil {
 		panic(err)

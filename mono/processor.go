@@ -14,7 +14,7 @@ type processor struct {
 	v      interface{}
 	e      error
 	done   bool
-	subs   *sync.Map
+	subs   *internal.Vector
 	locker sync.RWMutex
 }
 
@@ -39,14 +39,13 @@ func (p *processor) Success(v interface{}) {
 	p.done = true
 	p.v = v
 	p.locker.Unlock()
-	p.subs.Range(func(key, value interface{}) bool {
-		s := key.(rs.Subscriber)
+	for _, it := range p.subs.Snapshot() {
+		s := it.(rs.Subscriber)
 		if v != nil {
 			s.OnNext(v)
 		}
 		s.OnComplete()
-		return true
-	})
+	}
 }
 
 func (p *processor) Error(e error) {
@@ -59,11 +58,9 @@ func (p *processor) Error(e error) {
 	p.done = true
 	p.e = e
 	p.locker.Unlock()
-	p.subs.Range(func(key, value interface{}) bool {
-		s := key.(rs.Subscriber)
-		s.OnError(e)
-		return true
-	})
+	for _, it := range p.subs.Snapshot() {
+		it.(rs.Subscriber).OnError(e)
+	}
 }
 
 func (p *processor) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
@@ -74,7 +71,7 @@ func (p *processor) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
 	}
 	actual = internal.NewCoreSubscriber(ctx, s)
 	actual.OnSubscribe(s)
-	p.subs.Store(actual, true)
+	p.subs.Add(actual)
 }
 
 type processorSubscriber struct {
@@ -132,4 +129,10 @@ func (p *processorSubscriber) OnNext(v interface{}) {
 func (p *processorSubscriber) OnSubscribe(s rs.Subscription) {
 	p.s = s
 	p.actual.OnSubscribe(s)
+}
+
+func newProcessor() *processor {
+	return &processor{
+		subs: internal.NewVector(),
+	}
 }

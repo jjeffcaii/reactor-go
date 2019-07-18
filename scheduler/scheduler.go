@@ -1,5 +1,7 @@
 package scheduler
 
+import "io"
+
 type Job func()
 
 type Worker interface {
@@ -7,5 +9,6 @@ type Worker interface {
 }
 
 type Scheduler interface {
+	io.Closer
 	Worker() Worker
 }

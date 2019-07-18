@@ -1,26 +1,24 @@
 package scheduler
 
-var (
-	immediate = immediateScheduler{}
-)
+var immediate Scheduler
 
-type immediateWorker struct {
-}
-
-func (immediateWorker) Close() error {
-	return nil
-}
-
-func (immediateWorker) Do(job Job) {
-	job()
+func init() {
+	immediate = new(immediateScheduler)
 }
 
 type immediateScheduler struct {
-	w immediateWorker
 }
 
-func (s immediateScheduler) Worker() Worker {
-	return s.w
+func (s *immediateScheduler) Close() error {
+	return nil
+}
+
+func (s *immediateScheduler) Do(j Job) {
+	j()
+}
+
+func (s *immediateScheduler) Worker() Worker {
+	return s
 }
 
 func Immediate() Scheduler {

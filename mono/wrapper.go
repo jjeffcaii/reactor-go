@@ -111,10 +111,6 @@ func (p wrapper) mustProcessor() *processor {
 	return pp
 }
 
-func wrap(r rs.RawPublisher) Mono {
+func wrap(r rs.RawPublisher) wrapper {
 	return wrapper{r}
-}
-
-func wrapProcessor(origin *processor) Processor {
-	return wrapper{origin}
 }
