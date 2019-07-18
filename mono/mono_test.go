@@ -111,7 +111,20 @@ func TestSuite(t *testing.T) {
 		t.Run(k+"_ContextDone", func(t *testing.T) {
 			testContextDone(v, t)
 		})
+		t.Run(k+"_DoOnSubscribe", func(t *testing.T) {
+			testDoOnSubscribe(v, t)
+		})
 	}
+}
+
+func testDoOnSubscribe(m mono.Mono, t *testing.T) {
+	var called bool
+	v, err := m.DoOnSubscribe(func(su rs.Subscription) {
+		called = true
+	}).Block(context.Background())
+	assert.NoError(t, err, "oops")
+	assert.Equal(t, num, v, "bad value")
+	assert.True(t, called, "doOnSubscribe hasn't been called")
 }
 
 func testPanic(m mono.Mono, t *testing.T) {

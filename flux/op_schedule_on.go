@@ -13,11 +13,7 @@ type fluxSubscribeOn struct {
 }
 
 func (p *fluxSubscribeOn) SubscribeWith(ctx context.Context, s rs.Subscriber) {
-	w := p.sc.Worker()
-	w.Do(func() {
-		defer func() {
-			_ = w.Close()
-		}()
+	p.sc.Worker().Do(func() {
 		p.source.SubscribeWith(ctx, s)
 	})
 }

@@ -85,11 +85,7 @@ type fluxInterval struct {
 func (p *fluxInterval) SubscribeWith(ctx context.Context, s rs.Subscriber) {
 	su := newIntervalSubscription(s, p.period)
 	s.OnSubscribe(su)
-	w := p.sc.Worker()
-	w.Do(func() {
-		defer func() {
-			_ = w.Close()
-		}()
+	p.sc.Worker().Do(func() {
 		su.run(ctx)
 	})
 }

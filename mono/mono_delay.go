@@ -41,11 +41,7 @@ func (p *monoDelay) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
 			actual.OnComplete()
 			return
 		}
-		w := p.sc.Worker()
-		w.Do(func() {
-			defer func() {
-				_ = w.Close()
-			}()
+		p.sc.Worker().Do(func() {
 			actual.OnNext(int64(0))
 			actual.OnComplete()
 		})

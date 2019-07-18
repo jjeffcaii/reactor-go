@@ -1,69 +1,37 @@
 package scheduler
 
 import (
-	"context"
-	"errors"
 	"math"
-	"sync"
-	"sync/atomic"
+
+	"github.com/panjf2000/ants"
 )
 
-var myElastic = elasticScheduler{}
+var elastic Scheduler
+
+func init() {
+	pool, err := ants.NewPool(math.MaxInt32)
+	if err != nil {
+		panic(err)
+	}
+	elastic = &elasticScheduler{
+		pool: pool,
+	}
+}
 
 type elasticScheduler struct {
+	pool *ants.Pool
 }
 
-func (elasticScheduler) Worker() Worker {
-	return &singleWorker{
-		jobs: make(chan Job),
+func (p *elasticScheduler) Do(job Job) {
+	if err := p.pool.Submit(job); err != nil {
+		panic(err)
 	}
 }
 
-type singleWorker struct {
-	accepts int64
-	jobs    chan Job
-	once    sync.Once
-	closed  bool
-}
-
-func (s *singleWorker) Close() (err error) {
-	s.once.Do(func() {
-		atomic.StoreInt64(&(s.accepts), math.MinInt64)
-		close(s.jobs)
-	})
-	return
-}
-
-func (s *singleWorker) Do(job Job) {
-	cur := atomic.AddInt64(&(s.accepts), 1)
-	if cur < 1 {
-		panic(errors.New("worker has been stopped"))
-	}
-	if cur == 1 {
-		go s.loop(context.Background())
-	}
-	s.jobs <- job
-}
-
-func (s *singleWorker) loop(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			_ = s.Close()
-			goto EXIT
-		case job, ok := <-s.jobs:
-			if !ok {
-				return
-			}
-			job()
-		}
-	}
-EXIT:
-	for job := range s.jobs {
-		job()
-	}
+func (p *elasticScheduler) Worker() Worker {
+	return p
 }
 
 func Elastic() Scheduler {
-	return myElastic
+	return elastic
 }
