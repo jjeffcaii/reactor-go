@@ -2,8 +2,6 @@ package mono
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"sync/atomic"
 
 	"github.com/jjeffcaii/reactor-go"
@@ -28,18 +26,10 @@ func (j *justSubscriber) Request(n int) {
 		return
 	}
 	defer func() {
-		re := recover()
-		if re == nil {
+		if err := internal.TryRecoverError(recover()); err != nil {
+			j.s.OnError(err)
+		} else {
 			j.s.OnComplete()
-			return
-		}
-		switch v := re.(type) {
-		case error:
-			j.s.OnError(v)
-		case string:
-			j.s.OnError(errors.New(v))
-		default:
-			j.s.OnError(fmt.Errorf("%s", v))
 		}
 	}()
 	j.s.OnNext(j.v)

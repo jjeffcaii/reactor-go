@@ -3,6 +3,7 @@ package mono
 import (
 	"context"
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/jjeffcaii/reactor-go/scheduler"
@@ -38,5 +39,7 @@ func Delay(delay time.Duration) Mono {
 }
 
 func CreateProcessor() Processor {
-	return wrapProcessor(&processor{})
+	return wrapProcessor(&processor{
+		subs: &sync.Map{},
+	})
 }

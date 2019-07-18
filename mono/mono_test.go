@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -12,23 +13,6 @@ import (
 	"github.com/jjeffcaii/reactor-go/scheduler"
 	"github.com/stretchr/testify/assert"
 )
-
-func BenchmarkNative(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		var i interface{} = time.Now()
-		i.(time.Time).Add(-24 * time.Hour)
-	}
-}
-
-func BenchmarkMono(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		mono.Just(time.Now()).
-			Map(func(i interface{}) interface{} {
-				return i.(time.Time).Add(-24 * time.Hour)
-			}).
-			Subscribe(context.Background())
-	}
-}
 
 func Example() {
 	gen := func(ctx context.Context, sink mono.Sink) {
@@ -267,4 +251,45 @@ func testContextDone(m mono.Mono, t *testing.T) {
 		}).
 		Subscribe(ctx)
 	assert.Equal(t, rs.ErrSubscribeCancelled, catches, "bad cancelled error")
+}
+
+func BenchmarkNative(b *testing.B) {
+	var sum int64
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			var v interface{} = int64(1)
+			atomic.AddInt64(&sum, v.(int64))
+		}
+	})
+}
+
+func BenchmarkJust(b *testing.B) {
+	var sum int64
+	m := mono.Just(int64(1))
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		onNext := rs.OnNext(func(v interface{}) {
+			atomic.AddInt64(&sum, v.(int64))
+		})
+		for pb.Next() {
+			m.Subscribe(context.Background(), onNext)
+		}
+	})
+}
+
+func BenchmarkCreate(b *testing.B) {
+	var sum int64
+	m := mono.Create(func(i context.Context, sink mono.Sink) {
+		sink.Success(int64(1))
+	})
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		onNext := rs.OnNext(func(v interface{}) {
+			atomic.AddInt64(&sum, v.(int64))
+		})
+		for pb.Next() {
+			m.Subscribe(context.Background(), onNext)
+		}
+	})
 }
