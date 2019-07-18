@@ -2,7 +2,6 @@ package mono_test
 
 import (
 	"context"
-	"log"
 	"testing"
 	"time"
 
@@ -45,7 +44,6 @@ func TestProcessor_Context(t *testing.T) {
 	p.
 		DoOnError(func(e error) {
 			assert.Equal(t, rs.ErrSubscribeCancelled, e, "bad error")
-			log.Println("error:", e)
 		}).
 		DoFinally(func(signal rs.SignalType) {
 			close(done)

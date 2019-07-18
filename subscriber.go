@@ -1,3 +1,4 @@
+
 package rs
 
 import (
@@ -5,6 +6,8 @@ import (
 )
 
 const RequestInfinite = math.MaxInt32
+
+var emptySubscriber = &subscriber{}
 
 type Subscription interface {
 	Request(n int)
@@ -26,22 +29,24 @@ type subscriber struct {
 }
 
 func (p *subscriber) OnComplete() {
-	if p.fnOnComplete != nil {
-		p.fnOnComplete()
+	if p == nil || p.fnOnComplete == nil {
+		return
 	}
+	p.fnOnComplete()
 }
 
 func (p *subscriber) OnError(err error) {
-	if p.fnOnError != nil {
-		p.fnOnError(err)
+	if p == nil || p.fnOnError == nil {
+		return
 	}
+	p.fnOnError(err)
 }
 
 func (p *subscriber) OnSubscribe(s Subscription) {
-	if p.fnOnSubscribe != nil {
-		p.fnOnSubscribe(s)
-	} else {
+	if p == nil || p.fnOnSubscribe == nil {
 		s.Request(RequestInfinite)
+	} else {
+		p.fnOnSubscribe(s)
 	}
 }
 
@@ -78,6 +83,9 @@ func OnSubscribe(onSubscribe FnOnSubscribe) SubscriberOption {
 }
 
 func NewSubscriber(opts ...SubscriberOption) Subscriber {
+	if len(opts) < 1 {
+		return emptySubscriber
+	}
 	s := &subscriber{}
 	for _, opt := range opts {
 		opt(s)

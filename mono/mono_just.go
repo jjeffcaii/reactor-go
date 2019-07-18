@@ -9,9 +9,9 @@ import (
 )
 
 type justSubscriber struct {
-	s rs.Subscriber
-	v interface{}
-	n int32
+	s      rs.Subscriber
+	parent *monoJust
+	n      int32
 }
 
 func (j *justSubscriber) Request(n int) {
@@ -21,7 +21,7 @@ func (j *justSubscriber) Request(n int) {
 	if !atomic.CompareAndSwapInt32(&(j.n), 0, statComplete) {
 		return
 	}
-	if j.v == nil {
+	if j.parent.value == nil {
 		j.s.OnComplete()
 		return
 	}
@@ -32,7 +32,7 @@ func (j *justSubscriber) Request(n int) {
 			j.s.OnComplete()
 		}
 	}()
-	j.s.OnNext(j.v)
+	j.s.OnNext(j.parent.value)
 }
 
 func (j *justSubscriber) Cancel() {
@@ -43,14 +43,10 @@ type monoJust struct {
 	value interface{}
 }
 
-func (m *monoJust) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
-	m.SubscribeWith(ctx, rs.NewSubscriber(options...))
-}
-
 func (m *monoJust) SubscribeWith(ctx context.Context, s rs.Subscriber) {
 	s.OnSubscribe(&justSubscriber{
-		s: internal.NewCoreSubscriber(ctx, s),
-		v: m.value,
+		s:      internal.NewCoreSubscriber(ctx, s),
+		parent: m,
 	})
 }
 

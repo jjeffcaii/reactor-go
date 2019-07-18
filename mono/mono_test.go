@@ -269,11 +269,11 @@ func BenchmarkJust(b *testing.B) {
 	m := mono.Just(int64(1))
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
-		onNext := rs.OnNext(func(v interface{}) {
+		s := rs.NewSubscriber(rs.OnNext(func(v interface{}) {
 			atomic.AddInt64(&sum, v.(int64))
-		})
+		}))
 		for pb.Next() {
-			m.Subscribe(context.Background(), onNext)
+			m.SubscribeWith(context.Background(), s)
 		}
 	})
 }
@@ -285,11 +285,11 @@ func BenchmarkCreate(b *testing.B) {
 	})
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
-		onNext := rs.OnNext(func(v interface{}) {
+		s := rs.NewSubscriber(rs.OnNext(func(v interface{}) {
 			atomic.AddInt64(&sum, v.(int64))
-		})
+		}))
 		for pb.Next() {
-			m.Subscribe(context.Background(), onNext)
+			m.SubscribeWith(context.Background(), s)
 		}
 	})
 }
