@@ -9,7 +9,7 @@ import (
 type SwitchIfEmptySubscriber struct {
 	ctx       context.Context
 	actual    rs.Subscriber
-	other     rs.Publisher
+	other     rs.RawPublisher
 	nextOnce  bool
 	cancelled bool
 	su        rs.Subscription
@@ -61,7 +61,7 @@ func (s *SwitchIfEmptySubscriber) OnComplete() {
 	}
 }
 
-func NewSwitchIfEmptySubscriber(alternative rs.Publisher, actual rs.Subscriber) *SwitchIfEmptySubscriber {
+func NewSwitchIfEmptySubscriber(alternative rs.RawPublisher, actual rs.Subscriber) *SwitchIfEmptySubscriber {
 	return &SwitchIfEmptySubscriber{
 		actual: actual,
 		other:  alternative,

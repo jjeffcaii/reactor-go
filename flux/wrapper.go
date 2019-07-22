@@ -18,50 +18,50 @@ func (p wrapper) Subscribe(ctx context.Context, options ...rs.SubscriberOption) 
 }
 
 func (p wrapper) Filter(f rs.Predicate) Flux {
-	return wrap(newFluxFilter(p, f))
+	return wrap(newFluxFilter(p.RawPublisher, f))
 }
 
 func (p wrapper) Map(t rs.Transformer) Flux {
-	return wrap(newFluxMap(p, t))
+	return wrap(newFluxMap(p.RawPublisher, t))
 }
 
 func (p wrapper) SubscribeOn(sc scheduler.Scheduler) Flux {
-	return wrap(newFluxSubscribeOn(p, sc))
+	return wrap(newFluxSubscribeOn(p.RawPublisher, sc))
 }
 
 func (p wrapper) DoOnNext(fn rs.FnOnNext) Flux {
-	return wrap(newFluxPeek(p, peekNext(fn)))
+	return wrap(newFluxPeek(p.RawPublisher, peekNext(fn)))
 }
 
 func (p wrapper) DoOnComplete(fn rs.FnOnComplete) Flux {
-	return wrap(newFluxPeek(p, peekComplete(fn)))
+	return wrap(newFluxPeek(p.RawPublisher, peekComplete(fn)))
 }
 func (p wrapper) DoOnRequest(fn rs.FnOnRequest) Flux {
-	return wrap(newFluxPeek(p, peekRequest(fn)))
+	return wrap(newFluxPeek(p.RawPublisher, peekRequest(fn)))
 }
 
 func (p wrapper) DoOnDiscard(fn rs.FnOnDiscard) Flux {
-	return wrap(newFluxContext(p, withContextDiscard(fn)))
+	return wrap(newFluxContext(p.RawPublisher, withContextDiscard(fn)))
 }
 
 func (p wrapper) DoOnCancel(fn rs.FnOnCancel) Flux {
-	return wrap(newFluxPeek(p, peekCancel(fn)))
+	return wrap(newFluxPeek(p.RawPublisher, peekCancel(fn)))
 }
 
 func (p wrapper) DoOnError(fn rs.FnOnError) Flux {
-	return wrap(newFluxPeek(p, peekError(fn)))
+	return wrap(newFluxPeek(p.RawPublisher, peekError(fn)))
 }
 
 func (p wrapper) DoFinally(fn rs.FnOnFinally) Flux {
-	return wrap(newFluxFinally(p, fn))
+	return wrap(newFluxFinally(p.RawPublisher, fn))
 }
 
 func (p wrapper) DoOnSubscribe(fn rs.FnOnSubscribe) Flux {
-	return wrap(newFluxPeek(p, peekSubscribe(fn)))
+	return wrap(newFluxPeek(p.RawPublisher, peekSubscribe(fn)))
 }
 
 func (p wrapper) SwitchOnFirst(fn FnSwitchOnFirst) Flux {
-	return wrap(newFluxSwitchOnFirst(p, fn))
+	return wrap(newFluxSwitchOnFirst(p.RawPublisher, fn))
 }
 
 func (p wrapper) BlockLast(ctx context.Context) (last interface{}, err error) {
@@ -108,9 +108,6 @@ func (p wrapper) mustProcessor() rawProcessor {
 	return v
 }
 
-func wrap(r rs.RawPublisher) Flux {
-	return wrapper{r}
-}
-func wrapProcessor(r rawProcessor) Processor {
+func wrap(r rs.RawPublisher) wrapper {
 	return wrapper{r}
 }

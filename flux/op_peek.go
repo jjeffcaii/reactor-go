@@ -83,7 +83,7 @@ func newPeekSubscriber(peek *fluxPeek, actual rs.Subscriber) *peekSubscriber {
 }
 
 type fluxPeek struct {
-	source          Flux
+	source          rs.RawPublisher
 	onSubscribeCall rs.FnOnSubscribe
 	onNextCall      rs.FnOnNext
 	onErrorCall     rs.FnOnError
@@ -98,7 +98,7 @@ func (p *fluxPeek) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
 	p.source.SubscribeWith(ctx, actual)
 }
 
-func newFluxPeek(source Flux, options ...fluxPeekOption) *fluxPeek {
+func newFluxPeek(source rs.RawPublisher, options ...fluxPeekOption) *fluxPeek {
 	ret := &fluxPeek{
 		source: source,
 	}

@@ -9,7 +9,7 @@ import (
 )
 
 type monoDoFinally struct {
-	source    Mono
+	source    rs.RawPublisher
 	onFinally rs.FnOnFinally
 }
 
@@ -19,7 +19,7 @@ func (m *monoDoFinally) SubscribeWith(ctx context.Context, actual rs.Subscriber)
 	m.source.SubscribeWith(ctx, actual)
 }
 
-func newMonoDoFinally(source Mono, onFinally rs.FnOnFinally) *monoDoFinally {
+func newMonoDoFinally(source rs.RawPublisher, onFinally rs.FnOnFinally) *monoDoFinally {
 	return &monoDoFinally{
 		source:    source,
 		onFinally: onFinally,

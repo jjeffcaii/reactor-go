@@ -39,7 +39,7 @@ func (f filterSubscriber) OnSubscribe(s rs.Subscription) {
 }
 
 type monoFilter struct {
-	s Mono
+	s rs.RawPublisher
 	f rs.Predicate
 }
 
@@ -57,7 +57,7 @@ func newFilterSubscriber(ctx context.Context, actual rs.Subscriber, predicate rs
 	}
 }
 
-func newMonoFilter(s Mono, f rs.Predicate) *monoFilter {
+func newMonoFilter(s rs.RawPublisher, f rs.Predicate) *monoFilter {
 	return &monoFilter{
 		s: s,
 		f: f,

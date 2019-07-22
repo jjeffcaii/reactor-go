@@ -9,7 +9,7 @@ import (
 )
 
 type monoScheduleOn struct {
-	source Mono
+	source rs.RawPublisher
 	sc     scheduler.Scheduler
 }
 
@@ -20,7 +20,7 @@ func (m *monoScheduleOn) SubscribeWith(ctx context.Context, s rs.Subscriber) {
 	})
 }
 
-func newMonoScheduleOn(s Mono, sc scheduler.Scheduler) *monoScheduleOn {
+func newMonoScheduleOn(s rs.RawPublisher, sc scheduler.Scheduler) *monoScheduleOn {
 	return &monoScheduleOn{
 		source: s,
 		sc:     sc,

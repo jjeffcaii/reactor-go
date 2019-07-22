@@ -35,7 +35,7 @@ func newMapSubscriber(s rs.Subscriber, mapper rs.Transformer) rs.Subscriber {
 }
 
 type fluxMap struct {
-	source Flux
+	source rs.RawPublisher
 	mapper rs.Transformer
 }
 
@@ -43,7 +43,7 @@ func (p *fluxMap) SubscribeWith(ctx context.Context, sub rs.Subscriber) {
 	p.source.SubscribeWith(ctx, newMapSubscriber(sub, p.mapper))
 }
 
-func newFluxMap(source Flux, mapper rs.Transformer) *fluxMap {
+func newFluxMap(source rs.RawPublisher, mapper rs.Transformer) *fluxMap {
 	return &fluxMap{
 		source: source,
 		mapper: mapper,

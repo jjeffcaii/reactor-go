@@ -8,7 +8,7 @@ import (
 )
 
 type fluxSubscribeOn struct {
-	source Flux
+	source rs.RawPublisher
 	sc     scheduler.Scheduler
 }
 
@@ -18,7 +18,7 @@ func (p *fluxSubscribeOn) SubscribeWith(ctx context.Context, s rs.Subscriber) {
 	})
 }
 
-func newFluxSubscribeOn(source Flux, sc scheduler.Scheduler) *fluxSubscribeOn {
+func newFluxSubscribeOn(source rs.RawPublisher, sc scheduler.Scheduler) *fluxSubscribeOn {
 	return &fluxSubscribeOn{
 		source: source,
 		sc:     sc,

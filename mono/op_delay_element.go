@@ -69,7 +69,7 @@ func newDelayElementSubscriber(actual rs.Subscriber, delay time.Duration, sc sch
 }
 
 type monoDelayElement struct {
-	source Mono
+	source rs.RawPublisher
 	delay  time.Duration
 	sc     scheduler.Scheduler
 }
@@ -80,7 +80,7 @@ func (p *monoDelayElement) SubscribeWith(ctx context.Context, actual rs.Subscrib
 	p.source.SubscribeWith(ctx, actual)
 }
 
-func newMonoDelayElement(source Mono, delay time.Duration, sc scheduler.Scheduler) *monoDelayElement {
+func newMonoDelayElement(source rs.RawPublisher, delay time.Duration, sc scheduler.Scheduler) *monoDelayElement {
 	return &monoDelayElement{
 		source: source,
 		delay:  delay,

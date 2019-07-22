@@ -8,7 +8,7 @@ import (
 )
 
 type monoContext struct {
-	source Mono
+	source rs.RawPublisher
 	kv     []interface{}
 }
 
@@ -33,7 +33,7 @@ func withContextError(fn rs.FnOnError) monoContextOption {
 	}
 }
 
-func newMonoContext(source Mono, options ...monoContextOption) *monoContext {
+func newMonoContext(source rs.RawPublisher, options ...monoContextOption) *monoContext {
 	mc := &monoContext{
 		source: source,
 	}

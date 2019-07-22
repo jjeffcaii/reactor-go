@@ -32,7 +32,7 @@ func (p *immutableSignal) Type() rs.SignalType {
 }
 
 type fluxSwitchOnFirst struct {
-	source Flux
+	source rs.RawPublisher
 	t      FnSwitchOnFirst
 }
 
@@ -113,6 +113,7 @@ func (p *switchOnFirstInner) OnNext(v interface{}) {
 		}
 		result := p.transformer(sig, wrap(p))
 		p.first = v
+		// TODO: which context?
 		result.SubscribeWith(context.Background(), p.outer)
 		return
 	}
@@ -151,7 +152,7 @@ func (p *switchOnFirstInnerSubscriber) OnSubscribe(s rs.Subscription) {
 	p.inner.OnSubscribe(s)
 }
 
-func newFluxSwitchOnFirst(source Flux, transformer FnSwitchOnFirst) *fluxSwitchOnFirst {
+func newFluxSwitchOnFirst(source rs.RawPublisher, transformer FnSwitchOnFirst) *fluxSwitchOnFirst {
 	return &fluxSwitchOnFirst{
 		source: source,
 		t:      transformer,

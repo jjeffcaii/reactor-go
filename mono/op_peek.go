@@ -83,7 +83,7 @@ func newPeekSubscriber(parent *monoPeek, actual rs.Subscriber) *peekSubscriber {
 }
 
 type monoPeek struct {
-	source          Mono
+	source          rs.RawPublisher
 	onSubscribeCall rs.FnOnSubscribe
 	onNextCall      rs.FnOnNext
 	onErrorCall     rs.FnOnError
@@ -98,7 +98,7 @@ func (p *monoPeek) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
 	p.source.SubscribeWith(ctx, actual)
 }
 
-func newMonoPeek(source Mono, first monoPeekOption, others ...monoPeekOption) *monoPeek {
+func newMonoPeek(source rs.RawPublisher, first monoPeekOption, others ...monoPeekOption) *monoPeek {
 	m := &monoPeek{
 		source: source,
 	}

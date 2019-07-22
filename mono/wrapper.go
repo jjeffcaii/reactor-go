@@ -20,55 +20,55 @@ func (p wrapper) Subscribe(ctx context.Context, options ...rs.SubscriberOption) 
 }
 
 func (p wrapper) SwitchIfEmpty(alternative Mono) Mono {
-	return wrap(newMonoSwitchIfEmpty(p, alternative))
+	return wrap(newMonoSwitchIfEmpty(p.RawPublisher, alternative))
 }
 
 func (p wrapper) Filter(f rs.Predicate) Mono {
-	return wrap(newMonoFilter(p, f))
+	return wrap(newMonoFilter(p.RawPublisher, f))
 }
 
 func (p wrapper) Map(t rs.Transformer) Mono {
-	return wrap(newMonoMap(p, t))
+	return wrap(newMonoMap(p.RawPublisher, t))
 }
 
 func (p wrapper) FlatMap(mapper flatMapper) Mono {
-	return wrap(newMonoFlatMap(p, mapper))
+	return wrap(newMonoFlatMap(p.RawPublisher, mapper))
 }
 
 func (p wrapper) SubscribeOn(sc scheduler.Scheduler) Mono {
-	return wrap(newMonoScheduleOn(p, sc))
+	return wrap(newMonoScheduleOn(p.RawPublisher, sc))
 }
 
 func (p wrapper) DoOnNext(fn rs.FnOnNext) Mono {
-	return wrap(newMonoPeek(p, peekNext(fn)))
+	return wrap(newMonoPeek(p.RawPublisher, peekNext(fn)))
 }
 
 func (p wrapper) DoOnError(fn rs.FnOnError) Mono {
-	return wrap(newMonoPeek(p, peekError(fn)))
+	return wrap(newMonoPeek(p.RawPublisher, peekError(fn)))
 }
 
 func (p wrapper) DoOnComplete(fn rs.FnOnComplete) Mono {
-	return wrap(newMonoPeek(p, peekComplete(fn)))
+	return wrap(newMonoPeek(p.RawPublisher, peekComplete(fn)))
 }
 
 func (p wrapper) DoOnCancel(fn rs.FnOnCancel) Mono {
-	return wrap(newMonoPeek(p, peekCancel(fn)))
+	return wrap(newMonoPeek(p.RawPublisher, peekCancel(fn)))
 }
 
 func (p wrapper) DoOnDiscard(fn rs.FnOnDiscard) Mono {
-	return wrap(newMonoContext(p, withContextDiscard(fn)))
+	return wrap(newMonoContext(p.RawPublisher, withContextDiscard(fn)))
 }
 
 func (p wrapper) DoFinally(fn rs.FnOnFinally) Mono {
-	return wrap(newMonoDoFinally(p, fn))
+	return wrap(newMonoDoFinally(p.RawPublisher, fn))
 }
 
 func (p wrapper) DoOnSubscribe(fn rs.FnOnSubscribe) Mono {
-	return wrap(newMonoPeek(p, peekSubscribe(fn)))
+	return wrap(newMonoPeek(p.RawPublisher, peekSubscribe(fn)))
 }
 
 func (p wrapper) DelayElement(delay time.Duration) Mono {
-	return wrap(newMonoDelayElement(p, delay, scheduler.Elastic()))
+	return wrap(newMonoDelayElement(p.RawPublisher, delay, scheduler.Elastic()))
 }
 
 func (p wrapper) Block(ctx context.Context) (interface{}, error) {

@@ -9,8 +9,8 @@ import (
 )
 
 type monoSwitchIfEmpty struct {
-	source Mono
-	other  Mono
+	source rs.RawPublisher
+	other  rs.RawPublisher
 }
 
 func (m *monoSwitchIfEmpty) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
@@ -20,7 +20,7 @@ func (m *monoSwitchIfEmpty) SubscribeWith(ctx context.Context, actual rs.Subscri
 	m.source.SubscribeWith(ctx, s)
 }
 
-func newMonoSwitchIfEmpty(source, other Mono) *monoSwitchIfEmpty {
+func newMonoSwitchIfEmpty(source, other rs.RawPublisher) *monoSwitchIfEmpty {
 	return &monoSwitchIfEmpty{
 		source: source,
 		other:  other,

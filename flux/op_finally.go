@@ -9,7 +9,7 @@ import (
 )
 
 type fluxFinally struct {
-	source    Flux
+	source    rs.RawPublisher
 	onFinally rs.FnOnFinally
 }
 
@@ -19,7 +19,7 @@ func (p *fluxFinally) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
 	p.source.SubscribeWith(ctx, actual)
 }
 
-func newFluxFinally(source Flux, onFinally rs.FnOnFinally) *fluxFinally {
+func newFluxFinally(source rs.RawPublisher, onFinally rs.FnOnFinally) *fluxFinally {
 	return &fluxFinally{
 		source:    source,
 		onFinally: onFinally,

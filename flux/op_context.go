@@ -8,7 +8,7 @@ import (
 )
 
 type fluxContext struct {
-	source Flux
+	source rs.RawPublisher
 	kv     []interface{}
 }
 
@@ -33,7 +33,7 @@ func withContextError(fn rs.FnOnError) fluxContextOption {
 	}
 }
 
-func newFluxContext(source Flux, options ...fluxContextOption) *fluxContext {
+func newFluxContext(source rs.RawPublisher, options ...fluxContextOption) *fluxContext {
 	f := &fluxContext{
 		source: source,
 	}

@@ -41,7 +41,7 @@ func newMapSubscriber(s rs.Subscriber, t rs.Transformer) mapSubscriber {
 }
 
 type monoMap struct {
-	source Mono
+	source rs.RawPublisher
 	mapper rs.Transformer
 }
 
@@ -51,7 +51,7 @@ func (m *monoMap) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
 	m.source.SubscribeWith(ctx, actual)
 }
 
-func newMonoMap(source Mono, tf rs.Transformer) *monoMap {
+func newMonoMap(source rs.RawPublisher, tf rs.Transformer) *monoMap {
 	return &monoMap{
 		source: source,
 		mapper: tf,

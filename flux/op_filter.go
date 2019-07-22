@@ -50,7 +50,7 @@ func newFilterSubscriber(ctx context.Context, s rs.Subscriber, p rs.Predicate) *
 }
 
 type fluxFilter struct {
-	source    Flux
+	source    rs.RawPublisher
 	predicate rs.Predicate
 }
 
@@ -65,7 +65,7 @@ func (f *fluxFilter) SubscribeWith(ctx context.Context, s rs.Subscriber) {
 	f.source.SubscribeWith(ctx, actual)
 }
 
-func newFluxFilter(source Flux, predicate rs.Predicate) *fluxFilter {
+func newFluxFilter(source rs.RawPublisher, predicate rs.Predicate) *fluxFilter {
 	return &fluxFilter{
 		source:    source,
 		predicate: predicate,
