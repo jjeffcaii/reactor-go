@@ -36,8 +36,8 @@ func Just(values ...interface{}) Flux {
 	return just(values)
 }
 
-func Create(c func(ctx context.Context, sink Sink)) Flux {
-	return wrap(newFluxCreate(c))
+func Create(c func(ctx context.Context, sink Sink), options ...CreateOption) Flux {
+	return wrap(newFluxCreate(c, options...))
 }
 
 func Interval(period time.Duration) Flux {

@@ -67,9 +67,21 @@ func (m fluxCreate) SubscribeWith(ctx context.Context, s rs.Subscriber) {
 	m.source(ctx, sink)
 }
 
-func newFluxCreate(c func(ctx context.Context, sink Sink)) *fluxCreate {
-	return &fluxCreate{
+type CreateOption func(*fluxCreate)
+
+func WithOverflowStrategy(o OverflowStrategy) CreateOption {
+	return func(create *fluxCreate) {
+		create.backpressure = o
+	}
+}
+
+func newFluxCreate(c func(ctx context.Context, sink Sink), options ...CreateOption) *fluxCreate {
+	fc := &fluxCreate{
 		source:       c,
 		backpressure: OverflowBuffer,
 	}
+	for i := range options {
+		options[i](fc)
+	}
+	return fc
 }
