@@ -1,4 +1,4 @@
-package flux
+package flux_test
 
 import (
 	"context"
@@ -7,10 +7,11 @@ import (
 	"time"
 
 	rs "github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go/flux"
 )
 
 func TestUnicastProcessor(t *testing.T) {
-	p := NewUnicastProcessor()
+	p := flux.NewUnicastProcessor()
 
 	time.AfterFunc(100*time.Millisecond, func() {
 		p.Next(1)
@@ -39,4 +40,22 @@ func TestUnicastProcessor(t *testing.T) {
 		su.Request(1)
 	}))
 	<-done
+}
+
+func TestDoOnSubscribe(t *testing.T) {
+	pc := flux.NewUnicastProcessor()
+	time.AfterFunc(1*time.Second, func() {
+		pc.Next(111)
+		pc.Next(222)
+		pc.Complete()
+	})
+	done := make(chan struct{})
+	pc.DoFinally(func(s rs.SignalType) {
+		close(done)
+	}).DoOnSubscribe(func(su rs.Subscription) {
+		log.Println("doOnSubscribe")
+	}).BlockLast(context.Background())
+
+	<-done
+
 }

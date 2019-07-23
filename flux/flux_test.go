@@ -251,3 +251,36 @@ func TestEmpty(t *testing.T) {
 		}),
 	)
 }
+
+func TestCreateWithRequest(t *testing.T) {
+
+	const totals = 20
+	f := flux.Create(func(ctx context.Context, sink flux.Sink) {
+		for i := 0; i < totals; i++ {
+			sink.Next(i)
+		}
+		sink.Complete()
+	})
+
+	var processed int32
+
+	su := make(chan rs.Subscription, 1)
+
+	sub := rs.NewSubscriber(rs.OnNext(func(v interface{}) {
+		log.Println("next:", v)
+		processed++
+	}), rs.OnSubscribe(func(s rs.Subscription) {
+		su <- s
+		s.Request(1)
+	}), rs.OnComplete(func() {
+		log.Println("complete")
+	}))
+
+	time.AfterFunc(100*time.Millisecond, func() {
+		s := <-su
+		s.Request(totals - 1)
+	})
+
+	f.SubscribeWith(context.Background(), sub)
+	assert.Equal(t, totals, int(processed), "bad processed num")
+}

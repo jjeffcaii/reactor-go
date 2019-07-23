@@ -6,10 +6,15 @@ type queue interface {
 	io.Closer
 	offer(interface{})
 	poll() (interface{}, bool)
+	size() int
 }
 
 type simpleQueue struct {
 	c chan interface{}
+}
+
+func (q simpleQueue) size() int {
+	return len(q.c)
 }
 
 func (q simpleQueue) Close() (err error) {
