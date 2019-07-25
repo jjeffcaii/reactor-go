@@ -25,8 +25,8 @@ const (
 )
 
 type (
-	Predicate func(interface{}) bool
-	Transformer func(interface{}) interface{}
+	Predicate func(v interface{}) bool
+	Transformer func(v interface{}) interface{}
 
 	FnOnComplete = func()
 	FnOnNext = func(v interface{})

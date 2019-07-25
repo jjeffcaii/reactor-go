@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 
 	rs "github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go/hooks"
 )
 
 type bufferedSink struct {
@@ -39,11 +40,19 @@ func (p *bufferedSink) Complete() {
 }
 
 func (p *bufferedSink) Error(err error) {
+	if p.done {
+		hooks.Global().OnErrorDrop(err)
+		return
+	}
 	p.s.OnError(err)
 	p.dispose()
 }
 
 func (p *bufferedSink) Next(v interface{}) {
+	if p.done {
+		hooks.Global().OnNextDrop(v)
+		return
+	}
 	p.q.offer(v)
 	p.drain()
 }

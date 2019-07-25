@@ -11,6 +11,10 @@ import (
 var empty = wrap(newMonoJust(nil))
 var errJustNilValue = errors.New("require non nil value")
 
+func Error(e error) Mono {
+	return wrap(newMonoError(e))
+}
+
 func Empty() Mono {
 	return empty
 }
@@ -29,7 +33,7 @@ func Just(v interface{}) Mono {
 	return wrap(newMonoJust(v))
 }
 
-func Create(gen func(context.Context, Sink)) Mono {
+func Create(gen func(ctx context.Context, s Sink)) Mono {
 	return wrap(newMonoCreate(gen))
 }
 

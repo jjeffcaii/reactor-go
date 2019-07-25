@@ -7,7 +7,7 @@
 [![GitHub Release](https://img.shields.io/github/release-pre/jjeffcaii/reactor-go.svg)](https://github.com/jjeffcaii/reactor-go/releases)
 
 > A golang implementation for [reactive-streams](https://www.reactive-streams.org/).
-<br>🚧🚧🚧 ***IT IS UNDER ACTIVE DEVELOPMENT!!!*** 
+<br>🚧🚧🚧 ***IT IS UNDER ACTIVE DEVELOPMENT!!!***
 <br>***[WARNING] DO NOT USE IN ANY PRODUCTION ENVIRONMENT!!!***
 
 ## Install
@@ -108,4 +108,3 @@ func Example() {
 // next: #HELLO_0006
 // next: #HELLO_0008
 ```
-

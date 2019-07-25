@@ -1,32 +1,23 @@
 package flux
 
-import "io"
-
-type queue interface {
-	io.Closer
-	offer(interface{})
-	poll() (interface{}, bool)
-	size() int
-}
-
-type simpleQueue struct {
+type queue struct {
 	c chan interface{}
 }
 
-func (q simpleQueue) size() int {
+func (q queue) size() int {
 	return len(q.c)
 }
 
-func (q simpleQueue) Close() (err error) {
+func (q queue) Close() (err error) {
 	close(q.c)
 	return
 }
 
-func (q simpleQueue) offer(v interface{}) {
+func (q queue) offer(v interface{}) {
 	q.c <- v
 }
 
-func (q simpleQueue) poll() (v interface{}, ok bool) {
+func (q queue) poll() (v interface{}, ok bool) {
 	select {
 	case v, ok = <-q.c:
 		return
@@ -36,7 +27,7 @@ func (q simpleQueue) poll() (v interface{}, ok bool) {
 }
 
 func newQueue(size int) queue {
-	return simpleQueue{
+	return queue{
 		c: make(chan interface{}, size),
 	}
 }

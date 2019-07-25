@@ -41,21 +41,3 @@ func TestUnicastProcessor(t *testing.T) {
 	}))
 	<-done
 }
-
-func TestDoOnSubscribe(t *testing.T) {
-	pc := flux.NewUnicastProcessor()
-	time.AfterFunc(1*time.Second, func() {
-		pc.Next(111)
-		pc.Next(222)
-		pc.Complete()
-	})
-	done := make(chan struct{})
-	pc.DoFinally(func(s rs.SignalType) {
-		close(done)
-	}).DoOnSubscribe(func(su rs.Subscription) {
-		log.Println("doOnSubscribe")
-	}).BlockLast(context.Background())
-
-	<-done
-
-}

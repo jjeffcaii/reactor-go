@@ -9,10 +9,7 @@ import (
 var empty = just(nil)
 
 func Error(e error) Flux {
-	// TODO: need implementation
-	return Create(func(ctx context.Context, sink Sink) {
-		sink.Error(e)
-	})
+	return wrap(newFluxError(e))
 }
 
 func Range(start, count int) Flux {

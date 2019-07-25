@@ -2,6 +2,7 @@ package flux_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"testing"
@@ -253,7 +254,6 @@ func TestEmpty(t *testing.T) {
 }
 
 func TestCreateWithRequest(t *testing.T) {
-
 	const totals = 20
 	f := flux.Create(func(ctx context.Context, sink flux.Sink) {
 		for i := 0; i < totals; i++ {
@@ -283,4 +283,34 @@ func TestCreateWithRequest(t *testing.T) {
 
 	f.SubscribeWith(context.Background(), sub)
 	assert.Equal(t, totals, int(processed), "bad processed num")
+}
+
+func TestError(t *testing.T) {
+	mockErr := errors.New("this is a mock error")
+	var sig rs.SignalType
+	var e1, e2 error
+	var requested int
+	flux.Error(mockErr).
+		DoFinally(func(s rs.SignalType) {
+			sig = s
+		}).
+		DoOnRequest(func(n int) {
+			requested = n
+		}).
+		DoOnError(func(e error) {
+			e1 = e
+		}).
+		Subscribe(
+			context.Background(),
+			rs.OnNext(func(v interface{}) {
+				assert.Fail(t, "should never run here")
+			}),
+			rs.OnError(func(e error) {
+				e2 = e
+			}),
+		)
+	assert.Equal(t, mockErr, e1, "bad doOnError")
+	assert.Equal(t, mockErr, e2, "bad onError")
+	assert.Equal(t, rs.SignalTypeError, sig, "bad signal")
+	assert.True(t, requested > 0, "no request")
 }

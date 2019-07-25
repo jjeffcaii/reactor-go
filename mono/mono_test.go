@@ -306,3 +306,28 @@ func BenchmarkCreate(b *testing.B) {
 		}
 	})
 }
+
+func TestError(t *testing.T) {
+	mockErr := errors.New("this is a mock error")
+	var sig rs.SignalType
+	var e1, e2 error
+	mono.Error(mockErr).
+		DoFinally(func(s rs.SignalType) {
+			sig = s
+		}).
+		DoOnError(func(e error) {
+			e1 = e
+		}).
+		Subscribe(
+			context.Background(),
+			rs.OnNext(func(v interface{}) {
+				assert.Fail(t, "should never run here")
+			}),
+			rs.OnError(func(e error) {
+				e2 = e
+			}),
+		)
+	assert.Equal(t, mockErr, e1, "bad doOnError")
+	assert.Equal(t, mockErr, e2, "bad onError")
+	assert.Equal(t, rs.SignalTypeError, sig, "bad signal")
+}

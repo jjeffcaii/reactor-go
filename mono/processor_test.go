@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+
 func TestProcessor(t *testing.T) {
 	p := mono.CreateProcessor()
 

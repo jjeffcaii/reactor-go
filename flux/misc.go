@@ -1,6 +1,8 @@
 package flux
 
-import "errors"
+import (
+	"errors"
+)
 
 const (
 	statCancel   = -1
