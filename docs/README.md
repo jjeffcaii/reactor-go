@@ -1,3 +1,3 @@
-# Headline
+# reactor-go
 
-> An awesome project.
+> A golang implementation for reactive-streams.
