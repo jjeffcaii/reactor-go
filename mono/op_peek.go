@@ -128,6 +128,7 @@ func peekCancel(fn rs.FnOnCancel) monoPeekOption {
 		peek.onCancelCall = fn
 	}
 }
+
 func peekRequest(fn rs.FnOnRequest) monoPeekOption {
 	return func(peek *monoPeek) {
 		peek.onRequestCall = fn

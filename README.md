@@ -8,7 +8,7 @@
 
 > A golang implementation for [reactive-streams](https://www.reactive-streams.org/).
 <br>🚧🚧🚧 ***IT IS UNDER ACTIVE DEVELOPMENT!!!***
-<br>***[WARNING] DO NOT USE IN ANY PRODUCTION ENVIRONMENT!!!***
+<br>⚠️⚠️⚠️ ***DO NOT USE IN ANY PRODUCTION ENVIRONMENT!!!***
 
 ## Install
 

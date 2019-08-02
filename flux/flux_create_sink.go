@@ -1,16 +1,14 @@
 package flux
 
 import (
-	"context"
-	"sync"
-	"sync/atomic"
+  "sync"
+  "sync/atomic"
 
-	rs "github.com/jjeffcaii/reactor-go"
-	"github.com/jjeffcaii/reactor-go/hooks"
+  rs "github.com/jjeffcaii/reactor-go"
+  "github.com/jjeffcaii/reactor-go/hooks"
 )
 
 type bufferedSink struct {
-	ctx      context.Context
 	s        rs.Subscriber
 	q        queue
 	n        int32
@@ -84,7 +82,6 @@ func (p *bufferedSink) drain() {
 func (p *bufferedSink) dispose() {
 	p.done = true
 	_ = p.q.Close()
-
 }
 
 func newBufferedSink(s rs.Subscriber, cap int) *bufferedSink {
