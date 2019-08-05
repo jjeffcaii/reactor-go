@@ -94,6 +94,26 @@ func (p wrapper) ToChan(ctx context.Context, cap int) (<-chan interface{}, <-cha
   return ch, err
 }
 
+func (p wrapper) BlockFirst(ctx context.Context) (first interface{}, err error) {
+  done := make(chan struct{})
+  var su rs.Subscription
+  p.
+    DoFinally(func(s rs.SignalType) {
+      close(done)
+    }).
+    Subscribe(ctx, rs.OnNext(func(v interface{}) {
+      first = v
+      su.Cancel()
+    }), rs.OnSubscribe(func(s rs.Subscription) {
+      su = s
+      su.Request(1)
+    }), rs.OnError(func(e error) {
+      err = e
+    }))
+  <-done
+  return
+}
+
 func (p wrapper) BlockLast(ctx context.Context) (last interface{}, err error) {
   done := make(chan struct{})
   p.

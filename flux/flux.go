@@ -34,6 +34,7 @@ type Flux interface {
   DoFinally(rs.FnOnFinally) Flux
   SwitchOnFirst(FnSwitchOnFirst) Flux
   SubscribeOn(scheduler.Scheduler) Flux
+  BlockFirst(context.Context) (interface{}, error)
   BlockLast(context.Context) (interface{}, error)
   ToChan(ctx context.Context, cap int) (c <-chan interface{}, e <-chan error)
 }

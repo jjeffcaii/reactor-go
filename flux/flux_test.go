@@ -56,31 +56,36 @@ func TestSuite(t *testing.T) {
   for _, value := range testData {
     inputs = append(inputs, value)
   }
-  all := make(map[string]flux.Flux)
-  all["just"] = flux.Just(inputs...)
-  all["create"] = flux.Create(func(ctx context.Context, sink flux.Sink) {
+  all := make(map[string]func() flux.Flux)
+  var instJust = flux.Just(inputs...)
+  var instCreate = flux.Create(func(ctx context.Context, sink flux.Sink) {
     for _, it := range testData {
       sink.Next(it)
     }
     sink.Complete()
   })
-  //all["unicast"] = nil
-  all["range"] = flux.Range(1, 5)
-  for k, v := range all {
-    gen := func() flux.Flux {
-      if k == "unicast" {
-        vv := flux.NewUnicastProcessor()
-        go func() {
-          for _, it := range testData {
-            vv.Next(it)
-          }
-          vv.Complete()
-        }()
-        time.Sleep(100 * time.Millisecond)
-        return vv
+  var instRange = flux.Range(1, 5)
+  all["Just"] = func() flux.Flux {
+    return instJust
+  }
+  all["Create"] = func() flux.Flux {
+    return instCreate
+  }
+  all["Range"] = func() flux.Flux {
+    return instRange
+  }
+  all["Unicast"] = func() flux.Flux {
+    vv := flux.NewUnicastProcessor()
+    go func() {
+      for _, it := range testData {
+        vv.Next(it)
       }
-      return v
-    }
+      vv.Complete()
+    }()
+    time.Sleep(100 * time.Millisecond)
+    return vv
+  }
+  for k, gen := range all {
     t.Run(fmt.Sprintf("%s_Request", k), func(t *testing.T) {
       testRequest(gen(), t)
     })
@@ -95,6 +100,9 @@ func TestSuite(t *testing.T) {
     })
     t.Run(fmt.Sprintf("%s_BlockLast", k), func(t *testing.T) {
       testBlockLast(gen(), t)
+    })
+    t.Run(fmt.Sprintf("%s_BlockFirst", k), func(t *testing.T) {
+      testBlockFirst(gen(), t)
     })
     //t.Run(fmt.Sprintf("%s_DoSubscribeOn", k), func(t *testing.T) {
     //	testDoOnSubscribe(gen(), t)
@@ -189,6 +197,18 @@ func testDiscard(f flux.Flux, t *testing.T) {
   assert.Equal(t, []int{1, 2, 3}, discard, "bad discard")
 }
 
+func testBlockFirst(f flux.Flux, t *testing.T) {
+  var cancelled bool
+  first, err := f.
+    DoOnCancel(func() {
+      cancelled = true
+    }).
+    BlockFirst(context.Background())
+  assert.NoError(t, err, "block first failed")
+  assert.Equal(t, testData[0], first, "bad first value")
+  assert.True(t, cancelled, "should call OnCancel")
+}
+
 func testPeek(f flux.Flux, t *testing.T) {
   var complete int
   var a, b []int
@@ -277,8 +297,7 @@ func TestCreateWithRequest(t *testing.T) {
   }))
 
   time.AfterFunc(100*time.Millisecond, func() {
-    s := <-su
-    s.Request(totals - 1)
+    (<-su).Request(totals - 1)
   })
 
   f.SubscribeWith(context.Background(), sub)
@@ -286,9 +305,9 @@ func TestCreateWithRequest(t *testing.T) {
 }
 
 func TestToChan(t *testing.T) {
-  ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+  ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
   defer cancel()
-  ch, err := flux.Interval(1*time.Second).ToChan(ctx, 1)
+  ch, err := flux.Interval(100*time.Millisecond).ToChan(ctx, 1)
 L:
   for {
     select {
