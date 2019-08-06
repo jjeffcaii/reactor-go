@@ -13,16 +13,19 @@ type bufferedSink struct {
   q        queue
   n        int32
   draining int32
-  done     bool
+  stat     int32
   cond     *sync.Cond
 }
 
 func (p *bufferedSink) Request(n int) {
-  atomic.AddInt32(&(p.n), int32(n))
+  atomic.AddInt32(&p.n, int32(n))
   p.drain()
 }
 
 func (p *bufferedSink) Cancel() {
+  if !atomic.CompareAndSwapInt32(&p.stat, 0, statCancel) {
+    return
+  }
   // TODO: support cancel
   p.dispose()
 }
@@ -33,12 +36,14 @@ func (p *bufferedSink) Complete() {
     p.cond.Wait()
   }
   p.cond.L.Unlock()
-  p.s.OnComplete()
-  p.dispose()
+  if atomic.CompareAndSwapInt32(&p.stat, 0, statComplete) {
+    p.s.OnComplete()
+    p.dispose()
+  }
 }
 
 func (p *bufferedSink) Error(err error) {
-  if p.done {
+  if atomic.CompareAndSwapInt32(&p.stat, 0, statError) {
     hooks.Global().OnErrorDrop(err)
     return
   }
@@ -47,7 +52,7 @@ func (p *bufferedSink) Error(err error) {
 }
 
 func (p *bufferedSink) Next(v interface{}) {
-  if p.done {
+  if atomic.LoadInt32(&p.stat) != 0 {
     hooks.Global().OnNextDrop(v)
     return
   }
@@ -56,17 +61,17 @@ func (p *bufferedSink) Next(v interface{}) {
 }
 
 func (p *bufferedSink) drain() {
-  if !atomic.CompareAndSwapInt32(&(p.draining), 0, 1) {
+  if !atomic.CompareAndSwapInt32(&p.draining, 0, 1) {
     return
   }
   defer func() {
     p.cond.L.Lock()
-    atomic.StoreInt32(&(p.draining), 0)
+    atomic.CompareAndSwapInt32(&p.draining, 1, 0)
     p.cond.Broadcast()
     p.cond.L.Unlock()
   }()
-  for atomic.AddInt32(&(p.n), -1) > -1 {
-    if p.done {
+  for atomic.AddInt32(&p.n, -1) > -1 {
+    if atomic.LoadInt32(&p.stat) != 0 {
       return
     }
     v, ok := p.q.poll()
@@ -80,10 +85,6 @@ func (p *bufferedSink) drain() {
 }
 
 func (p *bufferedSink) dispose() {
-  if p.done {
-    return
-  }
-  p.done = true
   _ = p.q.Close()
 }
 
