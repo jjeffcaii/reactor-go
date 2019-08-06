@@ -60,7 +60,7 @@ import (
 func main() {
 	flux.Just("Tom", "Jerry", "Tux").
 		Map(func(v interface{}) interface{} {
-			return fmt.Sprintf("Hello %d!", v.(int))
+			return fmt.Sprintf("Hello %s!", v)
 		}).
 		DoOnNext(func(v interface{}) {
 			fmt.Println(v)

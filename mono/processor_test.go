@@ -36,9 +36,9 @@ func TestProcessor(t *testing.T) {
 
 func TestProcessor_Context(t *testing.T) {
   p := mono.CreateProcessor()
-  ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+  ctx, cancel := context.WithTimeout(context.Background(), 22*time.Millisecond)
   defer cancel()
-  time.AfterFunc(300*time.Millisecond, func() {
+  time.AfterFunc(33*time.Millisecond, func() {
     p.Success(77778888)
   })
   done := make(chan struct{})

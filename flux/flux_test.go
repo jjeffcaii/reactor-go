@@ -104,6 +104,7 @@ func TestSuite(t *testing.T) {
     t.Run(fmt.Sprintf("%s_BlockFirst", k), func(t *testing.T) {
       testBlockFirst(gen(), t)
     })
+    // TODO: fix onSubscribe test
     //t.Run(fmt.Sprintf("%s_DoSubscribeOn", k), func(t *testing.T) {
     //	testDoOnSubscribe(gen(), t)
     //})
