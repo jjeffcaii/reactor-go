@@ -7,4 +7,4 @@ env:
   - GO111MODULE=on
 
 script:
-  - go test -race ./...
+  - go test -race -count=3 ./... -v
