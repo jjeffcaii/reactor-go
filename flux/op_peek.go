@@ -2,64 +2,64 @@ package flux
 
 import (
 	"context"
-	"sync/atomic"
 
 	rs "github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/internal"
+	"go.uber.org/atomic"
 )
 
 type peekSubscriber struct {
 	parent *fluxPeek
 	actual rs.Subscriber
 	s      rs.Subscription
-	stat   int32
+	stat   *atomic.Int32
 }
 
 func (p *peekSubscriber) Request(n int) {
-	if call := p.parent.onRequestCall; call != nil {
-		call(n)
+	for _, fn := range p.parent.onRequestCall {
+		fn(n)
 	}
 	p.s.Request(n)
 }
 
 func (p *peekSubscriber) Cancel() {
-	if call := p.parent.onCancelCall; call != nil {
-		call()
+	for _, fn := range p.parent.onCancelCall {
+		fn()
 	}
 	p.s.Cancel()
 }
 
 func (p *peekSubscriber) OnComplete() {
-	if !atomic.CompareAndSwapInt32(&(p.stat), 0, statComplete) {
+	if !p.stat.CAS(0, statComplete) {
 		return
 	}
-	if call := p.parent.onCompleteCall; call != nil {
-		call()
+	for _, fn := range p.parent.onCompleteCall {
+		fn()
 	}
 	p.actual.OnComplete()
 }
 
 func (p *peekSubscriber) OnError(e error) {
-	if !atomic.CompareAndSwapInt32(&(p.stat), 0, statError) {
+	if !p.stat.CAS(0, statError) {
 		return
 	}
-	if call := p.parent.onErrorCall; call != nil {
-		call(e)
+	for _, fn := range p.parent.onErrorCall {
+		fn(e)
 	}
 	p.actual.OnError(e)
 }
 
 func (p *peekSubscriber) OnNext(v interface{}) {
-	if atomic.LoadInt32(&(p.stat)) != 0 {
+	if p.stat.Load() != 0 {
 		return
 	}
-	if call := p.parent.onNextCall; call != nil {
-		defer func() {
-			if err := internal.TryRecoverError(recover()); err != nil {
-				p.OnError(err)
-			}
-		}()
-		call(v)
+	defer func() {
+		if err := internal.TryRecoverError(recover()); err != nil {
+			p.OnError(err)
+		}
+	}()
+	for _, fn := range p.parent.onNextCall {
+		fn(v)
 	}
 	p.actual.OnNext(v)
 }
@@ -69,8 +69,8 @@ func (p *peekSubscriber) OnSubscribe(s rs.Subscription) {
 		panic(internal.ErrCallOnSubscribeDuplicated)
 	}
 	p.s = s
-	if call := p.parent.onSubscribeCall; call != nil {
-		call(p)
+	for _, fn := range p.parent.onSubscribeCall {
+		fn(p)
 	}
 	p.actual.OnSubscribe(p)
 }
@@ -79,17 +79,18 @@ func newPeekSubscriber(peek *fluxPeek, actual rs.Subscriber) *peekSubscriber {
 	return &peekSubscriber{
 		parent: peek,
 		actual: actual,
+		stat:   atomic.NewInt32(0),
 	}
 }
 
 type fluxPeek struct {
 	source          rs.RawPublisher
-	onSubscribeCall rs.FnOnSubscribe
-	onNextCall      rs.FnOnNext
-	onErrorCall     rs.FnOnError
-	onCompleteCall  rs.FnOnComplete
-	onRequestCall   rs.FnOnRequest
-	onCancelCall    rs.FnOnCancel
+	onSubscribeCall []rs.FnOnSubscribe
+	onNextCall      []rs.FnOnNext
+	onErrorCall     []rs.FnOnError
+	onCompleteCall  []rs.FnOnComplete
+	onRequestCall   []rs.FnOnRequest
+	onCancelCall    []rs.FnOnCancel
 }
 
 func (p *fluxPeek) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
@@ -98,49 +99,54 @@ func (p *fluxPeek) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
 	p.source.SubscribeWith(ctx, actual)
 }
 
-func newFluxPeek(source rs.RawPublisher, options ...fluxPeekOption) *fluxPeek {
-	ret := &fluxPeek{
-		source: source,
+func newFluxPeek(source rs.RawPublisher, options ...fluxPeekOption) (fp *fluxPeek) {
+	// try merge
+	if f, ok := source.(*fluxPeek); ok {
+		fp = f
+	} else {
+		fp = &fluxPeek{
+			source: source,
+		}
 	}
 	for i := range options {
-		options[i](ret)
+		options[i](fp)
 	}
-	return ret
+	return fp
 }
 
 type fluxPeekOption func(*fluxPeek)
 
 func peekNext(fn rs.FnOnNext) fluxPeekOption {
 	return func(peek *fluxPeek) {
-		peek.onNextCall = fn
+		peek.onNextCall = append(peek.onNextCall, fn)
 	}
 }
 
 func peekComplete(fn rs.FnOnComplete) fluxPeekOption {
 	return func(peek *fluxPeek) {
-		peek.onCompleteCall = fn
+		peek.onCompleteCall = append(peek.onCompleteCall, fn)
 	}
 }
 
 func peekCancel(fn rs.FnOnCancel) fluxPeekOption {
 	return func(peek *fluxPeek) {
-		peek.onCancelCall = fn
+		peek.onCancelCall = append(peek.onCancelCall, fn)
 	}
 }
 func peekRequest(fn rs.FnOnRequest) fluxPeekOption {
 	return func(peek *fluxPeek) {
-		peek.onRequestCall = fn
+		peek.onRequestCall = append(peek.onRequestCall, fn)
 	}
 }
 
 func peekError(fn rs.FnOnError) fluxPeekOption {
 	return func(peek *fluxPeek) {
-		peek.onErrorCall = fn
+		peek.onErrorCall = append(peek.onErrorCall, fn)
 	}
 }
 
 func peekSubscribe(fn rs.FnOnSubscribe) fluxPeekOption {
 	return func(peek *fluxPeek) {
-		peek.onSubscribeCall = fn
+		peek.onSubscribeCall = append(peek.onSubscribeCall, fn)
 	}
 }

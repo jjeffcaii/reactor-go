@@ -2,13 +2,13 @@ package mono
 
 import (
 	"context"
-	"sync/atomic"
 	"time"
 
 	rs "github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/hooks"
 	"github.com/jjeffcaii/reactor-go/internal"
 	"github.com/jjeffcaii/reactor-go/scheduler"
+	"go.uber.org/atomic"
 )
 
 type delayElementSubscriber struct {
@@ -16,7 +16,7 @@ type delayElementSubscriber struct {
 	sc     scheduler.Scheduler
 	s      rs.Subscription
 	actual rs.Subscriber
-	stat   int32
+	stat   *atomic.Int32
 	v      interface{}
 }
 
@@ -25,12 +25,13 @@ func (p *delayElementSubscriber) Request(n int) {
 }
 
 func (p *delayElementSubscriber) Cancel() {
-	// TODO: support cancel
-	p.s.Cancel()
+	if p.stat.CAS(0, statCancel) {
+		p.s.Cancel()
+	}
 }
 
 func (p *delayElementSubscriber) OnError(err error) {
-	if atomic.CompareAndSwapInt32(&(p.stat), 0, statError) {
+	if p.stat.CAS(0, statError) {
 		p.actual.OnError(err)
 		return
 	}
@@ -38,7 +39,7 @@ func (p *delayElementSubscriber) OnError(err error) {
 }
 
 func (p *delayElementSubscriber) OnNext(v interface{}) {
-	if !atomic.CompareAndSwapInt32(&(p.stat), 0, statComplete) {
+	if p.stat.Load() != 0 {
 		hooks.Global().OnNextDrop(v)
 		return
 	}
@@ -55,16 +56,8 @@ func (p *delayElementSubscriber) OnSubscribe(s rs.Subscription) {
 }
 
 func (p *delayElementSubscriber) OnComplete() {
-	if atomic.CompareAndSwapInt32(&(p.stat), 0, statComplete) {
+	if p.stat.CAS(0, statComplete) {
 		p.actual.OnComplete()
-	}
-}
-
-func newDelayElementSubscriber(actual rs.Subscriber, delay time.Duration, sc scheduler.Scheduler) rs.Subscriber {
-	return &delayElementSubscriber{
-		delay:  delay,
-		actual: actual,
-		sc:     sc,
 	}
 }
 
@@ -76,8 +69,12 @@ type monoDelayElement struct {
 
 func (p *monoDelayElement) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
 	actual = internal.ExtractRawSubscriber(actual)
-	actual = internal.NewCoreSubscriber(ctx, newDelayElementSubscriber(actual, p.delay, p.sc))
-	p.source.SubscribeWith(ctx, actual)
+	p.source.SubscribeWith(ctx, internal.NewCoreSubscriber(ctx, &delayElementSubscriber{
+		delay:  p.delay,
+		actual: actual,
+		sc:     p.sc,
+		stat:   atomic.NewInt32(0),
+	}))
 }
 
 func newMonoDelayElement(source rs.RawPublisher, delay time.Duration, sc scheduler.Scheduler) *monoDelayElement {

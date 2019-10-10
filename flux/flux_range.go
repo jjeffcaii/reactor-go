@@ -3,10 +3,10 @@ package flux
 import (
 	"context"
 	"sync"
-	"sync/atomic"
 
 	rs "github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/internal"
+	"go.uber.org/atomic"
 )
 
 type fluxRange struct {
@@ -14,13 +14,18 @@ type fluxRange struct {
 }
 
 func (r fluxRange) SubscribeWith(ctx context.Context, s rs.Subscriber) {
-	raw := internal.ExtractRawSubscriber(s)
-	su := newRangeSubscription(raw, r.begin, r.end)
-	internal.NewCoreSubscriber(ctx, raw).OnSubscribe(su)
+	s = internal.ExtractRawSubscriber(s)
+	su := &rangeSubscription{
+		actual: s,
+		begin:  r.begin,
+		end:    r.end,
+		cursor: atomic.NewInt32(0),
+	}
+	internal.NewCoreSubscriber(ctx, s).OnSubscribe(su)
 }
 
 type rangeSubscription struct {
-	cursor     int32
+	cursor     *atomic.Int32
 	begin, end int
 	actual     rs.Subscriber
 	flags      uint8
@@ -54,7 +59,7 @@ func (p *rangeSubscription) Cancel() {
 
 func (p *rangeSubscription) slowPath(n int) {
 	for n > 0 {
-		next := p.begin + int(atomic.AddInt32(&(p.cursor), 1))
+		next := p.begin + int(p.cursor.Inc())
 		if next > p.end {
 			return
 		}
@@ -88,14 +93,6 @@ func (p *rangeSubscription) isCancelled() (cancelled bool) {
 	cancelled = p.flags&flagCancel != 0
 	p.locker.Unlock()
 	return
-}
-
-func newRangeSubscription(actual rs.Subscriber, begin, end int) *rangeSubscription {
-	return &rangeSubscription{
-		actual: actual,
-		begin:  begin,
-		end:    end,
-	}
 }
 
 func newFluxRange(begin, end int) fluxRange {

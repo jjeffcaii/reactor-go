@@ -3,9 +3,9 @@ package flux
 import (
 	"context"
 	"fmt"
-	"sync"
-	"sync/atomic"
 	"time"
+
+	"go.uber.org/atomic"
 
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/scheduler"
@@ -13,43 +13,41 @@ import (
 
 type intervalSubscription struct {
 	actual    rs.Subscriber
-	requested int64
-	cancelled bool
+	requested *atomic.Int64
+	cancelled *atomic.Bool
 	done      chan struct{}
 	tk        *time.Ticker
-	once      sync.Once
-	count     int64
+	count     *atomic.Int64
 }
 
 func (p *intervalSubscription) Request(n int) {
 	if n < 1 {
 		panic(rs.ErrNegativeRequest)
 	}
-	if p.cancelled {
+	if p.cancelled.Load() {
 		return
 	}
-	atomic.AddInt64(&(p.requested), int64(n))
+	p.requested.Add(int64(n))
 }
 
 func (p *intervalSubscription) Cancel() {
-	p.once.Do(func() {
-		p.cancelled = true
+	if p.cancelled.CAS(false, true) {
 		close(p.done)
-	})
+	}
 }
 
 func (p *intervalSubscription) runOnce() {
-	if atomic.LoadInt64(&(p.requested)) < 1 {
+	if p.requested.Load() < 1 {
 		p.Cancel()
 		p.actual.OnError(fmt.Errorf("could not emit tick %d due to lack of requests", p.count))
 		return
 	}
-	current := atomic.AddInt64(&(p.count), 1)
+	current := p.count.Inc()
 	p.actual.OnNext(current - 1)
-	if atomic.LoadInt64(&(p.requested)) >= rs.RequestInfinite {
+	if p.requested.Load() >= rs.RequestInfinite {
 		return
 	}
-	atomic.AddInt64(&(p.requested), -1)
+	p.requested.Dec()
 }
 
 func (p *intervalSubscription) run(ctx context.Context) {
@@ -68,14 +66,6 @@ func (p *intervalSubscription) run(ctx context.Context) {
 	}
 }
 
-func newIntervalSubscription(actual rs.Subscriber, period time.Duration) *intervalSubscription {
-	return &intervalSubscription{
-		actual: actual,
-		done:   make(chan struct{}),
-		tk:     time.NewTicker(period),
-	}
-}
-
 type fluxInterval struct {
 	delay  time.Duration
 	period time.Duration
@@ -83,7 +73,14 @@ type fluxInterval struct {
 }
 
 func (p *fluxInterval) SubscribeWith(ctx context.Context, s rs.Subscriber) {
-	su := newIntervalSubscription(s, p.period)
+	su := &intervalSubscription{
+		actual:    s,
+		requested: atomic.NewInt64(0),
+		cancelled: atomic.NewBool(false),
+		done:      make(chan struct{}),
+		tk:        time.NewTicker(p.period),
+		count:     atomic.NewInt64(0),
+	}
 	s.OnSubscribe(su)
 	p.sc.Worker().Do(func() {
 		su.run(ctx)

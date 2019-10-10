@@ -2,23 +2,23 @@ package mono
 
 import (
 	"context"
-	"sync/atomic"
 
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/internal"
+	"go.uber.org/atomic"
 )
 
 type justSubscriber struct {
 	s      rs.Subscriber
 	parent *monoJust
-	n      int32
+	n      *atomic.Int32
 }
 
 func (j *justSubscriber) Request(n int) {
 	if n < 1 {
 		panic(rs.ErrNegativeRequest)
 	}
-	if !atomic.CompareAndSwapInt32(&(j.n), 0, statComplete) {
+	if !j.n.CAS(0, statComplete) {
 		return
 	}
 	if j.parent.value == nil {
@@ -36,7 +36,7 @@ func (j *justSubscriber) Request(n int) {
 }
 
 func (j *justSubscriber) Cancel() {
-	atomic.CompareAndSwapInt32(&(j.n), 0, statCancel)
+	j.n.CAS(0, statCancel)
 }
 
 type monoJust struct {
@@ -47,6 +47,7 @@ func (m *monoJust) SubscribeWith(ctx context.Context, s rs.Subscriber) {
 	s.OnSubscribe(&justSubscriber{
 		s:      internal.NewCoreSubscriber(ctx, s),
 		parent: m,
+		n:      atomic.NewInt32(0),
 	})
 }
 

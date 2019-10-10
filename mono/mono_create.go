@@ -2,11 +2,11 @@ package mono
 
 import (
 	"context"
-	"sync/atomic"
 
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/hooks"
 	"github.com/jjeffcaii/reactor-go/internal"
+	"go.uber.org/atomic"
 )
 
 type Sink interface {
@@ -16,11 +16,11 @@ type Sink interface {
 
 type defaultSink struct {
 	actual rs.Subscriber
-	stat   int32
+	stat   *atomic.Int32
 }
 
 func (s *defaultSink) Success(v interface{}) {
-	if atomic.LoadInt32(&(s.stat)) != 0 {
+	if s.stat.Load() != 0 {
 		hooks.Global().OnNextDrop(v)
 		return
 	}
@@ -37,17 +37,17 @@ func (s *defaultSink) Request(n int) {
 }
 
 func (s *defaultSink) Cancel() {
-	atomic.CompareAndSwapInt32(&(s.stat), 0, statCancel)
+	s.stat.CAS(0, statCancel)
 }
 
 func (s *defaultSink) Complete() {
-	if atomic.CompareAndSwapInt32(&(s.stat), 0, statComplete) {
+	if s.stat.CAS(0, statComplete) {
 		s.actual.OnComplete()
 	}
 }
 
 func (s *defaultSink) Error(err error) {
-	if atomic.CompareAndSwapInt32(&(s.stat), 0, statError) {
+	if s.stat.CAS(0, statError) {
 		s.actual.OnError(err)
 		return
 	}
@@ -70,6 +70,7 @@ type monoCreate struct {
 func (m *monoCreate) SubscribeWith(ctx context.Context, s rs.Subscriber) {
 	sink := &defaultSink{
 		actual: s,
+		stat:   atomic.NewInt32(0),
 	}
 	s.OnSubscribe(sink)
 	m.sinker(ctx, sink)

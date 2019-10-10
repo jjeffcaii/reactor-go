@@ -9,7 +9,7 @@ import (
 
 var (
 	ErrCallOnSubscribeDuplicated                 = errors.New("call OnSubscribe duplicated")
-	EmptySubscription            rs.Subscription = &emptySubscription{}
+	EmptySubscription            rs.Subscription = emptySubscription{}
 )
 
 func TryRecoverError(re interface{}) error {

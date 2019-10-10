@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"sync/atomic"
 
 	"github.com/jjeffcaii/reactor-go"
+	"go.uber.org/atomic"
 )
 
 const (
@@ -17,7 +17,7 @@ const (
 type sliceSubscription struct {
 	actual rs.Subscriber
 	values []interface{}
-	cursor int32
+	cursor *atomic.Int32
 	flags  uint8
 	locker sync.Mutex
 }
@@ -56,7 +56,7 @@ func (p *sliceSubscription) isCancelled() (cancelled bool) {
 
 func (p *sliceSubscription) slowPath(n int) {
 	for n > 0 {
-		next := int(atomic.AddInt32(&(p.cursor), 1))
+		next := int(p.cursor.Inc())
 		if next > len(p.values) {
 			return
 		}
@@ -72,7 +72,7 @@ func (p *sliceSubscription) slowPath(n int) {
 }
 
 func (p *sliceSubscription) fastPath() {
-	for i, l := int(p.cursor), len(p.values); i < l; i++ {
+	for i, l := int(p.cursor.Load()), len(p.values); i < l; i++ {
 		if p.isCancelled() {
 			return
 		}
@@ -93,6 +93,7 @@ func newSliceSubscription(s rs.Subscriber, values []interface{}) *sliceSubscript
 	return &sliceSubscription{
 		actual: s,
 		values: values,
+		cursor: atomic.NewInt32(0),
 	}
 }
 

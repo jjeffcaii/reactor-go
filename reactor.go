@@ -25,17 +25,17 @@ const (
 )
 
 type (
-	Predicate func(v interface{}) bool
+	Predicate   func(v interface{}) bool
 	Transformer func(v interface{}) interface{}
 
-	FnOnComplete = func()
-	FnOnNext = func(v interface{})
-	FnOnCancel = func()
+	FnOnComplete  = func()
+	FnOnNext      = func(v interface{})
+	FnOnCancel    = func()
 	FnOnSubscribe = func(su Subscription)
-	FnOnRequest = func(n int)
-	FnOnError = func(e error)
-	FnOnFinally = func(s SignalType)
-	FnOnDiscard = func(v interface{})
+	FnOnRequest   = func(n int)
+	FnOnError     = func(e error)
+	FnOnFinally   = func(s SignalType)
+	FnOnDiscard   = func(v interface{})
 )
 
 type (

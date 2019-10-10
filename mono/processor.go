@@ -3,11 +3,11 @@ package mono
 import (
 	"context"
 	"sync"
-	"sync/atomic"
 
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/hooks"
 	"github.com/jjeffcaii/reactor-go/internal"
+	"go.uber.org/atomic"
 )
 
 type processor struct {
@@ -66,8 +66,10 @@ func (p *processor) Error(e error) {
 func (p *processor) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
 	actual = internal.ExtractRawSubscriber(actual)
 	s := &processorSubscriber{
-		actual: actual,
-		parent: p,
+		actual:    actual,
+		parent:    p,
+		requested: atomic.NewInt32(0),
+		stat:      atomic.NewInt32(0),
 	}
 	actual = internal.NewCoreSubscriber(ctx, s)
 	actual.OnSubscribe(s)
@@ -77,16 +79,16 @@ func (p *processor) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
 type processorSubscriber struct {
 	parent    *processor
 	actual    rs.Subscriber
-	stat      int32
+	stat      *atomic.Int32
 	s         rs.Subscription
-	requested int32
+	requested *atomic.Int32
 }
 
 func (p *processorSubscriber) Request(n int) {
 	if n < 1 {
 		panic(rs.ErrNegativeRequest)
 	}
-	if atomic.AddInt32(&(p.requested), 1) != 1 {
+	if p.requested.Inc() != 1 {
 		return
 	}
 	switch p.parent.stat() {
@@ -101,17 +103,17 @@ func (p *processorSubscriber) Request(n int) {
 }
 
 func (p *processorSubscriber) Cancel() {
-	atomic.CompareAndSwapInt32(&(p.stat), 0, statCancel)
+	p.stat.CAS(0, statCancel)
 }
 
 func (p *processorSubscriber) OnComplete() {
-	if atomic.CompareAndSwapInt32(&(p.stat), 0, statComplete) {
+	if p.stat.CAS(0, statComplete) {
 		p.actual.OnComplete()
 	}
 }
 
 func (p *processorSubscriber) OnError(e error) {
-	if atomic.CompareAndSwapInt32(&(p.stat), 0, statError) {
+	if p.stat.CAS(0, statError) {
 		p.actual.OnError(e)
 		return
 	}
@@ -119,7 +121,7 @@ func (p *processorSubscriber) OnError(e error) {
 }
 
 func (p *processorSubscriber) OnNext(v interface{}) {
-	if atomic.LoadInt32(&(p.stat)) != 0 {
+	if p.stat.Load() != 0 {
 		hooks.Global().OnNextDrop(v)
 		return
 	}

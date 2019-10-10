@@ -3,10 +3,10 @@ package flux
 import (
 	"context"
 	"math"
-	"sync/atomic"
 
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/hooks"
+	"go.uber.org/atomic"
 )
 
 type Signal interface {
@@ -47,11 +47,11 @@ type switchOnFirstInner struct {
 	transformer FnSwitchOnFirst
 	s           rs.Subscription
 	first       interface{}
-	stat        int32
+	stat        *atomic.Int32
 }
 
 func (p *switchOnFirstInner) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
-	if !atomic.CompareAndSwapInt32(&(p.stat), math.MinInt32, 0) {
+	if !p.stat.CAS(math.MinInt32, 0) {
 		panic(errSubscribeOnce)
 	}
 	p.inner = actual
@@ -85,19 +85,19 @@ func (p *switchOnFirstInner) drain() {
 }
 
 func (p *switchOnFirstInner) Cancel() {
-	if atomic.CompareAndSwapInt32(&(p.stat), 0, statCancel) {
+	if p.stat.CAS(0, statCancel) {
 		p.s.Cancel()
 	}
 }
 
 func (p *switchOnFirstInner) OnComplete() {
-	if atomic.CompareAndSwapInt32(&(p.stat), 0, statComplete) {
+	if p.stat.CAS(0, statComplete) {
 		p.inner.OnComplete()
 	}
 }
 
 func (p *switchOnFirstInner) OnError(e error) {
-	if atomic.CompareAndSwapInt32(&(p.stat), 0, statError) {
+	if p.stat.CAS(0, statError) {
 		p.inner.OnError(e)
 		return
 	}
@@ -131,14 +131,14 @@ type switchOnFirstInnerSubscriber struct {
 }
 
 func (p *switchOnFirstInnerSubscriber) OnComplete() {
-	if atomic.LoadInt32(&(p.parent.stat)) == 0 {
+	if p.parent.stat.Load() == 0 {
 		p.parent.Cancel()
 	}
 	p.inner.OnComplete()
 }
 
 func (p *switchOnFirstInnerSubscriber) OnError(e error) {
-	if atomic.LoadInt32(&(p.parent.stat)) == 0 {
+	if p.parent.stat.Load() == 0 {
 		p.parent.Cancel()
 	}
 	p.inner.OnError(e)
@@ -162,7 +162,7 @@ func newFluxSwitchOnFirst(source rs.RawPublisher, transformer FnSwitchOnFirst) *
 func newSwitchOnFirstInner(outer rs.Subscriber, transformer FnSwitchOnFirst) *switchOnFirstInner {
 	ret := &switchOnFirstInner{
 		transformer: transformer,
-		stat:        math.MinInt32,
+		stat:        atomic.NewInt32(math.MinInt32),
 	}
 	ret.outer = newSwitchOnFirstInnerSubscriber(ret, outer)
 	return ret

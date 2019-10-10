@@ -6,22 +6,24 @@ import (
 
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/scheduler"
+	"go.uber.org/atomic"
 )
 
 type delaySubscriber struct {
 	actual    rs.Subscriber
-	requested bool
+	requested *atomic.Bool
+	cancelled *atomic.Bool
 }
 
 func (p *delaySubscriber) Request(n int) {
 	if n < 1 {
 		panic(rs.ErrNegativeRequest)
 	}
-	p.requested = true
+	p.requested.CAS(false, true)
 }
 
-func (*delaySubscriber) Cancel() {
-	panic("implement me")
+func (p *delaySubscriber) Cancel() {
+	p.cancelled.Store(true)
 }
 
 type monoDelay struct {
@@ -31,22 +33,24 @@ type monoDelay struct {
 
 func (p *monoDelay) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
 	s := &delaySubscriber{
-		actual: actual,
+		actual:    actual,
+		requested: atomic.NewBool(false),
+		cancelled: atomic.NewBool(false),
 	}
 	actual.OnSubscribe(s)
 
 	time.AfterFunc(p.delay, func() {
-		if p.sc == nil {
-			actual.OnNext(int64(0))
-			actual.OnComplete()
-			return
-		}
 		p.sc.Worker().Do(func() {
-			actual.OnNext(int64(0))
+			if s.cancelled.Load() {
+				actual.OnError(rs.ErrSubscribeCancelled)
+				return
+			}
+			if s.requested.Load() {
+				actual.OnNext(int64(0))
+			}
 			actual.OnComplete()
 		})
 	})
-
 }
 
 func newMonoDelay(delay time.Duration, sc scheduler.Scheduler) *monoDelay {
