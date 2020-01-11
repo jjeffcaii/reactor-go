@@ -1,8 +1,5 @@
-# Initialization
-Initialize a `Mono` publisher is easy.
-
-## Just
-Use `Just` to wrap an existing target.
+### Just
+Use `Just` to wrap an existing element.
 
 ``` go
 package main
@@ -14,7 +11,7 @@ func main() {
 }
 ```
 
-## Create
+### Create
 Use `Create` to create a new `Mono`.<br/>
 Mono is **LAZY** and nothing happens unless you call `Subscribe`!
 
@@ -40,7 +37,7 @@ func main() {
 }
 ```
 
-## Delay
+### Delay
 Create a Mono which delays an `int64` by a given duration. A delayed Mono will be scheduled asynchronously.<br/>
 In example below, we call `Block` to block result in current coroutine. So it should print `Bingo!!!` after 3 seconds.
 
@@ -62,5 +59,10 @@ func main() {
 		}).
 		Block(context.Background())
 }
-
 ```
+
+### Empty
+Use `Empty` to create a `Mono` without any element.
+
+### Error
+Use `Error` to wrap an error to a `Mono`.

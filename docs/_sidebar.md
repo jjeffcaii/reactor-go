@@ -3,23 +3,36 @@
 - Getting started
   - [Intrudction](introduction.md)
   - [Quick start](quickstart.md)
-
-- Mono
-  - [Initialization](mono/create.md)
-  - Operators
-    - [Filter](todo.md)
-    - [Map](todo.md)
-    - [FlatMap](todo.md)
-    - [DoOnNext](todo.md)
-    - [DoOnComplete](todo.md)
-    - [DoOnSubscribe](todo.md)
-    - [DoOnError](todo.md)
-    - [DoOnCancel](todo.md)
-    - [DoFinally](todo.md)
-    - [DoOnDiscard](todo.md)
-    - [DelayElement](todo.md)
+- How to create?
+  - [Mono](mono/create.md)
+  - [Flux](flux/create.md)
+- Operators
+  - [Filter](share/filter.md)
+  - [Map](share/map.md)
+  - [FlatMap](todo.md)
+  - [DoOnNext](share/do_on_next.md)
+  - [DoOnComplete](share/do_on_complete.md)
+  - [DoOnError](share/do_on_error.md)
+  - [DoFinally](share/do_finally.md)
+  - [DoOnSubscribe](todo.md)
+  - [DoOnCancel](todo.md)
+  - [DoOnDiscard](todo.md)
+  - [SubscribeOn](share/subscribe_on.md)
+  - [PublishOn](unimplement.md)
+  - [DelayElement](todo.md)
+  - Mono Only
     - [SwitchIfEmpty](todo.md)
-    - [SubscribeOn](todo.md)
-
-- Flux
-  - [Initialization](flux/create.md)
+  - Flux Only
+    - [Take](flux/take.md)
+    - [RateLimit](unimplement.md)
+    - [SwitchOnFirst](todo.md)
+- Subscriber
+  - [Subscribe](todo.md)
+  - [SubscribeWith](todo.md)
+  - Mono Only
+    - [Block](todo.md)
+  - Flux Only
+    - [BlockFirst](todo.md)
+    - [BlockLast](todo.md)
+- Advanced
+  - [Hooks](todo.md)
