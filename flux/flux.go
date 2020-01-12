@@ -2,6 +2,7 @@ package flux
 
 import (
 	"context"
+	"time"
 
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/scheduler"
@@ -25,7 +26,6 @@ type Flux interface {
 	Map(rs.Transformer) Flux
 	Take(n int) Flux
 	DoOnDiscard(rs.FnOnDiscard) Flux
-	// OnOnNext adds behavior triggered when the Flux emits an element.
 	DoOnNext(rs.FnOnNext) Flux
 	DoOnComplete(rs.FnOnComplete) Flux
 	DoOnError(rs.FnOnError) Flux
@@ -34,6 +34,7 @@ type Flux interface {
 	DoOnSubscribe(rs.FnOnSubscribe) Flux
 	DoFinally(rs.FnOnFinally) Flux
 	SwitchOnFirst(FnSwitchOnFirst) Flux
+	DelayElement(delay time.Duration) Flux
 	SubscribeOn(scheduler.Scheduler) Flux
 	BlockFirst(context.Context) (interface{}, error)
 	BlockLast(context.Context) (interface{}, error)

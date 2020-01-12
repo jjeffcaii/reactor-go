@@ -61,8 +61,9 @@ func (s *SwitchIfEmptySubscriber) OnComplete() {
 	}
 }
 
-func NewSwitchIfEmptySubscriber(alternative rs.RawPublisher, actual rs.Subscriber) *SwitchIfEmptySubscriber {
+func NewSwitchIfEmptySubscriber(ctx context.Context, alternative rs.RawPublisher, actual rs.Subscriber) *SwitchIfEmptySubscriber {
 	return &SwitchIfEmptySubscriber{
+		ctx:    ctx,
 		actual: actual,
 		other:  alternative,
 	}

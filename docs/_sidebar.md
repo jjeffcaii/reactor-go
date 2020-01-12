@@ -21,12 +21,12 @@
   - [PublishOn](unimplement.md)
   - [DelayElement](share/delay_element.md)
   - Mono Only
-    - [SwitchIfEmpty](todo.md)
+    - [SwitchIfEmpty](mono/switch_if_empty.md)
   - Flux Only
     - [Take](flux/take.md)
-    - [Reduce](unimplement.md)
+    - [Reduce](unimplement)
     - [RateLimit](unimplement.md)
-    - [SwitchOnFirst](todo.md)
+    - [SwitchOnFirst](flux/switch_on_first.md)
 - Subscriber
   - [Subscribe](todo.md)
   - [SubscribeWith](todo.md)

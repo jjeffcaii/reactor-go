@@ -15,7 +15,7 @@ type monoSwitchIfEmpty struct {
 
 func (m *monoSwitchIfEmpty) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
 	actual = internal.ExtractRawSubscriber(actual)
-	s := subscribers.NewSwitchIfEmptySubscriber(m.other, actual)
+	s := subscribers.NewSwitchIfEmptySubscriber(ctx, m.other, actual)
 	actual.OnSubscribe(s)
 	m.source.SubscribeWith(ctx, s)
 }
