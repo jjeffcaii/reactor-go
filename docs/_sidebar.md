@@ -14,16 +14,17 @@
   - [DoOnComplete](share/do_on_complete.md)
   - [DoOnError](share/do_on_error.md)
   - [DoFinally](share/do_finally.md)
-  - [DoOnSubscribe](todo.md)
-  - [DoOnCancel](todo.md)
-  - [DoOnDiscard](todo.md)
+  - [DoOnSubscribe](share/do_on_subscribe.md)
+  - [DoOnCancel](share/do_on_cancel.md)
+  - [DoOnDiscard](share/do_on_discard.md)
   - [SubscribeOn](share/subscribe_on.md)
   - [PublishOn](unimplement.md)
-  - [DelayElement](todo.md)
+  - [DelayElement](share/delay_element.md)
   - Mono Only
     - [SwitchIfEmpty](todo.md)
   - Flux Only
     - [Take](flux/take.md)
+    - [Reduce](unimplement.md)
     - [RateLimit](unimplement.md)
     - [SwitchOnFirst](todo.md)
 - Subscriber
