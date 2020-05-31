@@ -9,16 +9,16 @@ func init() {
 type immediateScheduler struct {
 }
 
-func (s *immediateScheduler) Close() error {
+func (i *immediateScheduler) Close() error {
 	return nil
 }
 
-func (s *immediateScheduler) Do(j Job) {
-	j()
+func (i *immediateScheduler) Do(job Job) {
+	job()
 }
 
-func (s *immediateScheduler) Worker() Worker {
-	return s
+func (i *immediateScheduler) Worker() Worker {
+	return i
 }
 
 func Immediate() Scheduler {

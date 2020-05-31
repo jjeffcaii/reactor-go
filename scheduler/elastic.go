@@ -2,33 +2,33 @@ package scheduler
 
 import (
 	"math"
+	"sync"
 
-	"github.com/panjf2000/ants"
+	"github.com/panjf2000/ants/v2"
 )
 
-var elastic Scheduler
-
-func init() {
-	elastic = NewElastic(math.MaxInt32)
-}
+var (
+	_elastic     Scheduler
+	_elasticInit sync.Once
+)
 
 type elasticScheduler struct {
 	pool *ants.Pool
 }
 
-func (p *elasticScheduler) Close() (err error) {
-	p.pool.Release()
+func (e *elasticScheduler) Close() (err error) {
+	e.pool.Release()
 	return
 }
 
-func (p *elasticScheduler) Do(job Job) {
-	if err := p.pool.Submit(job); err != nil {
+func (e *elasticScheduler) Do(job Job) {
+	if err := e.pool.Submit(job); err != nil {
 		panic(err)
 	}
 }
 
-func (p *elasticScheduler) Worker() Worker {
-	return p
+func (e *elasticScheduler) Worker() Worker {
+	return e
 }
 
 func NewElastic(size int) Scheduler {
@@ -42,5 +42,8 @@ func NewElastic(size int) Scheduler {
 }
 
 func Elastic() Scheduler {
-	return elastic
+	_elasticInit.Do(func() {
+		_elastic = NewElastic(math.MaxInt32)
+	})
+	return _elastic
 }

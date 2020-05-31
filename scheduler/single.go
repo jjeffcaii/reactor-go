@@ -1,21 +1,14 @@
 package scheduler
 
-import "sync/atomic"
-
-var (
-	single            Scheduler
-	defaultSingleJobs = 1000
+import (
+	"sync"
+	"sync/atomic"
 )
 
-func init() {
-	single = NewSingle(defaultSingleJobs)
-}
-
-func NewSingle(cap int) Scheduler {
-	return &singleScheduler{
-		jobs: make(chan Job, cap),
-	}
-}
+var (
+	_single     Scheduler
+	_singleInit sync.Once
+)
 
 type singleScheduler struct {
 	jobs    chan Job
@@ -44,6 +37,15 @@ func (p *singleScheduler) Worker() Worker {
 	return p
 }
 
+func NewSingle(cap int) Scheduler {
+	return &singleScheduler{
+		jobs: make(chan Job, cap),
+	}
+}
+
 func Single() Scheduler {
-	return single
+	_singleInit.Do(func() {
+		_single = NewSingle(1000)
+	})
+	return _single
 }
