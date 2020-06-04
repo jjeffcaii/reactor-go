@@ -44,11 +44,11 @@ func (p *bufferedSink) Complete() {
 
 func (p *bufferedSink) Error(err error) {
 	if atomic.CompareAndSwapInt32(&p.stat, 0, statError) {
-		hooks.Global().OnErrorDrop(err)
+		p.s.OnError(err)
+		p.dispose()
 		return
 	}
-	p.s.OnError(err)
-	p.dispose()
+	hooks.Global().OnErrorDrop(err)
 }
 
 func (p *bufferedSink) Next(v interface{}) {

@@ -28,11 +28,11 @@ type takeSubscriber struct {
 }
 
 func (t *takeSubscriber) OnError(e error) {
-	if !atomic.CompareAndSwapInt32(&(t.stat), 0, statError) {
-		hooks.Global().OnErrorDrop(e)
+	if atomic.CompareAndSwapInt32(&(t.stat), 0, statError) {
+		t.actual.OnError(e)
 		return
 	}
-	t.actual.OnError(e)
+	hooks.Global().OnErrorDrop(e)
 }
 
 func (t *takeSubscriber) OnNext(v interface{}) {
