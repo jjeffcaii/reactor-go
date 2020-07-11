@@ -1,55 +1,27 @@
 package scheduler
 
-import (
-	"runtime"
-	"sync"
-)
-
-var parallel Scheduler
+var _parallel Scheduler
 
 func init() {
-	parallel = NewParallel(runtime.NumCPU() * 2)
+	_parallel = parallelScheduler{}
 }
 
 type parallelScheduler struct {
-	jobs chan Job
-	n    int
-	once sync.Once
 }
 
-func (p *parallelScheduler) Close() error {
-	close(p.jobs)
+func (p parallelScheduler) Close() error {
 	return nil
 }
 
-func (p *parallelScheduler) Do(j Job) {
-	p.jobs <- j
+func (p parallelScheduler) Do(j Task) {
+	go j()
 }
 
-func (p *parallelScheduler) start() {
-	for i := 0; i < p.n; i++ {
-		go func() {
-			for j := range p.jobs {
-				j()
-			}
-		}()
-	}
-}
-
-func (p *parallelScheduler) Worker() Worker {
-	p.once.Do(func() {
-		p.start()
-	})
+func (p parallelScheduler) Worker() Worker {
 	return p
 }
 
-func NewParallel(n int) Scheduler {
-	return &parallelScheduler{
-		jobs: make(chan Job),
-		n:    n,
-	}
-}
-
+// Parallel returns scheduler which schedule tasks in _parallel using native goroutines.
 func Parallel() Scheduler {
-	return parallel
+	return _parallel
 }

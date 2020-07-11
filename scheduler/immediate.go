@@ -1,26 +1,27 @@
 package scheduler
 
-var immediate Scheduler
+var _immediate Scheduler
 
 func init() {
-	immediate = new(immediateScheduler)
+	_immediate = immediateScheduler{}
 }
 
 type immediateScheduler struct {
 }
 
-func (i *immediateScheduler) Close() error {
+func (i immediateScheduler) Close() error {
 	return nil
 }
 
-func (i *immediateScheduler) Do(job Job) {
+func (i immediateScheduler) Do(job Task) {
 	job()
 }
 
-func (i *immediateScheduler) Worker() Worker {
+func (i immediateScheduler) Worker() Worker {
 	return i
 }
 
+// Immediate returns a scheduler which schedule tasks _immediate.
 func Immediate() Scheduler {
-	return immediate
+	return _immediate
 }

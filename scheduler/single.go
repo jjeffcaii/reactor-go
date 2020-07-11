@@ -5,13 +5,16 @@ import (
 	"sync/atomic"
 )
 
+// DefaultSingleCap is default task queue size.
+const DefaultSingleCap = 1000
+
 var (
 	_single     Scheduler
 	_singleInit sync.Once
 )
 
 type singleScheduler struct {
-	jobs    chan Job
+	jobs    chan Task
 	started int64
 }
 
@@ -26,7 +29,7 @@ func (p *singleScheduler) start() {
 	}
 }
 
-func (p *singleScheduler) Do(j Job) {
+func (p *singleScheduler) Do(j Task) {
 	p.jobs <- j
 }
 
@@ -37,15 +40,18 @@ func (p *singleScheduler) Worker() Worker {
 	return p
 }
 
+// NewSingle creates a new single scheduler with customized cap.
 func NewSingle(cap int) Scheduler {
 	return &singleScheduler{
-		jobs: make(chan Job, cap),
+		jobs: make(chan Task, cap),
 	}
 }
 
+// Single returns a scheduler which schedule tasks on a single goroutine.
+// It will execute tasks one by one.
 func Single() Scheduler {
 	_singleInit.Do(func() {
-		_single = NewSingle(1000)
+		_single = NewSingle(DefaultSingleCap)
 	})
 	return _single
 }

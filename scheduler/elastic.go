@@ -21,7 +21,7 @@ func (e *elasticScheduler) Close() (err error) {
 	return
 }
 
-func (e *elasticScheduler) Do(job Job) {
+func (e *elasticScheduler) Do(job Task) {
 	if err := e.pool.Submit(job); err != nil {
 		panic(err)
 	}
@@ -31,6 +31,7 @@ func (e *elasticScheduler) Worker() Worker {
 	return e
 }
 
+// NewElastic creates a new elastic scheduler.
 func NewElastic(size int) Scheduler {
 	pool, err := ants.NewPool(size)
 	if err != nil {
@@ -41,6 +42,8 @@ func NewElastic(size int) Scheduler {
 	}
 }
 
+// Elastic is a dynamic alloc scheduler.
+// It's based on ants goroutine pool.
 func Elastic() Scheduler {
 	_elasticInit.Do(func() {
 		_elastic = NewElastic(math.MaxInt32)

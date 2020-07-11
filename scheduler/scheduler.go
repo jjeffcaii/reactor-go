@@ -2,13 +2,18 @@ package scheduler
 
 import "io"
 
-type Job func()
+// Task defines task function.
+type Task func()
 
+// Worker is used to execute a task.
 type Worker interface {
-	Do(Job)
+	// Do executes a task.
+	Do(Task)
 }
 
+// Scheduler schedule tasks.
 type Scheduler interface {
 	io.Closer
+	// Worker returns next worker.
 	Worker() Worker
 }
