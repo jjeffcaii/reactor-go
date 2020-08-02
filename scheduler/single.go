@@ -34,7 +34,7 @@ func (p *singleScheduler) Do(j Task) {
 }
 
 func (p *singleScheduler) Worker() Worker {
-	if atomic.AddInt64(&(p.started), 1) == 1 {
+	if atomic.AddInt64(&p.started, 1) == 1 {
 		go p.start()
 	}
 	return p

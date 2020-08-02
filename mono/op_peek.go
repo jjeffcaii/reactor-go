@@ -30,7 +30,7 @@ func (p *peekSubscriber) Cancel() {
 }
 
 func (p *peekSubscriber) OnComplete() {
-	if !atomic.CompareAndSwapInt32(&(p.stat), 0, statComplete) {
+	if !atomic.CompareAndSwapInt32(&p.stat, 0, statComplete) {
 		return
 	}
 	if call := p.parent.onCompleteCall; call != nil {
@@ -40,7 +40,7 @@ func (p *peekSubscriber) OnComplete() {
 }
 
 func (p *peekSubscriber) OnError(err error) {
-	if !atomic.CompareAndSwapInt32(&(p.stat), 0, statError) {
+	if !atomic.CompareAndSwapInt32(&p.stat, 0, statError) {
 		return
 	}
 	if call := p.parent.onErrorCall; call != nil {
@@ -50,7 +50,7 @@ func (p *peekSubscriber) OnError(err error) {
 }
 
 func (p *peekSubscriber) OnNext(v Any) {
-	if atomic.LoadInt32(&(p.stat)) != 0 {
+	if atomic.LoadInt32(&p.stat) != 0 {
 		return
 	}
 	if call := p.parent.onNextCall; call != nil {
@@ -128,12 +128,6 @@ func peekComplete(fn reactor.FnOnComplete) monoPeekOption {
 func peekCancel(fn reactor.FnOnCancel) monoPeekOption {
 	return func(peek *monoPeek) {
 		peek.onCancelCall = fn
-	}
-}
-
-func peekRequest(fn reactor.FnOnRequest) monoPeekOption {
-	return func(peek *monoPeek) {
-		peek.onRequestCall = fn
 	}
 }
 

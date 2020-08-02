@@ -20,7 +20,7 @@ type defaultSink struct {
 }
 
 func (s *defaultSink) Success(v Any) {
-	if atomic.LoadInt32(&(s.stat)) != 0 {
+	if atomic.LoadInt32(&s.stat) != 0 {
 		hooks.Global().OnNextDrop(v)
 		return
 	}
@@ -37,17 +37,17 @@ func (s *defaultSink) Request(n int) {
 }
 
 func (s *defaultSink) Cancel() {
-	atomic.CompareAndSwapInt32(&(s.stat), 0, statCancel)
+	atomic.CompareAndSwapInt32(&s.stat, 0, statCancel)
 }
 
 func (s *defaultSink) Complete() {
-	if atomic.CompareAndSwapInt32(&(s.stat), 0, statComplete) {
+	if atomic.CompareAndSwapInt32(&s.stat, 0, statComplete) {
 		s.actual.OnComplete()
 	}
 }
 
 func (s *defaultSink) Error(err error) {
-	if atomic.CompareAndSwapInt32(&(s.stat), 0, statError) {
+	if atomic.CompareAndSwapInt32(&s.stat, 0, statError) {
 		s.actual.OnError(err)
 		return
 	}

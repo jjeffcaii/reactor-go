@@ -51,7 +51,7 @@ type switchOnFirstInner struct {
 }
 
 func (p *switchOnFirstInner) SubscribeWith(ctx context.Context, actual reactor.Subscriber) {
-	if !atomic.CompareAndSwapInt32(&(p.stat), math.MinInt32, 0) {
+	if !atomic.CompareAndSwapInt32(&p.stat, math.MinInt32, 0) {
 		panic(errSubscribeOnce)
 	}
 	p.inner = actual
@@ -85,19 +85,19 @@ func (p *switchOnFirstInner) drain() {
 }
 
 func (p *switchOnFirstInner) Cancel() {
-	if atomic.CompareAndSwapInt32(&(p.stat), 0, statCancel) {
+	if atomic.CompareAndSwapInt32(&p.stat, 0, statCancel) {
 		p.s.Cancel()
 	}
 }
 
 func (p *switchOnFirstInner) OnComplete() {
-	if atomic.CompareAndSwapInt32(&(p.stat), 0, statComplete) {
+	if atomic.CompareAndSwapInt32(&p.stat, 0, statComplete) {
 		p.inner.OnComplete()
 	}
 }
 
 func (p *switchOnFirstInner) OnError(e error) {
-	if atomic.CompareAndSwapInt32(&(p.stat), 0, statError) {
+	if atomic.CompareAndSwapInt32(&p.stat, 0, statError) {
 		p.inner.OnError(e)
 		return
 	}
@@ -131,14 +131,14 @@ type switchOnFirstInnerSubscriber struct {
 }
 
 func (p *switchOnFirstInnerSubscriber) OnComplete() {
-	if atomic.LoadInt32(&(p.parent.stat)) == 0 {
+	if atomic.LoadInt32(&p.parent.stat) == 0 {
 		p.parent.Cancel()
 	}
 	p.inner.OnComplete()
 }
 
 func (p *switchOnFirstInnerSubscriber) OnError(e error) {
-	if atomic.LoadInt32(&(p.parent.stat)) == 0 {
+	if atomic.LoadInt32(&p.parent.stat) == 0 {
 		p.parent.Cancel()
 	}
 	p.inner.OnError(e)

@@ -54,7 +54,7 @@ func (p *rangeSubscription) Cancel() {
 
 func (p *rangeSubscription) slowPath(n int) {
 	for n > 0 {
-		next := p.begin + int(atomic.AddInt32(&(p.cursor), 1))
+		next := p.begin + int(atomic.AddInt32(&p.cursor, 1))
 		if next > p.end {
 			return
 		}

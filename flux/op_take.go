@@ -28,7 +28,7 @@ type takeSubscriber struct {
 }
 
 func (t *takeSubscriber) OnError(e error) {
-	if atomic.CompareAndSwapInt32(&(t.stat), 0, statError) {
+	if atomic.CompareAndSwapInt32(&t.stat, 0, statError) {
 		t.actual.OnError(e)
 		return
 	}
@@ -36,9 +36,9 @@ func (t *takeSubscriber) OnError(e error) {
 }
 
 func (t *takeSubscriber) OnNext(v Any) {
-	remaining := atomic.AddInt64(&(t.remaining), -1)
+	remaining := atomic.AddInt64(&t.remaining, -1)
 	// if no remaining or stat is not default value.
-	if remaining < 0 || atomic.LoadInt32(&(t.stat)) != 0 {
+	if remaining < 0 || atomic.LoadInt32(&t.stat) != 0 {
 		hooks.Global().OnNextDrop(v)
 		return
 	}
@@ -51,7 +51,7 @@ func (t *takeSubscriber) OnNext(v Any) {
 }
 
 func (t *takeSubscriber) OnSubscribe(su reactor.Subscription) {
-	if atomic.LoadInt64(&(t.remaining)) < 1 {
+	if atomic.LoadInt64(&t.remaining) < 1 {
 		su.Cancel()
 		return
 	}
@@ -60,7 +60,7 @@ func (t *takeSubscriber) OnSubscribe(su reactor.Subscription) {
 }
 
 func (t *takeSubscriber) OnComplete() {
-	if atomic.CompareAndSwapInt32(&(t.stat), 0, statComplete) {
+	if atomic.CompareAndSwapInt32(&t.stat, 0, statComplete) {
 		t.actual.OnComplete()
 	}
 }

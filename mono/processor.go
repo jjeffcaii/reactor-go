@@ -86,7 +86,7 @@ func (p *processorSubscriber) Request(n int) {
 	if n < 1 {
 		panic(reactor.ErrNegativeRequest)
 	}
-	if atomic.AddInt32(&(p.requested), 1) != 1 {
+	if atomic.AddInt32(&p.requested, 1) != 1 {
 		return
 	}
 	switch p.parent.stat() {
@@ -101,17 +101,17 @@ func (p *processorSubscriber) Request(n int) {
 }
 
 func (p *processorSubscriber) Cancel() {
-	atomic.CompareAndSwapInt32(&(p.stat), 0, statCancel)
+	atomic.CompareAndSwapInt32(&p.stat, 0, statCancel)
 }
 
 func (p *processorSubscriber) OnComplete() {
-	if atomic.CompareAndSwapInt32(&(p.stat), 0, statComplete) {
+	if atomic.CompareAndSwapInt32(&p.stat, 0, statComplete) {
 		p.actual.OnComplete()
 	}
 }
 
 func (p *processorSubscriber) OnError(e error) {
-	if atomic.CompareAndSwapInt32(&(p.stat), 0, statError) {
+	if atomic.CompareAndSwapInt32(&p.stat, 0, statError) {
 		p.actual.OnError(e)
 		return
 	}
@@ -119,7 +119,7 @@ func (p *processorSubscriber) OnError(e error) {
 }
 
 func (p *processorSubscriber) OnNext(v Any) {
-	if atomic.LoadInt32(&(p.stat)) != 0 {
+	if atomic.LoadInt32(&p.stat) != 0 {
 		hooks.Global().OnNextDrop(v)
 		return
 	}

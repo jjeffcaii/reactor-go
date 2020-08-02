@@ -18,27 +18,27 @@ type innerFlatMapSubscriber struct {
 	parent *flatMapSubscriber
 }
 
-func (p *innerFlatMapSubscriber) OnError(err error) {
-	if atomic.CompareAndSwapInt32(&(p.parent.stat), 0, statError) {
-		p.parent.actual.OnError(err)
+func (in *innerFlatMapSubscriber) OnError(err error) {
+	if atomic.CompareAndSwapInt32(&in.parent.stat, 0, statError) {
+		in.parent.actual.OnError(err)
 	}
 }
 
-func (p *innerFlatMapSubscriber) OnNext(v Any) {
-	if atomic.LoadInt32(&(p.parent.stat)) != 0 {
+func (in *innerFlatMapSubscriber) OnNext(v Any) {
+	if atomic.LoadInt32(&in.parent.stat) != 0 {
 		return
 	}
-	p.parent.actual.OnNext(v)
-	p.OnComplete()
+	in.parent.actual.OnNext(v)
+	in.OnComplete()
 }
 
-func (p *innerFlatMapSubscriber) OnSubscribe(s reactor.Subscription) {
+func (in *innerFlatMapSubscriber) OnSubscribe(s reactor.Subscription) {
 	s.Request(reactor.RequestInfinite)
 }
 
-func (p *innerFlatMapSubscriber) OnComplete() {
-	if atomic.CompareAndSwapInt32(&(p.parent.stat), 0, statComplete) {
-		p.parent.actual.OnComplete()
+func (in *innerFlatMapSubscriber) OnComplete() {
+	if atomic.CompareAndSwapInt32(&in.parent.stat, 0, statComplete) {
+		in.parent.actual.OnComplete()
 	}
 }
 
@@ -53,23 +53,23 @@ func (p *flatMapSubscriber) Request(n int) {
 }
 
 func (p *flatMapSubscriber) Cancel() {
-	atomic.CompareAndSwapInt32(&(p.stat), 0, statCancel)
+	atomic.CompareAndSwapInt32(&p.stat, 0, statCancel)
 }
 
 func (p *flatMapSubscriber) OnComplete() {
-	if atomic.LoadInt32(&(p.stat)) == statComplete {
+	if atomic.LoadInt32(&p.stat) == statComplete {
 		p.actual.OnComplete()
 	}
 }
 
 func (p *flatMapSubscriber) OnError(err error) {
-	if atomic.CompareAndSwapInt32(&(p.stat), 0, statError) {
+	if atomic.CompareAndSwapInt32(&p.stat, 0, statError) {
 		p.actual.OnError(err)
 	}
 }
 
 func (p *flatMapSubscriber) OnNext(v Any) {
-	if atomic.LoadInt32(&(p.stat)) != 0 {
+	if atomic.LoadInt32(&p.stat) != 0 {
 		return
 	}
 	m := p.mapper(v)

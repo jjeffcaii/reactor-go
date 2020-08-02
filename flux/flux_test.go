@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"testing"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 )
 
 var fakeErr = errors.New("fake error")
+var testData = []Any{1, 2, 3, 4, 5}
 
 func Example() {
 	gen := func(ctx context.Context, sink flux.Sink) {
@@ -52,13 +52,9 @@ func Example() {
 	<-done
 }
 
-var testData = []int{1, 2, 3, 4, 5}
-
 func TestSuite(t *testing.T) {
-	var inputs []Any
-	for _, value := range testData {
-		inputs = append(inputs, value)
-	}
+	inputs := append([]Any(nil), testData...)
+
 	all := make(map[string]func() flux.Flux)
 	var instJust = flux.Just(inputs...)
 	var instCreate = flux.Create(func(ctx context.Context, sink flux.Sink) {
@@ -109,28 +105,27 @@ func TestSuite(t *testing.T) {
 		})
 		// TODO: fix onSubscribe test
 		//t.Run(fmt.Sprintf("%s_DoSubscribeOn", k), func(t *testing.T) {
-		//	testDoOnSubscribe(gen(), t)
+		//	InnerTestDoOnSubscribe(gen(), t)
 		//})
 	}
 }
 
-func testDoOnSubscribe(f flux.Flux, t *testing.T) {
-	var su reactor.Subscription
-	var got int
-	f.
-		DoOnSubscribe(func(s reactor.Subscription) {
-			su = s
-			su.Request(1)
-		}).
-		DoOnNext(func(v interface{}) error {
-			log.Println("next:", v)
-			got++
-			su.Request(1)
-			return nil
-		}).
-		Subscribe(context.Background())
-	assert.Equal(t, len(testData), got, "bad amount")
-}
+//func testDoOnSubscribe(f flux.Flux, t *testing.T) {
+//	var su reactor.Subscription
+//	var got int32
+//	f.
+//		DoOnSubscribe(func(s reactor.Subscription) {
+//			su = s
+//			su.Request(1)
+//		}).
+//		DoOnNext(func(v interface{}) error {
+//			atomic.AddInt32(&got, 1)
+//			su.Request(1)
+//			return nil
+//		}).
+//		Subscribe(context.Background())
+//	assert.Len(t, testData, int(got), "bad len")
+//}
 
 func testBlockLast(f flux.Flux, t *testing.T) {
 	last, err := f.BlockLast(context.Background())
@@ -177,32 +172,32 @@ func testFilterRequest(f flux.Flux, t *testing.T) {
 }
 
 func testDiscard(f flux.Flux, t *testing.T) {
-	var next, next2, discard []int
+	var next, next2, discard []Any
 	done := make(chan struct{})
 	f.
 		DoFinally(func(s reactor.SignalType) {
 			close(done)
 		}).
-		DoOnNext(func(v interface{}) error {
-			next = append(next, v.(int))
+		DoOnNext(func(v Any) error {
+			next = append(next, v)
 			return nil
 		}).
-		Filter(func(i interface{}) bool {
+		Filter(func(i Any) bool {
 			return i.(int) > 3
 		}).
-		DoOnNext(func(v interface{}) error {
-			next2 = append(next2, v.(int))
+		DoOnNext(func(v Any) error {
+			next2 = append(next2, v)
 			return nil
 		}).
-		DoOnDiscard(func(i interface{}) {
-			discard = append(discard, i.(int))
+		DoOnDiscard(func(i Any) {
+			discard = append(discard, i)
 		}).
 		Subscribe(context.Background())
 	<-done
 	assert.Equal(t, testData, next, "bad next")
 	assert.Equal(t, len(next), len(next2)+len(discard), "bad amount")
-	assert.Equal(t, []int{4, 5}, next2, "bad next2")
-	assert.Equal(t, []int{1, 2, 3}, discard, "bad discard")
+	assert.Equal(t, []Any{4, 5}, next2, "bad next2")
+	assert.Equal(t, []Any{1, 2, 3}, discard, "bad discard")
 }
 
 func testBlockFirst(f flux.Flux, t *testing.T) {
@@ -252,7 +247,7 @@ func testPeek(f flux.Flux, t *testing.T) {
 }
 
 func testRequest(f flux.Flux, t *testing.T) {
-	var nexts []int
+	var nexts []Any
 	var su reactor.Subscription
 	done := make(chan struct{})
 	f.
@@ -263,8 +258,8 @@ func testRequest(f flux.Flux, t *testing.T) {
 		Subscribe(context.Background(), reactor.OnSubscribe(func(s reactor.Subscription) {
 			su = s
 			su.Request(1)
-		}), reactor.OnNext(func(v interface{}) error {
-			nexts = append(nexts, v.(int))
+		}), reactor.OnNext(func(v Any) error {
+			nexts = append(nexts, v)
 			su.Request(1)
 			return nil
 		}))
@@ -276,11 +271,11 @@ func TestEmpty(t *testing.T) {
 	flux.Just().Subscribe(
 		context.Background(),
 		reactor.OnNext(func(v interface{}) error {
-			log.Println("next:", v)
+			fmt.Println("next:", v)
 			return nil
 		}),
 		reactor.OnComplete(func() {
-			log.Println("complete")
+			fmt.Println("complete")
 		}),
 	)
 }
@@ -299,14 +294,14 @@ func TestCreateWithRequest(t *testing.T) {
 	su := make(chan reactor.Subscription, 1)
 
 	sub := reactor.NewSubscriber(reactor.OnNext(func(v interface{}) error {
-		log.Println("next:", v)
+		fmt.Println("next:", v)
 		processed++
 		return nil
 	}), reactor.OnSubscribe(func(s reactor.Subscription) {
 		su <- s
 		s.Request(1)
 	}), reactor.OnComplete(func() {
-		log.Println("complete")
+		fmt.Println("complete")
 	}))
 
 	time.AfterFunc(100*time.Millisecond, func() {
@@ -315,22 +310,6 @@ func TestCreateWithRequest(t *testing.T) {
 
 	f.SubscribeWith(context.Background(), sub)
 	assert.Equal(t, totals, int(processed), "bad processed num")
-}
-
-func TestToChan(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
-	defer cancel()
-	ch, err := flux.Interval(100*time.Millisecond).ToChan(ctx, 1)
-L:
-	for {
-		select {
-		case v := <-ch:
-			fmt.Println("v:", v)
-		case e := <-err:
-			fmt.Println("err:", e)
-			break L
-		}
-	}
 }
 
 func TestNextWithError(t *testing.T) {
@@ -357,16 +336,52 @@ func TestBlockToSlice(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestBlockToChan(t *testing.T) {
-	results := make(chan int, 64)
-	err := flux.Just(3, 2, 1).SubscribeOn(scheduler.Parallel()).BlockToChan(context.Background(), results)
-	assert.NoError(t, err, "should not return error")
-	assert.Equal(t, 3, <-results)
-	assert.Equal(t, 2, <-results)
-	assert.Equal(t, 1, <-results)
+func TestSubscribeWithChan(t *testing.T) {
+	valChan := make(chan int)
+	errChan := make(chan error)
+	flux.Just(testData...).
+		DoFinally(func(s reactor.SignalType) {
+			close(valChan)
+			close(errChan)
+		}).
+		SubscribeOn(scheduler.Parallel()).
+		SubscribeWithChan(context.Background(), valChan, errChan)
 
-	err = flux.Just("bad element type").BlockToChan(context.Background(), results)
-	assert.Error(t, err, "should return error")
+	var actualData []int
+L:
+	for {
+		select {
+		case value, ok := <-valChan:
+			if !ok {
+				break L
+			}
+			actualData = append(actualData, value)
+		case _, ok := <-errChan:
+			if !ok {
+				break L
+			}
+			assert.Fail(t, "should never run here")
+		}
+	}
+	assert.Len(t, actualData, len(testData))
+	for i := 0; i < len(testData); i++ {
+		assert.Equal(t, testData[i], actualData[i], "result doesn't match")
+	}
+
+}
+
+func TestSubscribeWithChan_Broken(t *testing.T) {
+	valChan := make(chan int, 1)
+	errChan := make(chan error, 1)
+	flux.Just("bad element type").
+		SubscribeOn(scheduler.Parallel()).
+		SubscribeWithChan(context.Background(), valChan, errChan)
+	select {
+	case <-valChan:
+		assert.Fail(t, "should be unreachable")
+	case err := <-errChan:
+		assert.Error(t, err, "should return error")
+	}
 }
 
 func TestError(t *testing.T) {

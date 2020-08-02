@@ -32,7 +32,7 @@ func (p *bufferedSink) Cancel() {
 
 func (p *bufferedSink) Complete() {
 	p.cond.L.Lock()
-	for atomic.LoadInt32(&(p.draining)) == 1 || p.q.size() > 0 {
+	for atomic.LoadInt32(&p.draining) == 1 || p.q.size() > 0 {
 		p.cond.Wait()
 	}
 	p.cond.L.Unlock()
@@ -76,12 +76,12 @@ func (p *bufferedSink) drain() {
 		}
 		v, ok := p.q.poll()
 		if !ok {
-			atomic.AddInt32(&(p.n), 1)
+			atomic.AddInt32(&p.n, 1)
 			break
 		}
 		p.s.OnNext(v)
 	}
-	atomic.CompareAndSwapInt32(&(p.n), -1, 0)
+	atomic.CompareAndSwapInt32(&p.n, -1, 0)
 }
 
 func (p *bufferedSink) dispose() {

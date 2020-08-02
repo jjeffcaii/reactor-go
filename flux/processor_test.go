@@ -3,7 +3,6 @@ package flux_test
 import (
 	"context"
 	"fmt"
-	"log"
 	"testing"
 	"time"
 
@@ -37,16 +36,16 @@ func TestUnicastProcessor(t *testing.T) {
 	p.
 		DoOnNext(func(v Any) error {
 			time.Sleep(30 * time.Millisecond)
-			log.Println("onNext:", v)
+			fmt.Println("onNext:", v)
 			results <- v.(int)
 			su.Request(1)
 			return nil
 		}).
 		DoOnRequest(func(n int) {
-			log.Println("request:", n)
+			fmt.Println("request:", n)
 		}).
 		DoOnComplete(func() {
-			log.Println("complete")
+			fmt.Println("complete")
 			close(results)
 		}).
 		Subscribe(context.Background(), reactor.OnSubscribe(func(s reactor.Subscription) {

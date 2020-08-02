@@ -27,12 +27,6 @@ func withContextDiscard(fn reactor.FnOnDiscard) monoContextOption {
 	}
 }
 
-func withContextError(fn reactor.FnOnError) monoContextOption {
-	return func(i *monoContext) {
-		i.kv = append(i.kv, internal.KeyOnError, fn)
-	}
-}
-
 func newMonoContext(source reactor.RawPublisher, options ...monoContextOption) *monoContext {
 	mc := &monoContext{
 		source: source,

@@ -18,7 +18,7 @@ func (j *justSubscriber) Request(n int) {
 	if n < 1 {
 		panic(reactor.ErrNegativeRequest)
 	}
-	if !atomic.CompareAndSwapInt32(&(j.n), 0, statComplete) {
+	if !atomic.CompareAndSwapInt32(&j.n, 0, statComplete) {
 		return
 	}
 	if j.parent.value == nil {
@@ -36,7 +36,7 @@ func (j *justSubscriber) Request(n int) {
 }
 
 func (j *justSubscriber) Cancel() {
-	atomic.CompareAndSwapInt32(&(j.n), 0, statCancel)
+	atomic.CompareAndSwapInt32(&j.n, 0, statCancel)
 }
 
 type monoJust struct {

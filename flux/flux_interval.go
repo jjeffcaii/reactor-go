@@ -28,7 +28,7 @@ func (p *intervalSubscription) Request(n int) {
 	if p.cancelled {
 		return
 	}
-	atomic.AddInt64(&(p.requested), int64(n))
+	atomic.AddInt64(&p.requested, int64(n))
 }
 
 func (p *intervalSubscription) Cancel() {
@@ -39,17 +39,17 @@ func (p *intervalSubscription) Cancel() {
 }
 
 func (p *intervalSubscription) runOnce() {
-	if atomic.LoadInt64(&(p.requested)) < 1 {
+	if atomic.LoadInt64(&p.requested) < 1 {
 		p.Cancel()
 		p.actual.OnError(fmt.Errorf("could not emit tick %d due to lack of requests", p.count))
 		return
 	}
-	current := atomic.AddInt64(&(p.count), 1)
+	current := atomic.AddInt64(&p.count, 1)
 	p.actual.OnNext(current - 1)
-	if atomic.LoadInt64(&(p.requested)) >= reactor.RequestInfinite {
+	if atomic.LoadInt64(&p.requested) >= reactor.RequestInfinite {
 		return
 	}
-	atomic.AddInt64(&(p.requested), -1)
+	atomic.AddInt64(&p.requested, -1)
 }
 
 func (p *intervalSubscription) run(ctx context.Context) {
@@ -92,10 +92,10 @@ func (p *fluxInterval) SubscribeWith(ctx context.Context, s reactor.Subscriber) 
 
 func newFluxInterval(period time.Duration, delay time.Duration, sc scheduler.Scheduler) *fluxInterval {
 	if period == 0 {
-		panic(fmt.Errorf("invalid interval period: %s", period))
+		panic(fmt.Sprintf("invalid interval period: %s", period))
 	}
 	if sc == nil {
-		sc = scheduler.Elastic()
+		sc = scheduler.Parallel()
 	}
 	if delay == 0 {
 		delay = period

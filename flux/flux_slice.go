@@ -56,7 +56,7 @@ func (p *sliceSubscription) isCancelled() (cancelled bool) {
 
 func (p *sliceSubscription) slowPath(n int) {
 	for n > 0 {
-		next := int(atomic.AddInt32(&(p.cursor), 1))
+		next := int(atomic.AddInt32(&p.cursor, 1))
 		if next > len(p.values) {
 			return
 		}

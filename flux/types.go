@@ -37,11 +37,10 @@ type Flux interface {
 	SwitchOnFirst(FnSwitchOnFirst) Flux
 	DelayElement(delay time.Duration) Flux
 	SubscribeOn(scheduler.Scheduler) Flux
+	SubscribeWithChan(ctx context.Context, valueChan interface{}, errChan chan<- error)
 	BlockFirst(context.Context) (Any, error)
 	BlockLast(context.Context) (Any, error)
-	ToChan(ctx context.Context, cap int) (c <-chan Any, e <-chan error)
 	BlockToSlice(ctx context.Context, slicePtr interface{}) error
-	BlockToChan(ctx context.Context, ch interface{}) error
 }
 
 type Sink interface {

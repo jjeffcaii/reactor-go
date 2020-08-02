@@ -20,43 +20,43 @@ type delayElementSubscriber struct {
 	v      Any
 }
 
-func (p *delayElementSubscriber) Request(n int) {
-	p.s.Request(n)
+func (d *delayElementSubscriber) Request(n int) {
+	d.s.Request(n)
 }
 
-func (p *delayElementSubscriber) Cancel() {
+func (d *delayElementSubscriber) Cancel() {
 	// TODO: support cancel
-	p.s.Cancel()
+	d.s.Cancel()
 }
 
-func (p *delayElementSubscriber) OnError(err error) {
-	if atomic.CompareAndSwapInt32(&(p.stat), 0, statError) {
-		p.actual.OnError(err)
+func (d *delayElementSubscriber) OnError(err error) {
+	if atomic.CompareAndSwapInt32(&d.stat, 0, statError) {
+		d.actual.OnError(err)
 		return
 	}
 	hooks.Global().OnErrorDrop(err)
 }
 
-func (p *delayElementSubscriber) OnNext(v Any) {
-	if !atomic.CompareAndSwapInt32(&(p.stat), 0, statComplete) {
+func (d *delayElementSubscriber) OnNext(v Any) {
+	if !atomic.CompareAndSwapInt32(&d.stat, 0, statComplete) {
 		hooks.Global().OnNextDrop(v)
 		return
 	}
-	p.v = v
-	time.AfterFunc(p.delay, func() {
-		p.actual.OnNext(v)
+	d.v = v
+	time.AfterFunc(d.delay, func() {
+		d.actual.OnNext(v)
 	})
 }
 
-func (p *delayElementSubscriber) OnSubscribe(s reactor.Subscription) {
-	p.s = s
-	p.actual.OnSubscribe(p)
+func (d *delayElementSubscriber) OnSubscribe(s reactor.Subscription) {
+	d.s = s
+	d.actual.OnSubscribe(d)
 	s.Request(reactor.RequestInfinite)
 }
 
-func (p *delayElementSubscriber) OnComplete() {
-	if atomic.CompareAndSwapInt32(&(p.stat), 0, statComplete) {
-		p.actual.OnComplete()
+func (d *delayElementSubscriber) OnComplete() {
+	if atomic.CompareAndSwapInt32(&d.stat, 0, statComplete) {
+		d.actual.OnComplete()
 	}
 }
 

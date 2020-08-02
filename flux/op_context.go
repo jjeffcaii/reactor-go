@@ -27,12 +27,6 @@ func withContextDiscard(fn reactor.FnOnDiscard) fluxContextOption {
 	}
 }
 
-func withContextError(fn reactor.FnOnError) fluxContextOption {
-	return func(i *fluxContext) {
-		i.kv = append(i.kv, internal.KeyOnError, fn)
-	}
-}
-
 func newFluxContext(source reactor.RawPublisher, options ...fluxContextOption) *fluxContext {
 	f := &fluxContext{
 		source: source,

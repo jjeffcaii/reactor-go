@@ -41,11 +41,13 @@ func Example() {
 	}
 	mono.
 		Create(gen).
-		Map(func(i rs.Any) (rs.Any, error) {
-			return "Hello " + i.(string) + "!", nil
+		Map(func(input reactor.Any) (output reactor.Any, err error) {
+			output = "Hello " + input.(string) + "!"
+			return
 		}).
-		DoOnNext(func(v interface{}) {
+		DoOnNext(func(v reactor.Any) error {
 			fmt.Println(v)
+			return nil
 		}).
 		Subscribe(context.Background())
 }
@@ -57,7 +59,7 @@ func Example() {
 
 ### Flux
 ```go
-package rs_test
+package flux_test
 
 import (
 	"context"
@@ -78,26 +80,27 @@ func Example() {
 	}
 	done := make(chan struct{})
 
-	var su rs.Subscription
+	var su reactor.Subscription
 	flux.Create(gen).
 		Filter(func(i interface{}) bool {
 			return i.(int)%2 == 0
 		}).
-		Map(func(i rs.Any) (rs.Any, error) {
-			return fmt.Sprintf("#HELLO_%04d", i.(int)), nil
+		Map(func(input reactor.Any) (output reactor.Any, err error) {
+			output = fmt.Sprintf("#HELLO_%04d", input.(int))
+			return
 		}).
 		SubscribeOn(scheduler.Elastic()).
 		Subscribe(context.Background(),
-			rs.OnSubscribe(func(s rs.Subscription) {
+			reactor.OnSubscribe(func(s reactor.Subscription) {
 				su = s
 				s.Request(1)
 			}),
-			rs.OnNext(func(v rs.Any) error {
+			reactor.OnNext(func(v reactor.Any) error {
 				fmt.Println("next:", v)
 				su.Request(1)
 				return nil
 			}),
-			rs.OnComplete(func() {
+			reactor.OnComplete(func() {
 				close(done)
 			}),
 		)

@@ -21,42 +21,29 @@ type wrapper struct {
 	reactor.RawPublisher
 }
 
-func (w wrapper) BlockToChan(ctx context.Context, ch interface{}) (err error) {
-	if ch == nil {
-		err = errRequireChan
-		return
-	}
-	typ := reflect.TypeOf(ch)
+func (w wrapper) SubscribeWithChan(ctx context.Context, valueChan interface{}, errChan chan<- error) {
+	typ := reflect.TypeOf(valueChan)
 	if typ.Kind() != reflect.Chan || typ.ChanDir()&reflect.SendDir == 0 {
-		err = errRequireChan
-		return
+		panic(errRequireChan)
 	}
 
 	elemType := typ.Elem()
-	value := reflect.ValueOf(ch)
+	value := reflect.ValueOf(valueChan)
 
-	done := make(chan struct{})
-
-	w.
-		DoFinally(func(s reactor.SignalType) {
-			close(done)
-		}).
-		Subscribe(
-			ctx,
-			reactor.OnNext(func(a reactor.Any) error {
-				v := reflect.ValueOf(a)
-				if v.Kind() == elemType.Kind() || v.Type().AssignableTo(elemType) {
-					value.Send(v)
-					return nil
-				}
-				return errWrongElemType
-			}),
-			reactor.OnError(func(e error) {
-				err = e
-			}),
-		)
-	<-done
-	return
+	w.Subscribe(
+		ctx,
+		reactor.OnNext(func(a reactor.Any) error {
+			v := reflect.ValueOf(a)
+			if v.Kind() == elemType.Kind() || v.Type().AssignableTo(elemType) {
+				value.Send(v)
+				return nil
+			}
+			return errWrongElemType
+		}),
+		reactor.OnError(func(e error) {
+			errChan <- e
+		}),
+	)
 }
 
 func (w wrapper) BlockToSlice(ctx context.Context, slicePtr interface{}) (err error) {
