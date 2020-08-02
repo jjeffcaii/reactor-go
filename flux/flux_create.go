@@ -42,9 +42,9 @@ type fluxCreate struct {
 	backpressure OverflowStrategy
 }
 
-func (m fluxCreate) SubscribeWith(ctx context.Context, s rs.Subscriber) {
+func (m fluxCreate) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
 	var sink interface {
-		rs.Subscription
+		reactor.Subscription
 		Sink
 	}
 	switch m.backpressure {

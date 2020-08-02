@@ -10,21 +10,21 @@ import (
 )
 
 type fluxTake struct {
-	source rs.RawPublisher
+	source reactor.RawPublisher
 	n      int
 }
 
-func (p *fluxTake) SubscribeWith(ctx context.Context, s rs.Subscriber) {
+func (p *fluxTake) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
 	actual := internal.ExtractRawSubscriber(s)
 	take := newTakeSubscriber(actual, int64(p.n))
 	p.source.SubscribeWith(ctx, internal.NewCoreSubscriber(ctx, take))
 }
 
 type takeSubscriber struct {
-	actual    rs.Subscriber
+	actual    reactor.Subscriber
 	remaining int64
 	stat      int32
-	su        rs.Subscription
+	su        reactor.Subscription
 }
 
 func (t *takeSubscriber) OnError(e error) {
@@ -35,7 +35,7 @@ func (t *takeSubscriber) OnError(e error) {
 	hooks.Global().OnErrorDrop(e)
 }
 
-func (t *takeSubscriber) OnNext(v interface{}) {
+func (t *takeSubscriber) OnNext(v Any) {
 	remaining := atomic.AddInt64(&(t.remaining), -1)
 	// if no remaining or stat is not default value.
 	if remaining < 0 || atomic.LoadInt32(&(t.stat)) != 0 {
@@ -50,7 +50,7 @@ func (t *takeSubscriber) OnNext(v interface{}) {
 	t.OnComplete()
 }
 
-func (t *takeSubscriber) OnSubscribe(su rs.Subscription) {
+func (t *takeSubscriber) OnSubscribe(su reactor.Subscription) {
 	if atomic.LoadInt64(&(t.remaining)) < 1 {
 		su.Cancel()
 		return
@@ -65,14 +65,14 @@ func (t *takeSubscriber) OnComplete() {
 	}
 }
 
-func newTakeSubscriber(actual rs.Subscriber, n int64) *takeSubscriber {
+func newTakeSubscriber(actual reactor.Subscriber, n int64) *takeSubscriber {
 	return &takeSubscriber{
 		actual:    actual,
 		remaining: n,
 	}
 }
 
-func newFluxTake(source rs.RawPublisher, n int) *fluxTake {
+func newFluxTake(source reactor.RawPublisher, n int) *fluxTake {
 	return &fluxTake{
 		source: source,
 		n:      n,

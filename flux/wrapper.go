@@ -3,139 +3,55 @@ package flux
 import (
 	"context"
 	"errors"
+	"reflect"
 	"time"
 
-	rs "github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/hooks"
 	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
+var (
+	errRequireChan     = errors.New("require a chan")
+	errRequireSlicePtr = errors.New("require a slice point")
+	errWrongElemType   = errors.New("wrong element type")
+)
+
 type wrapper struct {
-	rs.RawPublisher
+	reactor.RawPublisher
 }
 
-func (p wrapper) Subscribe(ctx context.Context, options ...rs.SubscriberOption) {
-	p.SubscribeWith(ctx, rs.NewSubscriber(options...))
-}
-
-func (p wrapper) DelayElement(delay time.Duration) Flux {
-	return wrap(newFluxDelayElement(p.RawPublisher, delay, scheduler.Elastic()))
-}
-
-func (p wrapper) Take(n int) Flux {
-	return wrap(newFluxTake(p.RawPublisher, n))
-}
-
-func (p wrapper) Filter(f rs.Predicate) Flux {
-	return wrap(newFluxFilter(p.RawPublisher, f))
-}
-
-func (p wrapper) Map(t rs.Transformer) Flux {
-	return wrap(newFluxMap(p.RawPublisher, t))
-}
-
-func (p wrapper) SubscribeOn(sc scheduler.Scheduler) Flux {
-	return wrap(newFluxSubscribeOn(p.RawPublisher, sc))
-}
-
-func (p wrapper) DoOnNext(fn rs.FnOnNext) Flux {
-	return wrap(newFluxPeek(p.RawPublisher, peekNext(fn)))
-}
-
-func (p wrapper) DoOnComplete(fn rs.FnOnComplete) Flux {
-	return wrap(newFluxPeek(p.RawPublisher, peekComplete(fn)))
-}
-func (p wrapper) DoOnRequest(fn rs.FnOnRequest) Flux {
-	return wrap(newFluxPeek(p.RawPublisher, peekRequest(fn)))
-}
-
-func (p wrapper) DoOnDiscard(fn rs.FnOnDiscard) Flux {
-	return wrap(newFluxContext(p.RawPublisher, withContextDiscard(fn)))
-}
-
-func (p wrapper) DoOnCancel(fn rs.FnOnCancel) Flux {
-	return wrap(newFluxPeek(p.RawPublisher, peekCancel(fn)))
-}
-
-func (p wrapper) DoOnError(fn rs.FnOnError) Flux {
-	return wrap(newFluxPeek(p.RawPublisher, peekError(fn)))
-}
-
-func (p wrapper) DoFinally(fn rs.FnOnFinally) Flux {
-	return wrap(newFluxFinally(p.RawPublisher, fn))
-}
-
-func (p wrapper) DoOnSubscribe(fn rs.FnOnSubscribe) Flux {
-	return wrap(newFluxPeek(p.RawPublisher, peekSubscribe(fn)))
-}
-
-func (p wrapper) SwitchOnFirst(fn FnSwitchOnFirst) Flux {
-	return wrap(newFluxSwitchOnFirst(p.RawPublisher, fn))
-}
-
-func (p wrapper) ToChan(ctx context.Context, cap int) (<-chan interface{}, <-chan error) {
-	if cap < 1 {
-		cap = 1
+func (w wrapper) BlockToChan(ctx context.Context, ch interface{}) (err error) {
+	if ch == nil {
+		err = errRequireChan
+		return
 	}
-	ch := make(chan interface{}, cap)
-	err := make(chan error, 1)
-	p.
-		DoFinally(func(s rs.SignalType) {
-			if s == rs.SignalTypeCancel {
-				err <- rs.ErrSubscribeCancelled
-			}
-			close(ch)
-			close(err)
-		}).
-		SubscribeOn(scheduler.Elastic()).
-		Subscribe(ctx,
-			rs.OnNext(func(v interface{}) {
-				ch <- v
-			}),
-			rs.OnError(func(e error) {
-				err <- e
-			}),
-		)
-	return ch, err
-}
+	typ := reflect.TypeOf(ch)
+	if typ.Kind() != reflect.Chan || typ.ChanDir()&reflect.SendDir == 0 {
+		err = errRequireChan
+		return
+	}
 
-func (p wrapper) BlockFirst(ctx context.Context) (first interface{}, err error) {
+	elemType := typ.Elem()
+	value := reflect.ValueOf(ch)
+
 	done := make(chan struct{})
-	var su rs.Subscription
-	p.
-		DoFinally(func(s rs.SignalType) {
+
+	w.
+		DoFinally(func(s reactor.SignalType) {
 			close(done)
 		}).
-		Subscribe(ctx, rs.OnNext(func(v interface{}) {
-			first = v
-			su.Cancel()
-		}), rs.OnSubscribe(func(s rs.Subscription) {
-			su = s
-			su.Request(1)
-		}), rs.OnError(func(e error) {
-			err = e
-		}))
-	<-done
-	return
-}
-
-func (p wrapper) BlockLast(ctx context.Context) (last interface{}, err error) {
-	done := make(chan struct{})
-	p.
-		DoFinally(func(s rs.SignalType) {
-			close(done)
-		}).
-		DoOnCancel(func() {
-			err = rs.ErrSubscribeCancelled
-		}).
-		Subscribe(ctx,
-			rs.OnNext(func(v interface{}) {
-				if old := last; old != nil {
-					hooks.Global().OnNextDrop(old)
+		Subscribe(
+			ctx,
+			reactor.OnNext(func(a reactor.Any) error {
+				v := reflect.ValueOf(a)
+				if v.Kind() == elemType.Kind() || v.Type().AssignableTo(elemType) {
+					value.Send(v)
+					return nil
 				}
-				last = v
+				return errWrongElemType
 			}),
-			rs.OnError(func(e error) {
+			reactor.OnError(func(e error) {
 				err = e
 			}),
 		)
@@ -143,26 +59,195 @@ func (p wrapper) BlockLast(ctx context.Context) (last interface{}, err error) {
 	return
 }
 
-func (p wrapper) Complete() {
-	p.mustProcessor().Complete()
+func (w wrapper) BlockToSlice(ctx context.Context, slicePtr interface{}) (err error) {
+	if slicePtr == nil {
+		err = errRequireSlicePtr
+		return
+	}
+	typ := reflect.TypeOf(slicePtr)
+	if typ.Kind() != reflect.Ptr || typ.Elem().Kind() != reflect.Slice {
+		err = errRequireSlicePtr
+		return
+	}
+	elemType := typ.Elem().Elem()
+
+	value := reflect.ValueOf(slicePtr).Elem()
+
+	done := make(chan struct{})
+	w.
+		DoFinally(func(s reactor.SignalType) {
+			close(done)
+		}).
+		Subscribe(
+			ctx,
+			reactor.OnNext(func(a reactor.Any) error {
+				v := reflect.ValueOf(a)
+				if v.Kind() == elemType.Kind() || v.Type().AssignableTo(elemType) {
+					value.Set(reflect.Append(value, v))
+					return nil
+				}
+				return errWrongElemType
+			}),
+			reactor.OnError(func(e error) {
+				err = e
+			}),
+		)
+	<-done
+	return
 }
 
-func (p wrapper) Error(e error) {
-	p.mustProcessor().Error(e)
+func (w wrapper) Subscribe(ctx context.Context, options ...reactor.SubscriberOption) {
+	w.SubscribeWith(ctx, reactor.NewSubscriber(options...))
 }
 
-func (p wrapper) Next(v interface{}) {
-	p.mustProcessor().Next(v)
+func (w wrapper) DelayElement(delay time.Duration) Flux {
+	return wrap(newFluxDelayElement(w.RawPublisher, delay, scheduler.Elastic()))
 }
 
-func (p wrapper) mustProcessor() rawProcessor {
-	v, ok := p.RawPublisher.(rawProcessor)
+func (w wrapper) Take(n int) Flux {
+	return wrap(newFluxTake(w.RawPublisher, n))
+}
+
+func (w wrapper) Filter(f reactor.Predicate) Flux {
+	return wrap(newFluxFilter(w.RawPublisher, f))
+}
+
+func (w wrapper) Map(t reactor.Transformer) Flux {
+	return wrap(newFluxMap(w.RawPublisher, t))
+}
+
+func (w wrapper) SubscribeOn(sc scheduler.Scheduler) Flux {
+	return wrap(newFluxSubscribeOn(w.RawPublisher, sc))
+}
+
+func (w wrapper) DoOnNext(fn reactor.FnOnNext) Flux {
+	return wrap(newFluxPeek(w.RawPublisher, peekNext(fn)))
+}
+
+func (w wrapper) DoOnComplete(fn reactor.FnOnComplete) Flux {
+	return wrap(newFluxPeek(w.RawPublisher, peekComplete(fn)))
+}
+func (w wrapper) DoOnRequest(fn reactor.FnOnRequest) Flux {
+	return wrap(newFluxPeek(w.RawPublisher, peekRequest(fn)))
+}
+
+func (w wrapper) DoOnDiscard(fn reactor.FnOnDiscard) Flux {
+	return wrap(newFluxContext(w.RawPublisher, withContextDiscard(fn)))
+}
+
+func (w wrapper) DoOnCancel(fn reactor.FnOnCancel) Flux {
+	return wrap(newFluxPeek(w.RawPublisher, peekCancel(fn)))
+}
+
+func (w wrapper) DoOnError(fn reactor.FnOnError) Flux {
+	return wrap(newFluxPeek(w.RawPublisher, peekError(fn)))
+}
+
+func (w wrapper) DoFinally(fn reactor.FnOnFinally) Flux {
+	return wrap(newFluxFinally(w.RawPublisher, fn))
+}
+
+func (w wrapper) DoOnSubscribe(fn reactor.FnOnSubscribe) Flux {
+	return wrap(newFluxPeek(w.RawPublisher, peekSubscribe(fn)))
+}
+
+func (w wrapper) SwitchOnFirst(fn FnSwitchOnFirst) Flux {
+	return wrap(newFluxSwitchOnFirst(w.RawPublisher, fn))
+}
+
+func (w wrapper) ToChan(ctx context.Context, cap int) (<-chan Any, <-chan error) {
+	if cap < 1 {
+		cap = 1
+	}
+	ch := make(chan Any, cap)
+	err := make(chan error, 1)
+	w.
+		DoFinally(func(s reactor.SignalType) {
+			if s == reactor.SignalTypeCancel {
+				err <- reactor.ErrSubscribeCancelled
+			}
+			close(ch)
+			close(err)
+		}).
+		SubscribeOn(scheduler.Elastic()).
+		Subscribe(ctx,
+			reactor.OnNext(func(v Any) error {
+				ch <- v
+				return nil
+			}),
+			reactor.OnError(func(e error) {
+				err <- e
+			}),
+		)
+	return ch, err
+}
+
+func (w wrapper) BlockFirst(ctx context.Context) (first Any, err error) {
+	done := make(chan struct{})
+	var su reactor.Subscription
+	w.
+		DoFinally(func(s reactor.SignalType) {
+			close(done)
+		}).
+		Subscribe(ctx, reactor.OnNext(func(v Any) error {
+			first = v
+			su.Cancel()
+			return nil
+		}), reactor.OnSubscribe(func(s reactor.Subscription) {
+			su = s
+			su.Request(1)
+		}), reactor.OnError(func(e error) {
+			err = e
+		}))
+	<-done
+	return
+}
+
+func (w wrapper) BlockLast(ctx context.Context) (last Any, err error) {
+	done := make(chan struct{})
+	w.
+		DoFinally(func(s reactor.SignalType) {
+			close(done)
+		}).
+		DoOnCancel(func() {
+			err = reactor.ErrSubscribeCancelled
+		}).
+		Subscribe(ctx,
+			reactor.OnNext(func(v Any) error {
+				if old := last; old != nil {
+					hooks.Global().OnNextDrop(old)
+				}
+				last = v
+				return nil
+			}),
+			reactor.OnError(func(e error) {
+				err = e
+			}),
+		)
+	<-done
+	return
+}
+
+func (w wrapper) Complete() {
+	w.mustProcessor().Complete()
+}
+
+func (w wrapper) Error(e error) {
+	w.mustProcessor().Error(e)
+}
+
+func (w wrapper) Next(v Any) {
+	w.mustProcessor().Next(v)
+}
+
+func (w wrapper) mustProcessor() rawProcessor {
+	v, ok := w.RawPublisher.(rawProcessor)
 	if !ok {
 		panic(errors.New("require a processor"))
 	}
 	return v
 }
 
-func wrap(r rs.RawPublisher) wrapper {
+func wrap(r reactor.RawPublisher) wrapper {
 	return wrapper{r}
 }

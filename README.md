@@ -41,8 +41,8 @@ func Example() {
 	}
 	mono.
 		Create(gen).
-		Map(func(i interface{}) interface{} {
-			return "Hello " + i.(string) + "!"
+		Map(func(i rs.Any) (rs.Any, error) {
+			return "Hello " + i.(string) + "!", nil
 		}).
 		DoOnNext(func(v interface{}) {
 			fmt.Println(v)
@@ -83,8 +83,8 @@ func Example() {
 		Filter(func(i interface{}) bool {
 			return i.(int)%2 == 0
 		}).
-		Map(func(i interface{}) interface{} {
-			return fmt.Sprintf("#HELLO_%04d", i.(int))
+		Map(func(i rs.Any) (rs.Any, error) {
+			return fmt.Sprintf("#HELLO_%04d", i.(int)), nil
 		}).
 		SubscribeOn(scheduler.Elastic()).
 		Subscribe(context.Background(),
@@ -92,9 +92,10 @@ func Example() {
 				su = s
 				s.Request(1)
 			}),
-			rs.OnNext(func(v interface{}) {
+			rs.OnNext(func(v rs.Any) error {
 				fmt.Println("next:", v)
 				su.Request(1)
+				return nil
 			}),
 			rs.OnComplete(func() {
 				close(done)

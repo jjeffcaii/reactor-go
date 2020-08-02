@@ -3,7 +3,7 @@ package internal
 import (
 	"context"
 
-	rs "github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go"
 )
 
 type Key string
@@ -13,8 +13,8 @@ const (
 	KeyOnError   Key = "onError"
 )
 
-func TryDiscard(ctx context.Context, v interface{}) {
-	fn, ok := ctx.Value(KeyOnDiscard).(rs.FnOnDiscard)
+func TryDiscard(ctx context.Context, v reactor.Any) {
+	fn, ok := ctx.Value(KeyOnDiscard).(reactor.FnOnDiscard)
 	if !ok {
 		return
 	}

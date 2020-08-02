@@ -14,17 +14,21 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type Any = reactor.Any
+
 func Example() {
 	gen := func(ctx context.Context, sink mono.Sink) {
 		sink.Success("World")
 	}
 	mono.
 		Create(gen).
-		Map(func(i interface{}) interface{} {
-			return "Hello " + i.(string) + "!"
+		Map(func(i Any) (o Any, err error) {
+			o = "Hello " + i.(string) + "!"
+			return
 		}).
-		DoOnNext(func(v interface{}) {
+		DoOnNext(func(v Any) error {
 			fmt.Println(v)
+			return nil
 		}).
 		Subscribe(context.Background())
 }
@@ -63,8 +67,8 @@ func TestSwitchIfEmpty(t *testing.T) {
 	assert.Equal(t, num, v, "bad result")
 	v, err = mono.Empty().
 		SwitchIfEmpty(mono.Just(num)).
-		Map(func(i interface{}) interface{} {
-			return i.(int) * 2
+		Map(func(i Any) (Any, error) {
+			return i.(int) * 2, nil
 		}).
 		Block(context.Background())
 	assert.NoError(t, err, "err occurred")
@@ -118,7 +122,7 @@ func TestSuite(t *testing.T) {
 
 func testDoOnSubscribe(m mono.Mono, t *testing.T) {
 	var called bool
-	v, err := m.DoOnSubscribe(func(su rs.Subscription) {
+	v, err := m.DoOnSubscribe(func(su reactor.Subscription) {
 		called = true
 	}).Block(context.Background())
 	assert.NoError(t, err, "oops")
@@ -127,48 +131,51 @@ func testDoOnSubscribe(m mono.Mono, t *testing.T) {
 }
 
 func testPanic(m mono.Mono, t *testing.T) {
-	mock := errors.New("mock next panic")
+	fakeErr := errors.New("mock next panic")
 	checker := func(in mono.Mono) {
 		var catches error
 		in.DoOnError(func(e error) {
 			catches = e
 		}).Subscribe(context.Background())
-		assert.Equal(t, mock, catches, "not that error")
+		assert.Equal(t, fakeErr, catches, "not that error")
 	}
-	checker(m.DoOnNext(func(v interface{}) {
-		panic(mock)
+	checker(m.DoOnNext(func(v Any) error {
+		return fakeErr
 	}))
-	checker(m.Map(func(i interface{}) interface{} {
-		panic(mock)
+	checker(m.Map(func(i Any) (Any, error) {
+		return nil, fakeErr
 	}))
-	checker(m.Filter(func(i interface{}) bool {
-		panic(mock)
+	checker(m.Filter(func(i Any) bool {
+		panic(fakeErr)
 	}))
 }
 
 func testDelayElement(m mono.Mono, t *testing.T) {
 	var begin time.Time
 	m.DelayElement(1*time.Second).
-		DoOnNext(func(v interface{}) {
+		DoOnNext(func(v Any) error {
 			assert.Equal(t, num, v, "bad next value")
 			assert.Equal(t, 1, int(time.Since(begin).Seconds()), "bad passed time")
+			return nil
 		}).
-		Subscribe(context.Background(), rs.OnSubscribe(func(su rs.Subscription) {
+		Subscribe(context.Background(), reactor.OnSubscribe(func(su reactor.Subscription) {
 			begin = time.Now()
-			su.Request(rs.RequestInfinite)
+			su.Request(reactor.RequestInfinite)
 		}))
 }
 
 func testMap(m mono.Mono, t *testing.T) {
 	v, err := m.
-		DoOnNext(func(v interface{}) {
+		DoOnNext(func(v Any) error {
 			assert.Equal(t, num, v, "bad value before map")
+			return nil
 		}).
-		Map(func(i interface{}) interface{} {
-			return i.(int) * 2
+		Map(func(i Any) (Any, error) {
+			return i.(int) * 2, nil
 		}).
-		DoOnNext(func(v interface{}) {
+		DoOnNext(func(v Any) error {
 			assert.Equal(t, num*2, v, "bad value after map")
+			return nil
 		}).
 		Block(context.Background())
 	assert.NoError(t, err, "err occurred")
@@ -181,21 +188,22 @@ func testFilter(m mono.Mono, t *testing.T) {
 	var next bool
 	var step []string
 	m.
-		DoFinally(func(signal rs.SignalType) {
+		DoFinally(func(signal reactor.SignalType) {
 			step = append(step, "finally")
-			assert.Equal(t, rs.SignalTypeComplete, signal)
+			assert.Equal(t, reactor.SignalTypeComplete, signal)
 			close(done)
 		}).
-		DoOnNext(func(v interface{}) {
+		DoOnNext(func(v Any) error {
 			step = append(step, "next")
 			next = true
 			assert.Equal(t, num, v, "bad next value")
+			return nil
 		}).
-		Filter(func(i interface{}) bool {
+		Filter(func(i Any) bool {
 			step = append(step, "filter")
 			return i.(int) > num
 		}).
-		DoOnDiscard(func(i interface{}) {
+		DoOnDiscard(func(i Any) {
 			step = append(step, "discard")
 			discard = true
 			assert.Equal(t, num, i, "bad discard value")
@@ -210,8 +218,9 @@ func testSubscribeOn(m mono.Mono, t *testing.T) {
 	done := make(chan struct{})
 	m.
 		SubscribeOn(scheduler.Elastic()).
-		DoOnNext(func(v interface{}) {
+		DoOnNext(func(v Any) error {
 			assert.Equal(t, num, v, "bad next value")
+			return nil
 		}).
 		DoOnComplete(func() {
 			close(done)
@@ -222,11 +231,11 @@ func testSubscribeOn(m mono.Mono, t *testing.T) {
 
 func testFlatMap(m mono.Mono, t *testing.T) {
 	v, err := m.
-		FlatMap(func(i interface{}) mono.Mono {
+		FlatMap(func(i Any) mono.Mono {
 			return mono.Just(i).
-				Map(func(i interface{}) interface{} {
+				Map(func(i Any) (Any, error) {
 					time.Sleep(200 * time.Millisecond)
-					return i.(int) * 2
+					return i.(int) * 2, nil
 				}).
 				SubscribeOn(scheduler.Elastic())
 		}).
@@ -238,13 +247,14 @@ func testFlatMap(m mono.Mono, t *testing.T) {
 func testCancel(m mono.Mono, t *testing.T) {
 	var cancelled bool
 	m.
-		DoOnNext(func(v interface{}) {
+		DoOnNext(func(v Any) error {
 			assert.Fail(t, "should never run here")
+			return nil
 		}).
 		DoOnCancel(func() {
 			cancelled = true
 		}).
-		Subscribe(context.Background(), rs.OnSubscribe(func(su rs.Subscription) {
+		Subscribe(context.Background(), reactor.OnSubscribe(func(su reactor.Subscription) {
 			su.Cancel()
 		}))
 	assert.True(t, cancelled, "bad cancelled")
@@ -255,14 +265,15 @@ func testContextDone(m mono.Mono, t *testing.T) {
 	cancel()
 	var catches error
 	m.
-		DoOnNext(func(v interface{}) {
+		DoOnNext(func(v Any) error {
 			assert.Fail(t, "should never run here")
+			return nil
 		}).
 		DoOnError(func(e error) {
 			catches = e
 		}).
 		Subscribe(ctx)
-	assert.Equal(t, rs.ErrSubscribeCancelled, catches, "bad cancelled error")
+	assert.Equal(t, reactor.ErrSubscribeCancelled, catches, "bad cancelled error")
 }
 
 func BenchmarkNative(b *testing.B) {
@@ -270,7 +281,7 @@ func BenchmarkNative(b *testing.B) {
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			var v interface{} = int64(1)
+			var v Any = int64(1)
 			atomic.AddInt64(&sum, v.(int64))
 		}
 	})
@@ -281,8 +292,9 @@ func BenchmarkJust(b *testing.B) {
 	m := mono.Just(int64(1))
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
-		s := rs.NewSubscriber(rs.OnNext(func(v interface{}) {
+		s := reactor.NewSubscriber(reactor.OnNext(func(v Any) error {
 			atomic.AddInt64(&sum, v.(int64))
+			return nil
 		}))
 		for pb.Next() {
 			m.SubscribeWith(context.Background(), s)
@@ -297,8 +309,9 @@ func BenchmarkCreate(b *testing.B) {
 	})
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
-		s := rs.NewSubscriber(rs.OnNext(func(v interface{}) {
+		s := reactor.NewSubscriber(reactor.OnNext(func(v Any) error {
 			atomic.AddInt64(&sum, v.(int64))
+			return nil
 		}))
 		for pb.Next() {
 			m.SubscribeWith(context.Background(), s)
@@ -308,10 +321,10 @@ func BenchmarkCreate(b *testing.B) {
 
 func TestError(t *testing.T) {
 	mockErr := errors.New("this is a mock error")
-	var sig rs.SignalType
+	var sig reactor.SignalType
 	var e1, e2 error
 	mono.Error(mockErr).
-		DoFinally(func(s rs.SignalType) {
+		DoFinally(func(s reactor.SignalType) {
 			sig = s
 		}).
 		DoOnError(func(e error) {
@@ -319,14 +332,15 @@ func TestError(t *testing.T) {
 		}).
 		Subscribe(
 			context.Background(),
-			rs.OnNext(func(v interface{}) {
+			reactor.OnNext(func(v Any) error {
 				assert.Fail(t, "should never run here")
+				return nil
 			}),
-			rs.OnError(func(e error) {
+			reactor.OnError(func(e error) {
 				e2 = e
 			}),
 		)
 	assert.Equal(t, mockErr, e1, "bad doOnError")
 	assert.Equal(t, mockErr, e2, "bad onError")
-	assert.Equal(t, rs.SignalTypeError, sig, "bad signal")
+	assert.Equal(t, reactor.SignalTypeError, sig, "bad signal")
 }

@@ -11,7 +11,7 @@ import (
 )
 
 type processor struct {
-	v      interface{}
+	v      Any
 	e      error
 	done   bool
 	subs   *internal.Vector
@@ -29,7 +29,7 @@ func (p *processor) stat() (stat int32) {
 	return
 }
 
-func (p *processor) Success(v interface{}) {
+func (p *processor) Success(v Any) {
 	p.locker.Lock()
 	if p.done {
 		p.locker.Unlock()
@@ -40,7 +40,7 @@ func (p *processor) Success(v interface{}) {
 	p.v = v
 	p.locker.Unlock()
 	for _, it := range p.subs.Snapshot() {
-		s := it.(rs.Subscriber)
+		s := it.(reactor.Subscriber)
 		if v != nil {
 			s.OnNext(v)
 		}
@@ -59,11 +59,11 @@ func (p *processor) Error(e error) {
 	p.e = e
 	p.locker.Unlock()
 	for _, it := range p.subs.Snapshot() {
-		it.(rs.Subscriber).OnError(e)
+		it.(reactor.Subscriber).OnError(e)
 	}
 }
 
-func (p *processor) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
+func (p *processor) SubscribeWith(ctx context.Context, actual reactor.Subscriber) {
 	actual = internal.ExtractRawSubscriber(actual)
 	s := &processorSubscriber{
 		actual: actual,
@@ -76,15 +76,15 @@ func (p *processor) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
 
 type processorSubscriber struct {
 	parent    *processor
-	actual    rs.Subscriber
+	actual    reactor.Subscriber
 	stat      int32
-	s         rs.Subscription
+	s         reactor.Subscription
 	requested int32
 }
 
 func (p *processorSubscriber) Request(n int) {
 	if n < 1 {
-		panic(rs.ErrNegativeRequest)
+		panic(reactor.ErrNegativeRequest)
 	}
 	if atomic.AddInt32(&(p.requested), 1) != 1 {
 		return
@@ -118,7 +118,7 @@ func (p *processorSubscriber) OnError(e error) {
 	hooks.Global().OnErrorDrop(e)
 }
 
-func (p *processorSubscriber) OnNext(v interface{}) {
+func (p *processorSubscriber) OnNext(v Any) {
 	if atomic.LoadInt32(&(p.stat)) != 0 {
 		hooks.Global().OnNextDrop(v)
 		return
@@ -126,7 +126,7 @@ func (p *processorSubscriber) OnNext(v interface{}) {
 	p.actual.OnNext(v)
 }
 
-func (p *processorSubscriber) OnSubscribe(s rs.Subscription) {
+func (p *processorSubscriber) OnSubscribe(s reactor.Subscription) {
 	p.s = s
 	p.actual.OnSubscribe(s)
 }

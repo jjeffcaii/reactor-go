@@ -6,15 +6,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/hooks"
 	"github.com/jjeffcaii/reactor-go/mono"
 	"github.com/stretchr/testify/assert"
 )
 
+type Any = reactor.Any
+
 func TestCreate_OnNextDrop(t *testing.T) {
 	var droppedValue int
 	var droppedError error
-	hooks.OnNextDrop(func(i interface{}) {
+	hooks.OnNextDrop(func(i Any) {
 		droppedValue = i.(int)
 	})
 	hooks.OnErrorDrop(func(e error) {
@@ -31,8 +34,9 @@ func TestCreate_OnNextDrop(t *testing.T) {
 			sink.Error(errors.New("mock"))
 			close(done)
 		}).
-		DoOnNext(func(v interface{}) {
+		DoOnNext(func(v Any) error {
 			assert.Equal(t, 1, v.(int), "bad doOnNext")
+			return nil
 		}).
 		Subscribe(context.Background())
 	<-done
@@ -43,7 +47,7 @@ func TestCreate_OnNextDrop(t *testing.T) {
 func TestProcessor_OnNextDrop(t *testing.T) {
 	done := make(chan struct{})
 	var hasDrop bool
-	hooks.OnNextDrop(func(i interface{}) {
+	hooks.OnNextDrop(func(i Any) {
 		defer close(done)
 		assert.Equal(t, 2, i.(int), "bad onNextDrop")
 		hasDrop = true
@@ -56,8 +60,9 @@ func TestProcessor_OnNextDrop(t *testing.T) {
 		p.Success(2)
 	})
 	p.
-		DoOnNext(func(v interface{}) {
+		DoOnNext(func(v Any) error {
 			assert.Equal(t, 1, v.(int), "bad doOnNext")
+			return nil
 		}).
 		Subscribe(context.Background())
 	<-done

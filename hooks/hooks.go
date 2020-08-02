@@ -3,18 +3,18 @@ package hooks
 import (
 	"sync"
 
-	rs "github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go"
 )
 
 var globalHooks = &Hooks{}
 
 type Hooks struct {
-	nextDrops []rs.FnOnDiscard
-	errDrops  []rs.FnOnError
+	nextDrops []reactor.FnOnDiscard
+	errDrops  []reactor.FnOnError
 	locker    sync.RWMutex
 }
 
-func (p *Hooks) OnNextDrop(t interface{}) {
+func (p *Hooks) OnNextDrop(t reactor.Any) {
 	p.locker.RLock()
 	for _, fn := range p.nextDrops {
 		fn(t)
@@ -30,13 +30,13 @@ func (p *Hooks) OnErrorDrop(e error) {
 	p.locker.RUnlock()
 }
 
-func (p *Hooks) registerOnNextDrop(fn rs.FnOnDiscard) {
+func (p *Hooks) registerOnNextDrop(fn reactor.FnOnDiscard) {
 	p.locker.Lock()
 	p.nextDrops = append(p.nextDrops, fn)
 	p.locker.Unlock()
 }
 
-func (p *Hooks) registerOnErrorDrop(fn rs.FnOnError) {
+func (p *Hooks) registerOnErrorDrop(fn reactor.FnOnError) {
 	p.locker.Lock()
 	p.errDrops = append(p.errDrops, fn)
 	p.locker.Unlock()
@@ -46,10 +46,10 @@ func Global() *Hooks {
 	return globalHooks
 }
 
-func OnNextDrop(fn rs.FnOnDiscard) {
+func OnNextDrop(fn reactor.FnOnDiscard) {
 	globalHooks.registerOnNextDrop(fn)
 }
 
-func OnErrorDrop(fn rs.FnOnError) {
+func OnErrorDrop(fn reactor.FnOnError) {
 	globalHooks.registerOnErrorDrop(fn)
 }

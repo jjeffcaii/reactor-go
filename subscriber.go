@@ -1,4 +1,4 @@
-package rs
+package reactor
 
 import (
 	"math"
@@ -16,7 +16,7 @@ type Subscription interface {
 type Subscriber interface {
 	OnComplete()
 	OnError(error)
-	OnNext(interface{})
+	OnNext(Any)
 	OnSubscribe(Subscription)
 }
 
@@ -49,9 +49,12 @@ func (p *subscriber) OnSubscribe(s Subscription) {
 	}
 }
 
-func (p *subscriber) OnNext(v interface{}) {
-	if p.fnOnNext != nil {
-		p.fnOnNext(v)
+func (p *subscriber) OnNext(i Any) {
+	if p.fnOnNext == nil {
+		return
+	}
+	if err := p.fnOnNext(i); err != nil {
+		p.OnError(err)
 	}
 }
 

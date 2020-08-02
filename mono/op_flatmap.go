@@ -24,7 +24,7 @@ func (p *innerFlatMapSubscriber) OnError(err error) {
 	}
 }
 
-func (p *innerFlatMapSubscriber) OnNext(v interface{}) {
+func (p *innerFlatMapSubscriber) OnNext(v Any) {
 	if atomic.LoadInt32(&(p.parent.stat)) != 0 {
 		return
 	}
@@ -32,8 +32,8 @@ func (p *innerFlatMapSubscriber) OnNext(v interface{}) {
 	p.OnComplete()
 }
 
-func (p *innerFlatMapSubscriber) OnSubscribe(s rs.Subscription) {
-	s.Request(rs.RequestInfinite)
+func (p *innerFlatMapSubscriber) OnSubscribe(s reactor.Subscription) {
+	s.Request(reactor.RequestInfinite)
 }
 
 func (p *innerFlatMapSubscriber) OnComplete() {
@@ -43,7 +43,7 @@ func (p *innerFlatMapSubscriber) OnComplete() {
 }
 
 type flatMapSubscriber struct {
-	actual rs.Subscriber
+	actual reactor.Subscriber
 	mapper flatMapper
 	stat   int32
 	ctx    context.Context
@@ -68,7 +68,7 @@ func (p *flatMapSubscriber) OnError(err error) {
 	}
 }
 
-func (p *flatMapSubscriber) OnNext(v interface{}) {
+func (p *flatMapSubscriber) OnNext(v Any) {
 	if atomic.LoadInt32(&(p.stat)) != 0 {
 		return
 	}
@@ -79,11 +79,11 @@ func (p *flatMapSubscriber) OnNext(v interface{}) {
 	m.SubscribeWith(p.ctx, inner)
 }
 
-func (p *flatMapSubscriber) OnSubscribe(s rs.Subscription) {
-	s.Request(rs.RequestInfinite)
+func (p *flatMapSubscriber) OnSubscribe(s reactor.Subscription) {
+	s.Request(reactor.RequestInfinite)
 }
 
-func newFlatMapSubscriber(ctx context.Context, actual rs.Subscriber, mapper flatMapper) *flatMapSubscriber {
+func newFlatMapSubscriber(ctx context.Context, actual reactor.Subscriber, mapper flatMapper) *flatMapSubscriber {
 	return &flatMapSubscriber{
 		ctx:    ctx,
 		actual: actual,
@@ -92,18 +92,18 @@ func newFlatMapSubscriber(ctx context.Context, actual rs.Subscriber, mapper flat
 }
 
 type monoFlatMap struct {
-	source rs.RawPublisher
+	source reactor.RawPublisher
 	mapper flatMapper
 }
 
-func (m *monoFlatMap) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
+func (m *monoFlatMap) SubscribeWith(ctx context.Context, actual reactor.Subscriber) {
 	actual = internal.ExtractRawSubscriber(actual)
 	s := newFlatMapSubscriber(ctx, actual, m.mapper)
 	actual.OnSubscribe(s)
 	m.source.SubscribeWith(ctx, s)
 }
 
-func newMonoFlatMap(source rs.RawPublisher, mapper flatMapper) *monoFlatMap {
+func newMonoFlatMap(source reactor.RawPublisher, mapper flatMapper) *monoFlatMap {
 	return &monoFlatMap{
 		source: source,
 		mapper: mapper,

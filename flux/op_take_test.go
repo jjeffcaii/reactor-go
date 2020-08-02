@@ -21,8 +21,9 @@ func TestTake(t *testing.T) {
 		DoOnComplete(func() {
 			completed = true
 		}).
-		DoOnNext(func(v interface{}) {
+		DoOnNext(func(v Any) error {
 			amount++
+			return nil
 		}).
 		BlockLast(context.Background())
 	assert.NoError(t, err, "block last failed")

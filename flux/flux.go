@@ -18,33 +18,36 @@ const (
 	OverflowLatest
 )
 
+type Any = reactor.Any
 type FnSwitchOnFirst = func(s Signal, f Flux) Flux
 
 type Flux interface {
-	rs.Publisher
-	Filter(rs.Predicate) Flux
-	Map(rs.Transformer) Flux
+	reactor.Publisher
+	Filter(reactor.Predicate) Flux
+	Map(reactor.Transformer) Flux
 	Take(n int) Flux
-	DoOnDiscard(rs.FnOnDiscard) Flux
-	DoOnNext(rs.FnOnNext) Flux
-	DoOnComplete(rs.FnOnComplete) Flux
-	DoOnError(rs.FnOnError) Flux
-	DoOnCancel(rs.FnOnCancel) Flux
-	DoOnRequest(rs.FnOnRequest) Flux
-	DoOnSubscribe(rs.FnOnSubscribe) Flux
-	DoFinally(rs.FnOnFinally) Flux
+	DoOnDiscard(reactor.FnOnDiscard) Flux
+	DoOnNext(reactor.FnOnNext) Flux
+	DoOnComplete(reactor.FnOnComplete) Flux
+	DoOnError(reactor.FnOnError) Flux
+	DoOnCancel(reactor.FnOnCancel) Flux
+	DoOnRequest(reactor.FnOnRequest) Flux
+	DoOnSubscribe(reactor.FnOnSubscribe) Flux
+	DoFinally(reactor.FnOnFinally) Flux
 	SwitchOnFirst(FnSwitchOnFirst) Flux
 	DelayElement(delay time.Duration) Flux
 	SubscribeOn(scheduler.Scheduler) Flux
-	BlockFirst(context.Context) (interface{}, error)
-	BlockLast(context.Context) (interface{}, error)
-	ToChan(ctx context.Context, cap int) (c <-chan interface{}, e <-chan error)
+	BlockFirst(context.Context) (Any, error)
+	BlockLast(context.Context) (Any, error)
+	ToChan(ctx context.Context, cap int) (c <-chan Any, e <-chan error)
+	BlockToSlice(ctx context.Context, slicePtr interface{}) error
+	BlockToChan(ctx context.Context, ch interface{}) error
 }
 
 type Sink interface {
 	Complete()
 	Error(error)
-	Next(interface{})
+	Next(Any)
 }
 
 type Processor interface {

@@ -10,16 +10,16 @@ import (
 )
 
 type Signal interface {
-	Value() (interface{}, bool)
-	Type() rs.SignalType
+	Value() (Any, bool)
+	Type() reactor.SignalType
 }
 
 type immutableSignal struct {
-	v interface{}
-	t rs.SignalType
+	v Any
+	t reactor.SignalType
 }
 
-func (p *immutableSignal) Value() (v interface{}, ok bool) {
+func (p *immutableSignal) Value() (v Any, ok bool) {
 	ok = p.v != nil
 	if ok {
 		v = p.v
@@ -27,30 +27,30 @@ func (p *immutableSignal) Value() (v interface{}, ok bool) {
 	return
 }
 
-func (p *immutableSignal) Type() rs.SignalType {
+func (p *immutableSignal) Type() reactor.SignalType {
 	return p.t
 }
 
 type fluxSwitchOnFirst struct {
-	source rs.RawPublisher
+	source reactor.RawPublisher
 	t      FnSwitchOnFirst
 }
 
-func (p *fluxSwitchOnFirst) SubscribeWith(ctx context.Context, s rs.Subscriber) {
+func (p *fluxSwitchOnFirst) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
 	inner := newSwitchOnFirstInner(s, p.t)
 	p.source.SubscribeWith(ctx, inner)
 }
 
 type switchOnFirstInner struct {
-	inner       rs.Subscriber
-	outer       rs.Subscriber
+	inner       reactor.Subscriber
+	outer       reactor.Subscriber
 	transformer FnSwitchOnFirst
-	s           rs.Subscription
-	first       interface{}
+	s           reactor.Subscription
+	first       Any
 	stat        int32
 }
 
-func (p *switchOnFirstInner) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
+func (p *switchOnFirstInner) SubscribeWith(ctx context.Context, actual reactor.Subscriber) {
 	if !atomic.CompareAndSwapInt32(&(p.stat), math.MinInt32, 0) {
 		panic(errSubscribeOnce)
 	}
@@ -60,11 +60,11 @@ func (p *switchOnFirstInner) SubscribeWith(ctx context.Context, actual rs.Subscr
 
 func (p *switchOnFirstInner) Request(n int) {
 	if n < 1 {
-		panic(rs.ErrNegativeRequest)
+		panic(reactor.ErrNegativeRequest)
 	}
 	if p.first != nil {
 		p.drain()
-		if n < rs.RequestInfinite {
+		if n < reactor.RequestInfinite {
 			n--
 			if n > 0 {
 				p.s.Request(n)
@@ -76,7 +76,7 @@ func (p *switchOnFirstInner) Request(n int) {
 }
 
 func (p *switchOnFirstInner) drain() {
-	var first interface{}
+	var first Any
 	first, p.first = p.first, nil
 	if first == nil {
 		return
@@ -104,12 +104,12 @@ func (p *switchOnFirstInner) OnError(e error) {
 	hooks.Global().OnErrorDrop(e)
 }
 
-func (p *switchOnFirstInner) OnNext(v interface{}) {
+func (p *switchOnFirstInner) OnNext(v Any) {
 	i := p.inner
 	if i == nil {
 		sig := &immutableSignal{
 			v: v,
-			t: rs.SignalTypeDefault,
+			t: reactor.SignalTypeDefault,
 		}
 		result := p.transformer(sig, wrap(p))
 		p.first = v
@@ -120,14 +120,14 @@ func (p *switchOnFirstInner) OnNext(v interface{}) {
 	i.OnNext(v)
 }
 
-func (p *switchOnFirstInner) OnSubscribe(s rs.Subscription) {
+func (p *switchOnFirstInner) OnSubscribe(s reactor.Subscription) {
 	p.s = s
 	s.Request(1)
 }
 
 type switchOnFirstInnerSubscriber struct {
 	parent *switchOnFirstInner
-	inner  rs.Subscriber
+	inner  reactor.Subscriber
 }
 
 func (p *switchOnFirstInnerSubscriber) OnComplete() {
@@ -144,22 +144,22 @@ func (p *switchOnFirstInnerSubscriber) OnError(e error) {
 	p.inner.OnError(e)
 }
 
-func (p *switchOnFirstInnerSubscriber) OnNext(t interface{}) {
+func (p *switchOnFirstInnerSubscriber) OnNext(t Any) {
 	p.inner.OnNext(t)
 }
 
-func (p *switchOnFirstInnerSubscriber) OnSubscribe(s rs.Subscription) {
+func (p *switchOnFirstInnerSubscriber) OnSubscribe(s reactor.Subscription) {
 	p.inner.OnSubscribe(s)
 }
 
-func newFluxSwitchOnFirst(source rs.RawPublisher, transformer FnSwitchOnFirst) *fluxSwitchOnFirst {
+func newFluxSwitchOnFirst(source reactor.RawPublisher, transformer FnSwitchOnFirst) *fluxSwitchOnFirst {
 	return &fluxSwitchOnFirst{
 		source: source,
 		t:      transformer,
 	}
 }
 
-func newSwitchOnFirstInner(outer rs.Subscriber, transformer FnSwitchOnFirst) *switchOnFirstInner {
+func newSwitchOnFirstInner(outer reactor.Subscriber, transformer FnSwitchOnFirst) *switchOnFirstInner {
 	ret := &switchOnFirstInner{
 		transformer: transformer,
 		stat:        math.MinInt32,
@@ -168,7 +168,7 @@ func newSwitchOnFirstInner(outer rs.Subscriber, transformer FnSwitchOnFirst) *sw
 	return ret
 }
 
-func newSwitchOnFirstInnerSubscriber(parent *switchOnFirstInner, inner rs.Subscriber) *switchOnFirstInnerSubscriber {
+func newSwitchOnFirstInnerSubscriber(parent *switchOnFirstInner, inner reactor.Subscriber) *switchOnFirstInnerSubscriber {
 	return &switchOnFirstInnerSubscriber{
 		parent: parent,
 		inner:  inner,

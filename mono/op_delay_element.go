@@ -5,7 +5,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	rs "github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/hooks"
 	"github.com/jjeffcaii/reactor-go/internal"
 	"github.com/jjeffcaii/reactor-go/scheduler"
@@ -14,10 +14,10 @@ import (
 type delayElementSubscriber struct {
 	delay  time.Duration
 	sc     scheduler.Scheduler
-	s      rs.Subscription
-	actual rs.Subscriber
+	s      reactor.Subscription
+	actual reactor.Subscriber
 	stat   int32
-	v      interface{}
+	v      Any
 }
 
 func (p *delayElementSubscriber) Request(n int) {
@@ -37,7 +37,7 @@ func (p *delayElementSubscriber) OnError(err error) {
 	hooks.Global().OnErrorDrop(err)
 }
 
-func (p *delayElementSubscriber) OnNext(v interface{}) {
+func (p *delayElementSubscriber) OnNext(v Any) {
 	if !atomic.CompareAndSwapInt32(&(p.stat), 0, statComplete) {
 		hooks.Global().OnNextDrop(v)
 		return
@@ -48,10 +48,10 @@ func (p *delayElementSubscriber) OnNext(v interface{}) {
 	})
 }
 
-func (p *delayElementSubscriber) OnSubscribe(s rs.Subscription) {
+func (p *delayElementSubscriber) OnSubscribe(s reactor.Subscription) {
 	p.s = s
 	p.actual.OnSubscribe(p)
-	s.Request(rs.RequestInfinite)
+	s.Request(reactor.RequestInfinite)
 }
 
 func (p *delayElementSubscriber) OnComplete() {
@@ -60,7 +60,7 @@ func (p *delayElementSubscriber) OnComplete() {
 	}
 }
 
-func newDelayElementSubscriber(actual rs.Subscriber, delay time.Duration, sc scheduler.Scheduler) rs.Subscriber {
+func newDelayElementSubscriber(actual reactor.Subscriber, delay time.Duration, sc scheduler.Scheduler) reactor.Subscriber {
 	return &delayElementSubscriber{
 		delay:  delay,
 		actual: actual,
@@ -69,18 +69,18 @@ func newDelayElementSubscriber(actual rs.Subscriber, delay time.Duration, sc sch
 }
 
 type monoDelayElement struct {
-	source rs.RawPublisher
+	source reactor.RawPublisher
 	delay  time.Duration
 	sc     scheduler.Scheduler
 }
 
-func (p *monoDelayElement) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
+func (p *monoDelayElement) SubscribeWith(ctx context.Context, actual reactor.Subscriber) {
 	actual = internal.ExtractRawSubscriber(actual)
 	actual = internal.NewCoreSubscriber(ctx, newDelayElementSubscriber(actual, p.delay, p.sc))
 	p.source.SubscribeWith(ctx, actual)
 }
 
-func newMonoDelayElement(source rs.RawPublisher, delay time.Duration, sc scheduler.Scheduler) *monoDelayElement {
+func newMonoDelayElement(source reactor.RawPublisher, delay time.Duration, sc scheduler.Scheduler) *monoDelayElement {
 	return &monoDelayElement{
 		source: source,
 		delay:  delay,

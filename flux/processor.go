@@ -5,19 +5,19 @@ import (
 	"sync"
 	"sync/atomic"
 
-	rs "github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/hooks"
 	"github.com/jjeffcaii/reactor-go/internal"
 )
 
 type rawProcessor interface {
-	rs.RawPublisher
+	reactor.RawPublisher
 	Sink
 }
 
 type unicastProcessor struct {
 	q          queue
-	actual     rs.Subscriber
+	actual     reactor.Subscriber
 	stat       int32
 	requests   int32
 	draining   int32
@@ -53,7 +53,7 @@ func (p *unicastProcessor) OnError(e error) {
 	}
 }
 
-func (p *unicastProcessor) OnNext(v interface{}) {
+func (p *unicastProcessor) OnNext(v Any) {
 	if atomic.LoadInt32(&p.stat) != 0 {
 		hooks.Global().OnNextDrop(v)
 		return
@@ -62,11 +62,11 @@ func (p *unicastProcessor) OnNext(v interface{}) {
 	p.drain()
 }
 
-func (p *unicastProcessor) OnSubscribe(su rs.Subscription) {
+func (p *unicastProcessor) OnSubscribe(su reactor.Subscription) {
 	p.actual.OnSubscribe(su)
 }
 
-func (p *unicastProcessor) SubscribeWith(ctx context.Context, s rs.Subscriber) {
+func (p *unicastProcessor) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
 	p.cond.L.Lock()
 	if p.actual != nil {
 		p.cond.L.Unlock()
@@ -89,7 +89,7 @@ func (p *unicastProcessor) Error(e error) {
 	p.OnError(e)
 }
 
-func (p *unicastProcessor) Next(v interface{}) {
+func (p *unicastProcessor) Next(v Any) {
 	<-p.subscribed
 	p.OnNext(v)
 }

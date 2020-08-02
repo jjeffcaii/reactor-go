@@ -3,14 +3,14 @@ package mono
 import (
 	"context"
 
-	rs "github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/internal"
 )
 
 type filterSubscriber struct {
 	ctx    context.Context
-	actual rs.Subscriber
-	f      rs.Predicate
+	actual reactor.Subscriber
+	f      reactor.Predicate
 }
 
 func (f filterSubscriber) OnComplete() {
@@ -21,7 +21,7 @@ func (f filterSubscriber) OnError(err error) {
 	f.actual.OnError(err)
 }
 
-func (f filterSubscriber) OnNext(v interface{}) {
+func (f filterSubscriber) OnNext(v Any) {
 	defer func() {
 		if err := internal.TryRecoverError(recover()); err != nil {
 			f.OnError(err)
@@ -34,22 +34,22 @@ func (f filterSubscriber) OnNext(v interface{}) {
 	internal.TryDiscard(f.ctx, v)
 }
 
-func (f filterSubscriber) OnSubscribe(s rs.Subscription) {
+func (f filterSubscriber) OnSubscribe(s reactor.Subscription) {
 	f.actual.OnSubscribe(s)
 }
 
 type monoFilter struct {
-	s rs.RawPublisher
-	f rs.Predicate
+	s reactor.RawPublisher
+	f reactor.Predicate
 }
 
-func (m *monoFilter) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
+func (m *monoFilter) SubscribeWith(ctx context.Context, actual reactor.Subscriber) {
 	actual = internal.ExtractRawSubscriber(actual)
 	actual = internal.NewCoreSubscriber(ctx, newFilterSubscriber(ctx, actual, m.f))
 	m.s.SubscribeWith(ctx, actual)
 }
 
-func newFilterSubscriber(ctx context.Context, actual rs.Subscriber, predicate rs.Predicate) filterSubscriber {
+func newFilterSubscriber(ctx context.Context, actual reactor.Subscriber, predicate reactor.Predicate) filterSubscriber {
 	return filterSubscriber{
 		ctx:    ctx,
 		actual: actual,
@@ -57,7 +57,7 @@ func newFilterSubscriber(ctx context.Context, actual rs.Subscriber, predicate rs
 	}
 }
 
-func newMonoFilter(s rs.RawPublisher, f rs.Predicate) *monoFilter {
+func newMonoFilter(s reactor.RawPublisher, f reactor.Predicate) *monoFilter {
 	return &monoFilter{
 		s: s,
 		f: f,

@@ -8,7 +8,7 @@ import (
 	"context"
 	"fmt"
 
-	rs "github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/mono"
 )
 

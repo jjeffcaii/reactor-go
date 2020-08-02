@@ -8,11 +8,11 @@ import (
 )
 
 type monoContext struct {
-	source rs.RawPublisher
-	kv     []interface{}
+	source reactor.RawPublisher
+	kv     []Any
 }
 
-func (p *monoContext) SubscribeWith(ctx context.Context, s rs.Subscriber) {
+func (p *monoContext) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
 	for i := 0; i < len(p.kv); i += 2 {
 		ctx = context.WithValue(ctx, p.kv[i], p.kv[i+1])
 	}
@@ -21,19 +21,19 @@ func (p *monoContext) SubscribeWith(ctx context.Context, s rs.Subscriber) {
 
 type monoContextOption func(*monoContext)
 
-func withContextDiscard(fn rs.FnOnDiscard) monoContextOption {
+func withContextDiscard(fn reactor.FnOnDiscard) monoContextOption {
 	return func(i *monoContext) {
 		i.kv = append(i.kv, internal.KeyOnDiscard, fn)
 	}
 }
 
-func withContextError(fn rs.FnOnError) monoContextOption {
+func withContextError(fn reactor.FnOnError) monoContextOption {
 	return func(i *monoContext) {
 		i.kv = append(i.kv, internal.KeyOnError, fn)
 	}
 }
 
-func newMonoContext(source rs.RawPublisher, options ...monoContextOption) *monoContext {
+func newMonoContext(source reactor.RawPublisher, options ...monoContextOption) *monoContext {
 	mc := &monoContext{
 		source: source,
 	}

@@ -9,13 +9,13 @@ import (
 )
 
 type delaySubscriber struct {
-	actual    rs.Subscriber
+	actual    reactor.Subscriber
 	requested bool
 }
 
 func (p *delaySubscriber) Request(n int) {
 	if n < 1 {
-		panic(rs.ErrNegativeRequest)
+		panic(reactor.ErrNegativeRequest)
 	}
 	p.requested = true
 }
@@ -29,7 +29,7 @@ type monoDelay struct {
 	sc    scheduler.Scheduler
 }
 
-func (p *monoDelay) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
+func (p *monoDelay) SubscribeWith(ctx context.Context, actual reactor.Subscriber) {
 	s := &delaySubscriber{
 		actual: actual,
 	}

@@ -8,8 +8,8 @@ import (
 )
 
 type mapSubscriber struct {
-	actual rs.Subscriber
-	t      rs.Transformer
+	actual reactor.Subscriber
+	t      reactor.Transformer
 }
 
 func (m mapSubscriber) OnComplete() {
@@ -20,20 +20,19 @@ func (m mapSubscriber) OnError(err error) {
 	m.actual.OnError(err)
 }
 
-func (m mapSubscriber) OnNext(v interface{}) {
-	defer func() {
-		if err := internal.TryRecoverError(recover()); err != nil {
-			m.OnError(err)
-		}
-	}()
-	m.actual.OnNext(m.t(v))
+func (m mapSubscriber) OnNext(v Any) {
+	if o, err := m.t(v); err != nil {
+		m.actual.OnError(err)
+	} else {
+		m.actual.OnNext(o)
+	}
 }
 
-func (m mapSubscriber) OnSubscribe(s rs.Subscription) {
+func (m mapSubscriber) OnSubscribe(s reactor.Subscription) {
 	m.actual.OnSubscribe(s)
 }
 
-func newMapSubscriber(s rs.Subscriber, t rs.Transformer) mapSubscriber {
+func newMapSubscriber(s reactor.Subscriber, t reactor.Transformer) mapSubscriber {
 	return mapSubscriber{
 		actual: s,
 		t:      t,
@@ -41,17 +40,17 @@ func newMapSubscriber(s rs.Subscriber, t rs.Transformer) mapSubscriber {
 }
 
 type monoMap struct {
-	source rs.RawPublisher
-	mapper rs.Transformer
+	source reactor.RawPublisher
+	mapper reactor.Transformer
 }
 
-func (m *monoMap) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
+func (m *monoMap) SubscribeWith(ctx context.Context, actual reactor.Subscriber) {
 	actual = internal.ExtractRawSubscriber(actual)
 	actual = internal.NewCoreSubscriber(ctx, newMapSubscriber(actual, m.mapper))
 	m.source.SubscribeWith(ctx, actual)
 }
 
-func newMonoMap(source rs.RawPublisher, tf rs.Transformer) *monoMap {
+func newMonoMap(source reactor.RawPublisher, tf reactor.Transformer) *monoMap {
 	return &monoMap{
 		source: source,
 		mapper: tf,

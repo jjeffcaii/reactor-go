@@ -3,35 +3,35 @@ package internal
 import (
 	"context"
 
-	rs "github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/hooks"
 )
 
 type CoreSubscriber struct {
-	rs.Subscriber
+	reactor.Subscriber
 	ctx context.Context
 }
 
-func (p *CoreSubscriber) OnSubscribe(su rs.Subscription) {
+func (p *CoreSubscriber) OnSubscribe(su reactor.Subscription) {
 	select {
 	case <-p.ctx.Done():
-		p.Subscriber.OnError(rs.ErrSubscribeCancelled)
+		p.Subscriber.OnError(reactor.ErrSubscribeCancelled)
 	default:
 		p.Subscriber.OnSubscribe(su)
 	}
 }
 
-func (p *CoreSubscriber) OnNext(v interface{}) {
+func (p *CoreSubscriber) OnNext(v reactor.Any) {
 	select {
 	case <-p.ctx.Done():
 		hooks.Global().OnNextDrop(v)
-		p.Subscriber.OnError(rs.ErrSubscribeCancelled)
+		p.Subscriber.OnError(reactor.ErrSubscribeCancelled)
 	default:
 		p.Subscriber.OnNext(v)
 	}
 }
 
-func NewCoreSubscriber(ctx context.Context, actual rs.Subscriber) *CoreSubscriber {
+func NewCoreSubscriber(ctx context.Context, actual reactor.Subscriber) *CoreSubscriber {
 	if cs, ok := actual.(*CoreSubscriber); ok {
 		return cs
 	}
@@ -41,7 +41,7 @@ func NewCoreSubscriber(ctx context.Context, actual rs.Subscriber) *CoreSubscribe
 	}
 }
 
-func ExtractRawSubscriber(s rs.Subscriber) rs.Subscriber {
+func ExtractRawSubscriber(s reactor.Subscriber) reactor.Subscriber {
 	if cs, ok := s.(*CoreSubscriber); ok {
 		return cs.Subscriber
 	}
