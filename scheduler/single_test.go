@@ -1,6 +1,7 @@
 package scheduler_test
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 
@@ -12,6 +13,7 @@ const totals = 100
 
 func TestSingle(t *testing.T) {
 	single := scheduler.Single()
+	fmt.Println(single.Name())
 
 	assert.NotPanics(t, func() {
 		wg := sync.WaitGroup{}

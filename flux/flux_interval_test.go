@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type Any = reactor.Any
+
 
 func TestInterval(t *testing.T) {
 	done := make(chan struct{})

@@ -38,7 +38,7 @@ func Create(gen func(ctx context.Context, s Sink)) Mono {
 }
 
 func Delay(delay time.Duration) Mono {
-	return wrap(newMonoDelay(delay, scheduler.Elastic()))
+	return wrap(newMonoDelay(delay, scheduler.Parallel()))
 }
 
 func CreateProcessor() Processor {

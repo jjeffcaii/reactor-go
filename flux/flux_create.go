@@ -2,39 +2,24 @@ package flux
 
 import (
 	"context"
-	"os"
-	"strconv"
+	"fmt"
 
 	"github.com/jjeffcaii/reactor-go"
 )
 
-var (
+const (
 	BuffSizeXS = 32
 	BuffSizeSM = 256
 )
 
-func init() {
-	if sm, ok := os.LookupEnv("REACTOR_BUFF_SM"); ok {
-		v, err := strconv.Atoi(sm)
-		if err != nil {
-			panic(err)
-		}
-		if v < 16 {
-			v = 16
-		}
-		BuffSizeSM = v
-	}
+var _buffSize = BuffSizeSM
 
-	if xs, ok := os.LookupEnv("REACTOR_BUFF_XS"); ok {
-		v, err := strconv.Atoi(xs)
-		if err != nil {
-			panic(err)
-		}
-		if v < 8 {
-			v = 8
-		}
-		BuffSizeXS = v
+// InitBuffSize initialize the size of buff. (default=256)
+func InitBuffSize(size int) {
+	if size < 1 {
+		panic(fmt.Sprintf("invalid flux buff size: %d", size))
 	}
+	_buffSize = size
 }
 
 type fluxCreate struct {
@@ -61,7 +46,7 @@ func (m fluxCreate) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
 		// TODO: need implementation
 		panic("implement me")
 	default:
-		sink = newBufferedSink(s, BuffSizeSM)
+		sink = newBufferedSink(s, _buffSize)
 	}
 	s.OnSubscribe(sink)
 	m.source(ctx, sink)

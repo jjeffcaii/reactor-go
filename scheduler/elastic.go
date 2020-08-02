@@ -7,6 +7,8 @@ import (
 	"github.com/panjf2000/ants/v2"
 )
 
+const _elasticName = "elastic"
+
 var (
 	_elastic     Scheduler
 	_elasticInit sync.Once
@@ -14,6 +16,10 @@ var (
 
 type elasticScheduler struct {
 	pool *ants.Pool
+}
+
+func (e *elasticScheduler) Name() string {
+	return _elasticName
 }
 
 func (e *elasticScheduler) Close() (err error) {

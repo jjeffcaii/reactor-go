@@ -8,6 +8,8 @@ import (
 	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
+const _delayValue = int64(0)
+
 type delaySubscriber struct {
 	actual    reactor.Subscriber
 	requested bool
@@ -37,12 +39,12 @@ func (p *monoDelay) SubscribeWith(ctx context.Context, actual reactor.Subscriber
 
 	time.AfterFunc(p.delay, func() {
 		if p.sc == nil {
-			actual.OnNext(int64(0))
+			actual.OnNext(_delayValue)
 			actual.OnComplete()
 			return
 		}
 		p.sc.Worker().Do(func() {
-			actual.OnNext(int64(0))
+			actual.OnNext(_delayValue)
 			actual.OnComplete()
 		})
 	})

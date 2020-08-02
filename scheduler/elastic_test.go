@@ -1,6 +1,7 @@
 package scheduler_test
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 
@@ -9,6 +10,7 @@ import (
 )
 
 func TestElastic(t *testing.T) {
+	fmt.Println(scheduler.Elastic().Name())
 	done := make(chan int)
 	scheduler.Elastic().Worker().Do(func() {
 		done <- 1

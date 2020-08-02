@@ -8,6 +8,8 @@ import (
 // DefaultSingleCap is default task queue size.
 const DefaultSingleCap = 1000
 
+const _singleName = "single"
+
 var (
 	_single     Scheduler
 	_singleInit sync.Once
@@ -16,6 +18,10 @@ var (
 type singleScheduler struct {
 	jobs    chan Task
 	started int64
+}
+
+func (p *singleScheduler) Name() string {
+	return _singleName
 }
 
 func (p *singleScheduler) Close() (err error) {
