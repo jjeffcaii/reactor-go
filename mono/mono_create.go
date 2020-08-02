@@ -10,16 +10,16 @@ import (
 )
 
 type Sink interface {
-	Success(interface{})
+	Success(Any)
 	Error(error)
 }
 
 type defaultSink struct {
-	actual rs.Subscriber
+	actual reactor.Subscriber
 	stat   int32
 }
 
-func (s *defaultSink) Success(v interface{}) {
+func (s *defaultSink) Success(v Any) {
 	if atomic.LoadInt32(&(s.stat)) != 0 {
 		hooks.Global().OnNextDrop(v)
 		return
@@ -32,7 +32,7 @@ func (s *defaultSink) Success(v interface{}) {
 
 func (s *defaultSink) Request(n int) {
 	if n < 1 {
-		panic(rs.ErrNegativeRequest)
+		panic(reactor.ErrNegativeRequest)
 	}
 }
 
@@ -54,7 +54,7 @@ func (s *defaultSink) Error(err error) {
 	hooks.Global().OnErrorDrop(err)
 }
 
-func (s *defaultSink) Next(v interface{}) {
+func (s *defaultSink) Next(v Any) {
 	defer func() {
 		if err := internal.TryRecoverError(recover()); err != nil {
 			s.Error(err)
@@ -67,7 +67,7 @@ type monoCreate struct {
 	sinker func(context.Context, Sink)
 }
 
-func (m *monoCreate) SubscribeWith(ctx context.Context, s rs.Subscriber) {
+func (m *monoCreate) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
 	sink := &defaultSink{
 		actual: s,
 	}

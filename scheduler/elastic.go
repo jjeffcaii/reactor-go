@@ -33,10 +33,7 @@ func (e *elasticScheduler) Worker() Worker {
 
 // NewElastic creates a new elastic scheduler.
 func NewElastic(size int) Scheduler {
-	pool, err := ants.NewPool(size)
-	if err != nil {
-		panic(err)
-	}
+	pool, _ := ants.NewPool(size)
 	return &elasticScheduler{
 		pool: pool,
 	}

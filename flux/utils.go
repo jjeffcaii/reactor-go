@@ -26,7 +26,7 @@ func Empty() Flux {
 	return empty
 }
 
-func Just(values ...interface{}) Flux {
+func Just(values ...Any) Flux {
 	if len(values) < 1 {
 		return empty
 	}
@@ -45,6 +45,6 @@ func NewUnicastProcessor() Processor {
 	return wrap(newUnicastProcessor(BuffSizeSM))
 }
 
-func just(values []interface{}) Flux {
+func just(values []Any) Flux {
 	return wrap(newSliceFlux(values))
 }

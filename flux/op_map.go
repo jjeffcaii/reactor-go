@@ -3,12 +3,12 @@ package flux
 import (
 	"context"
 
-	rs "github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go"
 )
 
 type mapSubscriber struct {
-	source rs.Subscriber
-	mapper rs.Transformer
+	source reactor.Subscriber
+	mapper reactor.Transformer
 }
 
 func (s mapSubscriber) OnComplete() {
@@ -19,15 +19,19 @@ func (s mapSubscriber) OnError(err error) {
 	s.source.OnError(err)
 }
 
-func (s mapSubscriber) OnNext(v interface{}) {
-	s.source.OnNext(s.mapper(v))
+func (s mapSubscriber) OnNext(i Any) {
+	if o, err := s.mapper(i); err != nil {
+		s.source.OnError(err)
+	} else {
+		s.source.OnNext(o)
+	}
 }
 
-func (s mapSubscriber) OnSubscribe(subscription rs.Subscription) {
+func (s mapSubscriber) OnSubscribe(subscription reactor.Subscription) {
 	s.source.OnSubscribe(subscription)
 }
 
-func newMapSubscriber(s rs.Subscriber, mapper rs.Transformer) rs.Subscriber {
+func newMapSubscriber(s reactor.Subscriber, mapper reactor.Transformer) reactor.Subscriber {
 	return mapSubscriber{
 		source: s,
 		mapper: mapper,
@@ -35,15 +39,15 @@ func newMapSubscriber(s rs.Subscriber, mapper rs.Transformer) rs.Subscriber {
 }
 
 type fluxMap struct {
-	source rs.RawPublisher
-	mapper rs.Transformer
+	source reactor.RawPublisher
+	mapper reactor.Transformer
 }
 
-func (p *fluxMap) SubscribeWith(ctx context.Context, sub rs.Subscriber) {
+func (p *fluxMap) SubscribeWith(ctx context.Context, sub reactor.Subscriber) {
 	p.source.SubscribeWith(ctx, newMapSubscriber(sub, p.mapper))
 }
 
-func newFluxMap(source rs.RawPublisher, mapper rs.Transformer) *fluxMap {
+func newFluxMap(source reactor.RawPublisher, mapper reactor.Transformer) *fluxMap {
 	return &fluxMap{
 		source: source,
 		mapper: mapper,

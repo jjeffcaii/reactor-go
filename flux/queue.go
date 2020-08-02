@@ -1,7 +1,7 @@
 package flux
 
 type queue struct {
-	c chan interface{}
+	c chan Any
 }
 
 func (q queue) size() int {
@@ -13,11 +13,11 @@ func (q queue) Close() (err error) {
 	return
 }
 
-func (q queue) offer(v interface{}) {
+func (q queue) offer(v Any) {
 	q.c <- v
 }
 
-func (q queue) poll() (v interface{}, ok bool) {
+func (q queue) poll() (v Any, ok bool) {
 	select {
 	case v, ok = <-q.c:
 		return
@@ -28,6 +28,6 @@ func (q queue) poll() (v interface{}, ok bool) {
 
 func newQueue(size int) queue {
 	return queue{
-		c: make(chan interface{}, size),
+		c: make(chan Any, size),
 	}
 }

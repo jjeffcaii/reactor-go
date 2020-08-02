@@ -18,8 +18,8 @@ func TestProcessor(t *testing.T) {
 	})
 
 	v, err := p.
-		Map(func(i interface{}) interface{} {
-			return i.(int) * 2
+		Map(func(i Any) (Any, error) {
+			return i.(int) * 2, nil
 		}).
 		Block(context.Background())
 	assert.NoError(t, err, "block failed")
@@ -27,8 +27,9 @@ func TestProcessor(t *testing.T) {
 
 	var actual int
 	p.
-		DoOnNext(func(v interface{}) {
+		DoOnNext(func(v Any) error {
 			actual = v.(int)
+			return nil
 		}).
 		Subscribe(context.Background())
 	assert.Equal(t, 333, actual, "bad result")
@@ -44,11 +45,11 @@ func TestProcessor_Context(t *testing.T) {
 	done := make(chan struct{})
 	p.
 		DoOnError(func(e error) {
-			assert.Equal(t, rs.ErrSubscribeCancelled, e, "bad error")
+			assert.Equal(t, reactor.ErrSubscribeCancelled, e, "bad error")
 		}).
-		DoFinally(func(signal rs.SignalType) {
+		DoFinally(func(signal reactor.SignalType) {
 			close(done)
-			assert.Equal(t, rs.SignalTypeError, signal)
+			assert.Equal(t, reactor.SignalTypeError, signal)
 		}).
 		Subscribe(ctx)
 	<-done

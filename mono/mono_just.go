@@ -9,14 +9,14 @@ import (
 )
 
 type justSubscriber struct {
-	s      rs.Subscriber
+	s      reactor.Subscriber
 	parent *monoJust
 	n      int32
 }
 
 func (j *justSubscriber) Request(n int) {
 	if n < 1 {
-		panic(rs.ErrNegativeRequest)
+		panic(reactor.ErrNegativeRequest)
 	}
 	if !atomic.CompareAndSwapInt32(&(j.n), 0, statComplete) {
 		return
@@ -40,17 +40,17 @@ func (j *justSubscriber) Cancel() {
 }
 
 type monoJust struct {
-	value interface{}
+	value Any
 }
 
-func (m *monoJust) SubscribeWith(ctx context.Context, s rs.Subscriber) {
+func (m *monoJust) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
 	s.OnSubscribe(&justSubscriber{
 		s:      internal.NewCoreSubscriber(ctx, s),
 		parent: m,
 	})
 }
 
-func newMonoJust(v interface{}) *monoJust {
+func newMonoJust(v Any) *monoJust {
 	return &monoJust{
 		value: v,
 	}

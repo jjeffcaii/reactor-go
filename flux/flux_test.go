@@ -14,6 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var fakeErr = errors.New("fake error")
+
 func Example() {
 	gen := func(ctx context.Context, sink flux.Sink) {
 		for i := 0; i < 10; i++ {
@@ -24,25 +26,26 @@ func Example() {
 	}
 	done := make(chan struct{})
 
-	var su rs.Subscription
+	var su reactor.Subscription
 	flux.Create(gen).
-		Filter(func(i interface{}) bool {
+		Filter(func(i Any) bool {
 			return i.(int)%2 == 0
 		}).
-		Map(func(i interface{}) interface{} {
-			return fmt.Sprintf("#HELLO_%04d", i.(int))
+		Map(func(i interface{}) (Any, error) {
+			return fmt.Sprintf("#HELLO_%04d", i.(int)), nil
 		}).
 		SubscribeOn(scheduler.Elastic()).
 		Subscribe(context.Background(),
-			rs.OnSubscribe(func(s rs.Subscription) {
+			reactor.OnSubscribe(func(s reactor.Subscription) {
 				su = s
 				s.Request(1)
 			}),
-			rs.OnNext(func(v interface{}) {
+			reactor.OnNext(func(v Any) error {
 				fmt.Println("next:", v)
 				su.Request(1)
+				return nil
 			}),
-			rs.OnComplete(func() {
+			reactor.OnComplete(func() {
 				close(done)
 			}),
 		)
@@ -52,7 +55,7 @@ func Example() {
 var testData = []int{1, 2, 3, 4, 5}
 
 func TestSuite(t *testing.T) {
-	var inputs []interface{}
+	var inputs []Any
 	for _, value := range testData {
 		inputs = append(inputs, value)
 	}
@@ -112,17 +115,18 @@ func TestSuite(t *testing.T) {
 }
 
 func testDoOnSubscribe(f flux.Flux, t *testing.T) {
-	var su rs.Subscription
+	var su reactor.Subscription
 	var got int
 	f.
-		DoOnSubscribe(func(s rs.Subscription) {
+		DoOnSubscribe(func(s reactor.Subscription) {
 			su = s
 			su.Request(1)
 		}).
-		DoOnNext(func(v interface{}) {
+		DoOnNext(func(v interface{}) error {
 			log.Println("next:", v)
 			got++
 			su.Request(1)
+			return nil
 		}).
 		Subscribe(context.Background())
 	assert.Equal(t, len(testData), got, "bad amount")
@@ -135,12 +139,12 @@ func testBlockLast(f flux.Flux, t *testing.T) {
 }
 
 func testFilterRequest(f flux.Flux, t *testing.T) {
-	var s rs.Subscription
+	var s reactor.Subscription
 	var totals, discards, nexts, requests, filter int
 	done := make(chan struct{})
 	f.
-		DoFinally(func(s rs.SignalType) {
-			assert.Equal(t, rs.SignalTypeComplete, s, "bad signal")
+		DoFinally(func(s reactor.SignalType) {
+			assert.Equal(t, reactor.SignalTypeComplete, s, "bad signal")
 			close(done)
 		}).
 		Filter(func(i interface{}) (ok bool) {
@@ -154,14 +158,15 @@ func testFilterRequest(f flux.Flux, t *testing.T) {
 		DoOnDiscard(func(v interface{}) {
 			discards++
 		}).
-		DoOnNext(func(v interface{}) {
+		DoOnNext(func(v interface{}) error {
 			nexts++
 			s.Request(1)
+			return nil
 		}).
 		DoOnRequest(func(n int) {
 			requests++
 		}).
-		Subscribe(context.Background(), rs.OnSubscribe(func(su rs.Subscription) {
+		Subscribe(context.Background(), reactor.OnSubscribe(func(su reactor.Subscription) {
 			s = su
 			s.Request(1)
 		}))
@@ -175,17 +180,19 @@ func testDiscard(f flux.Flux, t *testing.T) {
 	var next, next2, discard []int
 	done := make(chan struct{})
 	f.
-		DoFinally(func(s rs.SignalType) {
+		DoFinally(func(s reactor.SignalType) {
 			close(done)
 		}).
-		DoOnNext(func(v interface{}) {
+		DoOnNext(func(v interface{}) error {
 			next = append(next, v.(int))
+			return nil
 		}).
 		Filter(func(i interface{}) bool {
 			return i.(int) > 3
 		}).
-		DoOnNext(func(v interface{}) {
+		DoOnNext(func(v interface{}) error {
 			next2 = append(next2, v.(int))
+			return nil
 		}).
 		DoOnDiscard(func(i interface{}) {
 			discard = append(discard, i.(int))
@@ -214,11 +221,12 @@ func testPeek(f flux.Flux, t *testing.T) {
 	var complete int
 	var a, b []int
 	var requests int
-	var ss rs.Subscription
+	var ss reactor.Subscription
 	done := make(chan struct{})
 	f.
-		DoOnNext(func(v interface{}) {
+		DoOnNext(func(v interface{}) error {
 			a = append(a, v.(int))
+			return nil
 		}).
 		DoOnRequest(func(n int) {
 			requests++
@@ -226,15 +234,16 @@ func testPeek(f flux.Flux, t *testing.T) {
 		DoOnComplete(func() {
 			complete++
 		}).
-		DoFinally(func(s rs.SignalType) {
+		DoFinally(func(s reactor.SignalType) {
 			close(done)
 		}).
-		Subscribe(context.Background(), rs.OnSubscribe(func(su rs.Subscription) {
+		Subscribe(context.Background(), reactor.OnSubscribe(func(su reactor.Subscription) {
 			ss = su
 			ss.Request(1)
-		}), rs.OnNext(func(v interface{}) {
+		}), reactor.OnNext(func(v interface{}) error {
 			b = append(b, v.(int))
 			ss.Request(1)
+			return nil
 		}))
 	<-done
 	assert.Equal(t, b, a, "values doesn't match")
@@ -244,19 +253,20 @@ func testPeek(f flux.Flux, t *testing.T) {
 
 func testRequest(f flux.Flux, t *testing.T) {
 	var nexts []int
-	var su rs.Subscription
+	var su reactor.Subscription
 	done := make(chan struct{})
 	f.
-		DoFinally(func(s rs.SignalType) {
+		DoFinally(func(s reactor.SignalType) {
 			close(done)
 		}).
 		SubscribeOn(scheduler.Elastic()).
-		Subscribe(context.Background(), rs.OnSubscribe(func(s rs.Subscription) {
+		Subscribe(context.Background(), reactor.OnSubscribe(func(s reactor.Subscription) {
 			su = s
 			su.Request(1)
-		}), rs.OnNext(func(v interface{}) {
+		}), reactor.OnNext(func(v interface{}) error {
 			nexts = append(nexts, v.(int))
 			su.Request(1)
+			return nil
 		}))
 	<-done
 	assert.Equal(t, testData, nexts, "bad results")
@@ -265,10 +275,11 @@ func testRequest(f flux.Flux, t *testing.T) {
 func TestEmpty(t *testing.T) {
 	flux.Just().Subscribe(
 		context.Background(),
-		rs.OnNext(func(v interface{}) {
+		reactor.OnNext(func(v interface{}) error {
 			log.Println("next:", v)
+			return nil
 		}),
-		rs.OnComplete(func() {
+		reactor.OnComplete(func() {
 			log.Println("complete")
 		}),
 	)
@@ -285,15 +296,16 @@ func TestCreateWithRequest(t *testing.T) {
 
 	var processed int32
 
-	su := make(chan rs.Subscription, 1)
+	su := make(chan reactor.Subscription, 1)
 
-	sub := rs.NewSubscriber(rs.OnNext(func(v interface{}) {
+	sub := reactor.NewSubscriber(reactor.OnNext(func(v interface{}) error {
 		log.Println("next:", v)
 		processed++
-	}), rs.OnSubscribe(func(s rs.Subscription) {
+		return nil
+	}), reactor.OnSubscribe(func(s reactor.Subscription) {
 		su <- s
 		s.Request(1)
-	}), rs.OnComplete(func() {
+	}), reactor.OnComplete(func() {
 		log.Println("complete")
 	}))
 
@@ -321,13 +333,49 @@ L:
 	}
 }
 
+func TestNextWithError(t *testing.T) {
+	var err error
+	flux.Just(1).
+		Subscribe(context.Background(), reactor.OnNext(func(v reactor.Any) error {
+			return fakeErr
+		}), reactor.OnError(func(e error) {
+			err = e
+		}))
+	assert.Equal(t, fakeErr, err)
+}
+
+func TestBlockToSlice(t *testing.T) {
+	results := make([]int, 0)
+	err := flux.Just(3, 2, 1).BlockToSlice(context.Background(), &results)
+	assert.NoError(t, err, "should not return error")
+	assert.Equal(t, []int{3, 2, 1}, results)
+
+	err = flux.Just("bad element type").BlockToSlice(context.Background(), &results)
+	assert.Error(t, err, "should return error")
+
+	err = flux.Just(1).BlockToSlice(context.Background(), nil)
+	assert.Error(t, err)
+}
+
+func TestBlockToChan(t *testing.T) {
+	results := make(chan int, 64)
+	err := flux.Just(3, 2, 1).SubscribeOn(scheduler.Parallel()).BlockToChan(context.Background(), results)
+	assert.NoError(t, err, "should not return error")
+	assert.Equal(t, 3, <-results)
+	assert.Equal(t, 2, <-results)
+	assert.Equal(t, 1, <-results)
+
+	err = flux.Just("bad element type").BlockToChan(context.Background(), results)
+	assert.Error(t, err, "should return error")
+}
+
 func TestError(t *testing.T) {
 	mockErr := errors.New("this is a mock error")
-	var sig rs.SignalType
+	var sig reactor.SignalType
 	var e1, e2 error
 	var requested int
 	flux.Error(mockErr).
-		DoFinally(func(s rs.SignalType) {
+		DoFinally(func(s reactor.SignalType) {
 			sig = s
 		}).
 		DoOnRequest(func(n int) {
@@ -338,15 +386,16 @@ func TestError(t *testing.T) {
 		}).
 		Subscribe(
 			context.Background(),
-			rs.OnNext(func(v interface{}) {
+			reactor.OnNext(func(v interface{}) error {
 				assert.Fail(t, "should never run here")
+				return nil
 			}),
-			rs.OnError(func(e error) {
+			reactor.OnError(func(e error) {
 				e2 = e
 			}),
 		)
 	assert.Equal(t, mockErr, e1, "bad doOnError")
 	assert.Equal(t, mockErr, e2, "bad onError")
-	assert.Equal(t, rs.SignalTypeError, sig, "bad signal")
+	assert.Equal(t, reactor.SignalTypeError, sig, "bad signal")
 	assert.True(t, requested > 0, "no request")
 }

@@ -1,4 +1,4 @@
-package rs
+package reactor
 
 type SignalType int8
 
@@ -25,17 +25,18 @@ const (
 )
 
 type (
-	Predicate   func(v interface{}) bool
-	Transformer func(v interface{}) interface{}
+	Any         = interface{}
+	Predicate   func(Any) bool
+	Transformer func(Any) (Any, error)
 
 	FnOnComplete  = func()
-	FnOnNext      = func(v interface{})
+	FnOnNext      = func(v Any) error
 	FnOnCancel    = func()
 	FnOnSubscribe = func(su Subscription)
 	FnOnRequest   = func(n int)
 	FnOnError     = func(e error)
 	FnOnFinally   = func(s SignalType)
-	FnOnDiscard   = func(v interface{})
+	FnOnDiscard   = func(v Any)
 )
 
 type (

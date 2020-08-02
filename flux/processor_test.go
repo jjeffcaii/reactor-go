@@ -7,14 +7,14 @@ import (
 	"testing"
 	"time"
 
-	rs "github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/flux"
 	"github.com/jjeffcaii/reactor-go/hooks"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestUnicastProcessor(t *testing.T) {
-	hooks.OnNextDrop(func(v interface{}) {
+	hooks.OnNextDrop(func(v Any) {
 		fmt.Println("dropped:", v)
 	})
 	p := flux.NewUnicastProcessor()
@@ -33,13 +33,14 @@ func TestUnicastProcessor(t *testing.T) {
 
 	results := make(chan int)
 
-	var su rs.Subscription
+	var su reactor.Subscription
 	p.
-		DoOnNext(func(v interface{}) {
+		DoOnNext(func(v Any) error {
 			time.Sleep(30 * time.Millisecond)
 			log.Println("onNext:", v)
 			results <- v.(int)
 			su.Request(1)
+			return nil
 		}).
 		DoOnRequest(func(n int) {
 			log.Println("request:", n)
@@ -48,7 +49,7 @@ func TestUnicastProcessor(t *testing.T) {
 			log.Println("complete")
 			close(results)
 		}).
-		Subscribe(context.Background(), rs.OnSubscribe(func(s rs.Subscription) {
+		Subscribe(context.Background(), reactor.OnSubscribe(func(s reactor.Subscription) {
 			su = s
 			su.Request(1)
 		}))

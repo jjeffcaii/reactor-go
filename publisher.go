@@ -1,4 +1,4 @@
-package rs
+package reactor
 
 import "context"
 

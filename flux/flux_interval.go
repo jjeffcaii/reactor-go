@@ -12,7 +12,7 @@ import (
 )
 
 type intervalSubscription struct {
-	actual    rs.Subscriber
+	actual    reactor.Subscriber
 	requested int64
 	cancelled bool
 	done      chan struct{}
@@ -23,7 +23,7 @@ type intervalSubscription struct {
 
 func (p *intervalSubscription) Request(n int) {
 	if n < 1 {
-		panic(rs.ErrNegativeRequest)
+		panic(reactor.ErrNegativeRequest)
 	}
 	if p.cancelled {
 		return
@@ -46,7 +46,7 @@ func (p *intervalSubscription) runOnce() {
 	}
 	current := atomic.AddInt64(&(p.count), 1)
 	p.actual.OnNext(current - 1)
-	if atomic.LoadInt64(&(p.requested)) >= rs.RequestInfinite {
+	if atomic.LoadInt64(&(p.requested)) >= reactor.RequestInfinite {
 		return
 	}
 	atomic.AddInt64(&(p.requested), -1)
@@ -68,7 +68,7 @@ func (p *intervalSubscription) run(ctx context.Context) {
 	}
 }
 
-func newIntervalSubscription(actual rs.Subscriber, period time.Duration) *intervalSubscription {
+func newIntervalSubscription(actual reactor.Subscriber, period time.Duration) *intervalSubscription {
 	return &intervalSubscription{
 		actual: actual,
 		done:   make(chan struct{}),
@@ -82,7 +82,7 @@ type fluxInterval struct {
 	sc     scheduler.Scheduler
 }
 
-func (p *fluxInterval) SubscribeWith(ctx context.Context, s rs.Subscriber) {
+func (p *fluxInterval) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
 	su := newIntervalSubscription(s, p.period)
 	s.OnSubscribe(su)
 	p.sc.Worker().Do(func() {

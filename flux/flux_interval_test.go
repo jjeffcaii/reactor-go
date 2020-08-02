@@ -6,23 +6,26 @@ import (
 	"testing"
 	"time"
 
-	rs "github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/flux"
 	"github.com/stretchr/testify/assert"
 )
+
+type Any = reactor.Any
 
 func TestInterval(t *testing.T) {
 	done := make(chan struct{})
 	var amount int32
 	flux.Interval(100*time.Millisecond).
-		DoFinally(func(s rs.SignalType) {
+		DoFinally(func(s reactor.SignalType) {
 			close(done)
 		}).
 		Subscribe(context.Background(),
-			rs.OnNext(func(v interface{}) {
+			reactor.OnNext(func(v Any) error {
 				atomic.AddInt32(&amount, 1)
+				return nil
 			}),
-			rs.OnSubscribe(func(su rs.Subscription) {
+			reactor.OnSubscribe(func(su reactor.Subscription) {
 				su.Request(3)
 			}),
 		)

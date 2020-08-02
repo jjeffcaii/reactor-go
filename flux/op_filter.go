@@ -3,15 +3,15 @@ package flux
 import (
 	"context"
 
-	rs "github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/internal"
 )
 
 type filterSubscriber struct {
 	ctx    context.Context
-	actual rs.Subscriber
-	f      rs.Predicate
-	su     rs.Subscription
+	actual reactor.Subscriber
+	f      reactor.Predicate
+	su     reactor.Subscription
 }
 
 func (p *filterSubscriber) OnComplete() {
@@ -22,7 +22,7 @@ func (p *filterSubscriber) OnError(err error) {
 	p.actual.OnError(err)
 }
 
-func (p *filterSubscriber) OnNext(v interface{}) {
+func (p *filterSubscriber) OnNext(v Any) {
 	defer func() {
 		if err := internal.TryRecoverError(recover()); err != nil {
 			p.OnError(err)
@@ -36,12 +36,12 @@ func (p *filterSubscriber) OnNext(v interface{}) {
 	internal.TryDiscard(p.ctx, v)
 }
 
-func (p *filterSubscriber) OnSubscribe(su rs.Subscription) {
+func (p *filterSubscriber) OnSubscribe(su reactor.Subscription) {
 	p.su = su
 	p.actual.OnSubscribe(su)
 }
 
-func newFilterSubscriber(ctx context.Context, s rs.Subscriber, p rs.Predicate) *filterSubscriber {
+func newFilterSubscriber(ctx context.Context, s reactor.Subscriber, p reactor.Predicate) *filterSubscriber {
 	return &filterSubscriber{
 		ctx:    ctx,
 		actual: s,
@@ -50,12 +50,12 @@ func newFilterSubscriber(ctx context.Context, s rs.Subscriber, p rs.Predicate) *
 }
 
 type fluxFilter struct {
-	source    rs.RawPublisher
-	predicate rs.Predicate
+	source    reactor.RawPublisher
+	predicate reactor.Predicate
 }
 
-func (f *fluxFilter) SubscribeWith(ctx context.Context, s rs.Subscriber) {
-	var actual rs.Subscriber
+func (f *fluxFilter) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
+	var actual reactor.Subscriber
 	if cs, ok := s.(*internal.CoreSubscriber); ok {
 		cs.Subscriber = newFilterSubscriber(ctx, cs.Subscriber, f.predicate)
 		actual = cs
@@ -65,7 +65,7 @@ func (f *fluxFilter) SubscribeWith(ctx context.Context, s rs.Subscriber) {
 	f.source.SubscribeWith(ctx, actual)
 }
 
-func newFluxFilter(source rs.RawPublisher, predicate rs.Predicate) *fluxFilter {
+func newFluxFilter(source reactor.RawPublisher, predicate reactor.Predicate) *fluxFilter {
 	return &fluxFilter{
 		source:    source,
 		predicate: predicate,

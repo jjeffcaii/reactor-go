@@ -19,14 +19,14 @@ func Empty() Mono {
 	return empty
 }
 
-func JustOrEmpty(v interface{}) Mono {
+func JustOrEmpty(v Any) Mono {
 	if v == nil {
 		return empty
 	}
 	return Just(v)
 }
 
-func Just(v interface{}) Mono {
+func Just(v Any) Mono {
 	if v == nil {
 		panic(errJustNilValue)
 	}

@@ -9,17 +9,17 @@ import (
 )
 
 type fluxFinally struct {
-	source    rs.RawPublisher
-	onFinally rs.FnOnFinally
+	source    reactor.RawPublisher
+	onFinally reactor.FnOnFinally
 }
 
-func (p *fluxFinally) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
+func (p *fluxFinally) SubscribeWith(ctx context.Context, actual reactor.Subscriber) {
 	actual = internal.ExtractRawSubscriber(actual)
 	actual = internal.NewCoreSubscriber(ctx, subscribers.NewDoFinallySubscriber(actual, p.onFinally))
 	p.source.SubscribeWith(ctx, actual)
 }
 
-func newFluxFinally(source rs.RawPublisher, onFinally rs.FnOnFinally) *fluxFinally {
+func newFluxFinally(source reactor.RawPublisher, onFinally reactor.FnOnFinally) *fluxFinally {
 	return &fluxFinally{
 		source:    source,
 		onFinally: onFinally,

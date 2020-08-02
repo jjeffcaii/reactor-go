@@ -1,4 +1,4 @@
-package rs
+package reactor
 
 type Processor interface {
 	Publisher

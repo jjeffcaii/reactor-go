@@ -3,23 +3,23 @@ package mono
 import (
 	"context"
 
-	rs "github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/internal"
 	"github.com/jjeffcaii/reactor-go/internal/subscribers"
 )
 
 type monoDoFinally struct {
-	source    rs.RawPublisher
-	onFinally rs.FnOnFinally
+	source    reactor.RawPublisher
+	onFinally reactor.FnOnFinally
 }
 
-func (m *monoDoFinally) SubscribeWith(ctx context.Context, actual rs.Subscriber) {
+func (m *monoDoFinally) SubscribeWith(ctx context.Context, actual reactor.Subscriber) {
 	actual = internal.ExtractRawSubscriber(actual)
 	actual = internal.NewCoreSubscriber(ctx, subscribers.NewDoFinallySubscriber(actual, m.onFinally))
 	m.source.SubscribeWith(ctx, actual)
 }
 
-func newMonoDoFinally(source rs.RawPublisher, onFinally rs.FnOnFinally) *monoDoFinally {
+func newMonoDoFinally(source reactor.RawPublisher, onFinally reactor.FnOnFinally) *monoDoFinally {
 	return &monoDoFinally{
 		source:    source,
 		onFinally: onFinally,

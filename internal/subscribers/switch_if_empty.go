@@ -3,22 +3,22 @@ package subscribers
 import (
 	"context"
 
-	rs "github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go"
 )
 
 type SwitchIfEmptySubscriber struct {
 	ctx       context.Context
-	actual    rs.Subscriber
-	other     rs.RawPublisher
+	actual    reactor.Subscriber
+	other     reactor.RawPublisher
 	nextOnce  bool
 	cancelled bool
-	su        rs.Subscription
+	su        reactor.Subscription
 	requested int
 }
 
 func (s *SwitchIfEmptySubscriber) Request(n int) {
 	if n < 1 {
-		panic(rs.ErrNegativeRequest)
+		panic(reactor.ErrNegativeRequest)
 	}
 	s.requested = n
 	if s.su != nil {
@@ -34,14 +34,14 @@ func (s *SwitchIfEmptySubscriber) OnError(err error) {
 	s.actual.OnError(err)
 }
 
-func (s *SwitchIfEmptySubscriber) OnNext(v interface{}) {
+func (s *SwitchIfEmptySubscriber) OnNext(v reactor.Any) {
 	if !s.nextOnce {
 		s.nextOnce = true
 	}
 	s.actual.OnNext(v)
 }
 
-func (s *SwitchIfEmptySubscriber) OnSubscribe(su rs.Subscription) {
+func (s *SwitchIfEmptySubscriber) OnSubscribe(su reactor.Subscription) {
 	if old := s.su; old != nil {
 		// TODO: check should cancel
 		old.Cancel()
@@ -61,7 +61,7 @@ func (s *SwitchIfEmptySubscriber) OnComplete() {
 	}
 }
 
-func NewSwitchIfEmptySubscriber(ctx context.Context, alternative rs.RawPublisher, actual rs.Subscriber) *SwitchIfEmptySubscriber {
+func NewSwitchIfEmptySubscriber(ctx context.Context, alternative reactor.RawPublisher, actual reactor.Subscriber) *SwitchIfEmptySubscriber {
 	return &SwitchIfEmptySubscriber{
 		ctx:    ctx,
 		actual: actual,

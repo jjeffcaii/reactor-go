@@ -11,7 +11,7 @@ type monoError struct {
 	e error
 }
 
-func (p monoError) SubscribeWith(ctx context.Context, s rs.Subscriber) {
+func (p monoError) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
 	actual := internal.NewCoreSubscriber(ctx, s)
 	actual.OnSubscribe(internal.EmptySubscription)
 	actual.OnError(p.e)

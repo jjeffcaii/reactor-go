@@ -4,12 +4,12 @@ import (
 	"sync"
 	"sync/atomic"
 
-	rs "github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/hooks"
 )
 
 type bufferedSink struct {
-	s        rs.Subscriber
+	s        reactor.Subscriber
 	q        queue
 	n        int32
 	draining int32
@@ -51,7 +51,7 @@ func (p *bufferedSink) Error(err error) {
 	hooks.Global().OnErrorDrop(err)
 }
 
-func (p *bufferedSink) Next(v interface{}) {
+func (p *bufferedSink) Next(v Any) {
 	if atomic.LoadInt32(&p.stat) != 0 {
 		hooks.Global().OnNextDrop(v)
 		return
@@ -88,7 +88,7 @@ func (p *bufferedSink) dispose() {
 	_ = p.q.Close()
 }
 
-func newBufferedSink(s rs.Subscriber, cap int) *bufferedSink {
+func newBufferedSink(s reactor.Subscriber, cap int) *bufferedSink {
 	return &bufferedSink{
 		s:    s,
 		q:    newQueue(cap),

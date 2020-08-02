@@ -12,7 +12,7 @@ import (
 
 func TestSwitchOnFirst(t *testing.T) {
 	// greater than first element and multiply 2
-	origin := []interface{}{3, 8, 7, 6, 5, 4, 3, 2, 1}
+	origin := []Any{3, 8, 7, 6, 5, 4, 3, 2, 1}
 
 	var expected []int
 	for _, it := range origin {
@@ -25,20 +25,21 @@ func TestSwitchOnFirst(t *testing.T) {
 		SwitchOnFirst(func(s flux.Signal, f flux.Flux) flux.Flux {
 			if first, ok := s.Value(); ok {
 				return f.
-					Filter(func(i interface{}) bool {
+					Filter(func(i Any) bool {
 						return i.(int) > first.(int)
 					}).
-					Map(func(i interface{}) interface{} {
-						return i.(int) * 2
+					Map(func(i Any) (Any, error) {
+						return i.(int) * 2, nil
 					})
 			}
 			return f
 		}).
-		DoOnNext(func(v interface{}) {
+		DoOnNext(func(v Any) error {
 			actual = append(actual, v.(int))
 			fmt.Println("next:", v)
+			return nil
 		}).
-		DoFinally(func(s rs.SignalType) {
+		DoFinally(func(s reactor.SignalType) {
 			fmt.Println("finally:", s)
 		}).
 		Subscribe(context.Background())

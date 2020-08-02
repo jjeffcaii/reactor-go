@@ -15,8 +15,8 @@ const (
 )
 
 type sliceSubscription struct {
-	actual rs.Subscriber
-	values []interface{}
+	actual reactor.Subscriber
+	values []Any
 	cursor int32
 	flags  uint8
 	locker sync.Mutex
@@ -24,14 +24,14 @@ type sliceSubscription struct {
 
 func (p *sliceSubscription) Request(n int) {
 	if n < 1 {
-		panic(rs.ErrNegativeRequest)
+		panic(reactor.ErrNegativeRequest)
 	}
 	p.locker.Lock()
 	if p.flags&flagFast != 0 {
 		p.locker.Unlock()
 		return
 	}
-	if n < rs.RequestInfinite {
+	if n < reactor.RequestInfinite {
 		p.locker.Unlock()
 		p.slowPath(n)
 		return
@@ -89,7 +89,7 @@ func (p *sliceSubscription) fastPath() {
 	p.actual.OnComplete()
 }
 
-func newSliceSubscription(s rs.Subscriber, values []interface{}) *sliceSubscription {
+func newSliceSubscription(s reactor.Subscriber, values []Any) *sliceSubscription {
 	return &sliceSubscription{
 		actual: s,
 		values: values,
@@ -97,10 +97,10 @@ func newSliceSubscription(s rs.Subscriber, values []interface{}) *sliceSubscript
 }
 
 type fluxSlice struct {
-	slice []interface{}
+	slice []Any
 }
 
-func (p *fluxSlice) SubscribeWith(ctx context.Context, s rs.Subscriber) {
+func (p *fluxSlice) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
 	if len(p.slice) < 1 {
 		s.OnComplete()
 		return
@@ -109,7 +109,7 @@ func (p *fluxSlice) SubscribeWith(ctx context.Context, s rs.Subscriber) {
 	s.OnSubscribe(subscription)
 }
 
-func newSliceFlux(values []interface{}) *fluxSlice {
+func newSliceFlux(values []Any) *fluxSlice {
 	return &fluxSlice{
 		slice: values,
 	}

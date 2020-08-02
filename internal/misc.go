@@ -3,14 +3,10 @@ package internal
 import (
 	"errors"
 	"fmt"
-
-	rs "github.com/jjeffcaii/reactor-go"
 )
 
-var (
-	ErrCallOnSubscribeDuplicated                 = errors.New("call OnSubscribe duplicated")
-	EmptySubscription            rs.Subscription = &emptySubscription{}
-)
+var ErrCallOnSubscribeDuplicated = errors.New("call OnSubscribe duplicated")
+var EmptySubscription = emptySubscription{}
 
 func TryRecoverError(re interface{}) error {
 	if re == nil {
