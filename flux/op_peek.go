@@ -89,10 +89,10 @@ type fluxPeek struct {
 	onCancelCall    reactor.FnOnCancel
 }
 
-func (p *fluxPeek) SubscribeWith(ctx context.Context, actual reactor.Subscriber) {
+func (fp *fluxPeek) SubscribeWith(ctx context.Context, actual reactor.Subscriber) {
 	actual = internal.ExtractRawSubscriber(actual)
-	actual = internal.NewCoreSubscriber(ctx, newPeekSubscriber(p, actual))
-	p.source.SubscribeWith(ctx, actual)
+	actual = internal.NewCoreSubscriber(ctx, newPeekSubscriber(fp, actual))
+	fp.source.SubscribeWith(ctx, actual)
 }
 
 func newFluxPeek(source reactor.RawPublisher, options ...fluxPeekOption) *fluxPeek {

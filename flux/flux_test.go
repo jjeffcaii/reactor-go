@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -13,8 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var fakeErr = errors.New("fake error")
-var testData = []Any{1, 2, 3, 4, 5}
+type Any = reactor.Any
 
 func Example() {
 	gen := func(ctx context.Context, sink flux.Sink) {
@@ -52,11 +52,16 @@ func Example() {
 	<-done
 }
 
-func TestSuite(t *testing.T) {
-	inputs := append([]Any(nil), testData...)
+var fakeErr = errors.New("fake error")
+var testData = []Any{1, 2, 3, 4, 5}
 
+func init() {
+	flux.InitBuffSize(flux.BuffSizeXS)
+}
+
+func TestSuite(t *testing.T) {
 	all := make(map[string]func() flux.Flux)
-	var instJust = flux.Just(inputs...)
+	var instJust = flux.Just(testData...)
 	var instCreate = flux.Create(func(ctx context.Context, sink flux.Sink) {
 		for _, it := range testData {
 			sink.Next(it)
@@ -81,7 +86,6 @@ func TestSuite(t *testing.T) {
 			}
 			vv.Complete()
 		}()
-		time.Sleep(100 * time.Millisecond)
 		return vv
 	}
 	for k, gen := range all {
@@ -103,29 +107,28 @@ func TestSuite(t *testing.T) {
 		t.Run(fmt.Sprintf("%s_BlockFirst", k), func(t *testing.T) {
 			testBlockFirst(gen(), t)
 		})
-		// TODO: fix onSubscribe test
-		//t.Run(fmt.Sprintf("%s_DoSubscribeOn", k), func(t *testing.T) {
-		//	InnerTestDoOnSubscribe(gen(), t)
-		//})
+		t.Run(fmt.Sprintf("%s_DoSubscribeOn", k), func(t *testing.T) {
+			testDoOnSubscribe(gen(), t)
+		})
 	}
 }
 
-//func testDoOnSubscribe(f flux.Flux, t *testing.T) {
-//	var su reactor.Subscription
-//	var got int32
-//	f.
-//		DoOnSubscribe(func(s reactor.Subscription) {
-//			su = s
-//			su.Request(1)
-//		}).
-//		DoOnNext(func(v interface{}) error {
-//			atomic.AddInt32(&got, 1)
-//			su.Request(1)
-//			return nil
-//		}).
-//		Subscribe(context.Background())
-//	assert.Len(t, testData, int(got), "bad len")
-//}
+func testDoOnSubscribe(f flux.Flux, t *testing.T) {
+	var su reactor.Subscription
+	var got int32
+	onNext := func(v Any) error {
+		atomic.AddInt32(&got, 1)
+		su.Request(1)
+		return nil
+	}
+	onSubscribe := func(s reactor.Subscription) {
+		su = s
+		su.Request(1)
+	}
+	_, err := f.DoOnNext(onNext).DoOnSubscribe(onSubscribe).BlockLast(context.Background())
+	assert.NoError(t, err)
+	assert.Len(t, testData, int(atomic.LoadInt32(&got)), "bad len")
+}
 
 func testBlockLast(f flux.Flux, t *testing.T) {
 	last, err := f.BlockLast(context.Background())
@@ -268,16 +271,23 @@ func testRequest(f flux.Flux, t *testing.T) {
 }
 
 func TestEmpty(t *testing.T) {
-	flux.Just().Subscribe(
+	innerTestEmpty(t, flux.Just())
+	innerTestEmpty(t, flux.Empty())
+}
+
+func innerTestEmpty(t *testing.T, empty flux.Flux) {
+	completed := int32(0)
+	empty.Subscribe(
 		context.Background(),
-		reactor.OnNext(func(v interface{}) error {
-			fmt.Println("next:", v)
+		reactor.OnNext(func(v Any) error {
+			assert.Fail(t, "should be unreachable")
 			return nil
 		}),
 		reactor.OnComplete(func() {
-			fmt.Println("complete")
+			atomic.AddInt32(&completed, 1)
 		}),
 	)
+	assert.Equal(t, int32(1), atomic.LoadInt32(&completed))
 }
 
 func TestCreateWithRequest(t *testing.T) {
@@ -315,7 +325,7 @@ func TestCreateWithRequest(t *testing.T) {
 func TestNextWithError(t *testing.T) {
 	var err error
 	flux.Just(1).
-		Subscribe(context.Background(), reactor.OnNext(func(v reactor.Any) error {
+		Subscribe(context.Background(), reactor.OnNext(func(v Any) error {
 			return fakeErr
 		}), reactor.OnError(func(e error) {
 			err = e
@@ -413,4 +423,49 @@ func TestError(t *testing.T) {
 	assert.Equal(t, mockErr, e2, "bad onError")
 	assert.Equal(t, reactor.SignalTypeError, sig, "bad signal")
 	assert.True(t, requested > 0, "no request")
+}
+
+func TestMapFromErrorFlux(t *testing.T) {
+	_, err := flux.Error(fakeErr).
+		Map(func(any Any) (Any, error) {
+			assert.Fail(t, "should be unreachable")
+			return 1234, nil
+		}).
+		BlockLast(context.Background())
+	assert.Equal(t, fakeErr, err, "should return error")
+}
+
+func TestMapWithError(t *testing.T) {
+	_, err := flux.Just(134).
+		Map(func(_ Any) (Any, error) {
+			return nil, fakeErr
+		}).
+		BlockLast(context.Background())
+	assert.Equal(t, fakeErr, err, "should return error")
+}
+
+func TestDoOnNextWithError(t *testing.T) {
+	var e1 error
+	_, err := flux.Just(1).
+		DoOnNext(func(v Any) error {
+			return fakeErr
+		}).
+		DoOnError(func(e error) {
+			e1 = e
+		}).
+		BlockLast(context.Background())
+	assert.Equal(t, fakeErr, e1)
+	assert.Equal(t, fakeErr, err)
+}
+
+func TestDelayElement(t *testing.T) {
+	start := time.Now()
+	_, err := flux.Just(1, 2, 3).DelayElement(100 * time.Millisecond).BlockLast(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, 3, int(time.Since(start).Milliseconds()/100))
+
+	start = time.Now()
+	_, err = flux.Error(fakeErr).DelayElement(100 * time.Millisecond).BlockLast(context.Background())
+	assert.Equal(t, fakeErr, err)
+	assert.True(t, time.Since(start) < 100*time.Millisecond)
 }

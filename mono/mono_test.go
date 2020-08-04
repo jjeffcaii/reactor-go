@@ -38,6 +38,8 @@ func Example() {
 
 const num = 333
 
+var fakeErr = errors.New("fake error")
+
 func TestCreate_Panic(t *testing.T) {
 	mock := errors.New("mock error")
 	var catches error
@@ -180,6 +182,13 @@ func testMap(m mono.Mono, t *testing.T) {
 		Block(context.Background())
 	assert.NoError(t, err, "err occurred")
 	assert.Equal(t, num*2, v.(int), "bad map result")
+
+	_, err = m.
+		Map(func(any reactor.Any) (reactor.Any, error) {
+			return nil, fakeErr
+		}).
+		Block(context.Background())
+	assert.Equal(t, fakeErr, err, "should return error")
 }
 
 func testFilter(m mono.Mono, t *testing.T) {
@@ -343,4 +352,23 @@ func TestError(t *testing.T) {
 	assert.Equal(t, mockErr, e1, "bad doOnError")
 	assert.Equal(t, mockErr, e2, "bad onError")
 	assert.Equal(t, reactor.SignalTypeError, sig, "bad signal")
+}
+
+func TestJustOrEmpty(t *testing.T) {
+	v, err := mono.JustOrEmpty(nil).Block(context.Background())
+	assert.NoError(t, err, "should not return error")
+	assert.Nil(t, v, "should return nil")
+	v, err = mono.JustOrEmpty(1).Block(context.Background())
+	assert.NoError(t, err, "should not return error")
+	assert.Equal(t, 1, v, "value doesn't match")
+}
+
+func TestMapWithError(t *testing.T) {
+	_, err := mono.Error(fakeErr).
+		Map(func(any reactor.Any) (reactor.Any, error) {
+			assert.Fail(t, "should never run here")
+			return 1234, nil
+		}).
+		Block(context.Background())
+	assert.Equal(t, fakeErr, err, "should return error")
 }

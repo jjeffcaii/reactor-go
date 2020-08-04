@@ -14,10 +14,10 @@ type fluxTake struct {
 	n      int
 }
 
-func (p *fluxTake) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
+func (ft *fluxTake) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
 	actual := internal.ExtractRawSubscriber(s)
-	take := newTakeSubscriber(actual, int64(p.n))
-	p.source.SubscribeWith(ctx, internal.NewCoreSubscriber(ctx, take))
+	take := newTakeSubscriber(actual, int64(ft.n))
+	ft.source.SubscribeWith(ctx, internal.NewCoreSubscriber(ctx, take))
 }
 
 type takeSubscriber struct {
@@ -27,41 +27,41 @@ type takeSubscriber struct {
 	su        reactor.Subscription
 }
 
-func (t *takeSubscriber) OnError(e error) {
-	if atomic.CompareAndSwapInt32(&t.stat, 0, statError) {
-		t.actual.OnError(e)
+func (ts *takeSubscriber) OnError(e error) {
+	if atomic.CompareAndSwapInt32(&ts.stat, 0, statError) {
+		ts.actual.OnError(e)
 		return
 	}
 	hooks.Global().OnErrorDrop(e)
 }
 
-func (t *takeSubscriber) OnNext(v Any) {
-	remaining := atomic.AddInt64(&t.remaining, -1)
+func (ts *takeSubscriber) OnNext(v Any) {
+	remaining := atomic.AddInt64(&ts.remaining, -1)
 	// if no remaining or stat is not default value.
-	if remaining < 0 || atomic.LoadInt32(&t.stat) != 0 {
+	if remaining < 0 || atomic.LoadInt32(&ts.stat) != 0 {
 		hooks.Global().OnNextDrop(v)
 		return
 	}
-	t.actual.OnNext(v)
+	ts.actual.OnNext(v)
 	if remaining > 0 {
 		return
 	}
-	t.su.Cancel()
-	t.OnComplete()
+	ts.su.Cancel()
+	ts.OnComplete()
 }
 
-func (t *takeSubscriber) OnSubscribe(su reactor.Subscription) {
-	if atomic.LoadInt64(&t.remaining) < 1 {
+func (ts *takeSubscriber) OnSubscribe(su reactor.Subscription) {
+	if atomic.LoadInt64(&ts.remaining) < 1 {
 		su.Cancel()
 		return
 	}
-	t.su = su
-	t.actual.OnSubscribe(su)
+	ts.su = su
+	ts.actual.OnSubscribe(su)
 }
 
-func (t *takeSubscriber) OnComplete() {
-	if atomic.CompareAndSwapInt32(&t.stat, 0, statComplete) {
-		t.actual.OnComplete()
+func (ts *takeSubscriber) OnComplete() {
+	if atomic.CompareAndSwapInt32(&ts.stat, 0, statComplete) {
+		ts.actual.OnComplete()
 	}
 }
 

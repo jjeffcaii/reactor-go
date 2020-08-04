@@ -46,5 +46,5 @@ func Interval(period time.Duration) Flux {
 }
 
 func NewUnicastProcessor() Processor {
-	return wrap(newUnicastProcessor(BuffSizeSM))
+	return wrap(newUnicastProcessor(_buffSize))
 }

@@ -1,5 +1,7 @@
 package scheduler
 
+const _parallelName = "parallel"
+
 var _parallel Scheduler
 
 func init() {
@@ -7,6 +9,10 @@ func init() {
 }
 
 type parallelScheduler struct {
+}
+
+func (p parallelScheduler) Name() string {
+	return _parallelName
 }
 
 func (p parallelScheduler) Close() error {

@@ -1,5 +1,7 @@
 package scheduler
 
+const _immediateName = "immediate"
+
 var _immediate Scheduler
 
 func init() {
@@ -7,6 +9,10 @@ func init() {
 }
 
 type immediateScheduler struct {
+}
+
+func (i immediateScheduler) Name() string {
+	return _immediateName
 }
 
 func (i immediateScheduler) Close() error {

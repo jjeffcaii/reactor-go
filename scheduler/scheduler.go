@@ -14,6 +14,8 @@ type Worker interface {
 // Scheduler schedule tasks.
 type Scheduler interface {
 	io.Closer
+	// Name return the name of scheduler.
+	Name() string
 	// Worker returns next worker.
 	Worker() Worker
 }
