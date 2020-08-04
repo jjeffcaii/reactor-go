@@ -21,49 +21,50 @@ type intervalSubscription struct {
 	count     int64
 }
 
-func (p *intervalSubscription) Request(n int) {
+func (is *intervalSubscription) Request(n int) {
 	if n < 1 {
 		panic(reactor.ErrNegativeRequest)
 	}
-	if p.cancelled {
+	if is.cancelled {
 		return
 	}
-	atomic.AddInt64(&p.requested, int64(n))
+	atomic.AddInt64(&is.requested, int64(n))
 }
 
-func (p *intervalSubscription) Cancel() {
-	p.once.Do(func() {
-		p.cancelled = true
-		close(p.done)
+func (is *intervalSubscription) Cancel() {
+	is.once.Do(func() {
+		is.cancelled = true
+		close(is.done)
 	})
 }
 
-func (p *intervalSubscription) runOnce() {
-	if atomic.LoadInt64(&p.requested) < 1 {
-		p.Cancel()
-		p.actual.OnError(fmt.Errorf("could not emit tick %d due to lack of requests", p.count))
+func (is *intervalSubscription) runOnce() {
+	if atomic.LoadInt64(&is.requested) < 1 {
+		is.Cancel()
+		is.actual.OnError(fmt.Errorf("could not emit tick %d due to lack of requests", is.count))
 		return
 	}
-	current := atomic.AddInt64(&p.count, 1)
-	p.actual.OnNext(current - 1)
-	if atomic.LoadInt64(&p.requested) >= reactor.RequestInfinite {
+	current := atomic.AddInt64(&is.count, 1)
+	is.actual.OnNext(current - 1)
+	if atomic.LoadInt64(&is.requested) >= reactor.RequestInfinite {
 		return
 	}
-	atomic.AddInt64(&p.requested, -1)
+	atomic.AddInt64(&is.requested, -1)
 }
 
-func (p *intervalSubscription) run(ctx context.Context) {
+func (is *intervalSubscription) run(ctx context.Context) {
+	defer is.tk.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			if err := ctx.Err(); err != nil {
-				p.actual.OnError(err)
+				is.actual.OnError(err)
 			}
 			return
-		case <-p.done:
+		case <-is.done:
 			return
-		case <-p.tk.C:
-			p.runOnce()
+		case <-is.tk.C:
+			is.runOnce()
 		}
 	}
 }

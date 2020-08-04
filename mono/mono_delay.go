@@ -38,11 +38,6 @@ func (p *monoDelay) SubscribeWith(ctx context.Context, actual reactor.Subscriber
 	actual.OnSubscribe(s)
 
 	time.AfterFunc(p.delay, func() {
-		if p.sc == nil {
-			actual.OnNext(_delayValue)
-			actual.OnComplete()
-			return
-		}
 		p.sc.Worker().Do(func() {
 			actual.OnNext(_delayValue)
 			actual.OnComplete()
@@ -52,6 +47,9 @@ func (p *monoDelay) SubscribeWith(ctx context.Context, actual reactor.Subscriber
 }
 
 func newMonoDelay(delay time.Duration, sc scheduler.Scheduler) *monoDelay {
+	if sc == nil {
+		sc = scheduler.Parallel()
+	}
 	return &monoDelay{
 		delay: delay,
 		sc:    sc,

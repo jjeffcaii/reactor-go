@@ -31,3 +31,8 @@ func TestTake(t *testing.T) {
 	assert.True(t, completed, "bad completed")
 	assert.False(t, cancelled, "bad cancelled")
 }
+
+func TestTakeFromError(t *testing.T) {
+	_, err := flux.Error(fakeErr).Take(3).BlockLast(context.Background())
+	assert.Equal(t, fakeErr, err)
+}

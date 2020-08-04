@@ -22,71 +22,71 @@ type sliceSubscription struct {
 	locker sync.Mutex
 }
 
-func (p *sliceSubscription) Request(n int) {
+func (ss *sliceSubscription) Request(n int) {
 	if n < 1 {
 		panic(reactor.ErrNegativeRequest)
 	}
-	p.locker.Lock()
-	if p.flags&flagFast != 0 {
-		p.locker.Unlock()
+	ss.locker.Lock()
+	if ss.flags&flagFast != 0 {
+		ss.locker.Unlock()
 		return
 	}
 	if n < reactor.RequestInfinite {
-		p.locker.Unlock()
-		p.slowPath(n)
+		ss.locker.Unlock()
+		ss.slowPath(n)
 		return
 	}
-	p.flags |= flagFast
-	p.locker.Unlock()
-	p.fastPath()
+	ss.flags |= flagFast
+	ss.locker.Unlock()
+	ss.fastPath()
 }
 
-func (p *sliceSubscription) Cancel() {
-	p.locker.Lock()
-	p.flags |= flagCancel
-	p.locker.Unlock()
+func (ss *sliceSubscription) Cancel() {
+	ss.locker.Lock()
+	ss.flags |= flagCancel
+	ss.locker.Unlock()
 }
 
-func (p *sliceSubscription) isCancelled() (cancelled bool) {
-	p.locker.Lock()
-	cancelled = p.flags&flagCancel != 0
-	p.locker.Unlock()
+func (ss *sliceSubscription) isCancelled() (cancelled bool) {
+	ss.locker.Lock()
+	cancelled = ss.flags&flagCancel != 0
+	ss.locker.Unlock()
 	return
 }
 
-func (p *sliceSubscription) slowPath(n int) {
+func (ss *sliceSubscription) slowPath(n int) {
 	for n > 0 {
-		next := int(atomic.AddInt32(&p.cursor, 1))
-		if next > len(p.values) {
+		next := int(atomic.AddInt32(&ss.cursor, 1))
+		if next > len(ss.values) {
 			return
 		}
-		v := p.values[next-1]
-		if next == len(p.values) {
-			p.actual.OnNext(v)
-			p.actual.OnComplete()
+		v := ss.values[next-1]
+		if next == len(ss.values) {
+			ss.actual.OnNext(v)
+			ss.actual.OnComplete()
 			return
 		}
 		n--
-		p.actual.OnNext(v)
+		ss.actual.OnNext(v)
 	}
 }
 
-func (p *sliceSubscription) fastPath() {
-	for i, l := int(p.cursor), len(p.values); i < l; i++ {
-		if p.isCancelled() {
+func (ss *sliceSubscription) fastPath() {
+	for i, l := int(ss.cursor), len(ss.values); i < l; i++ {
+		if ss.isCancelled() {
 			return
 		}
-		v := p.values[i]
+		v := ss.values[i]
 		if v == nil {
-			p.actual.OnError(fmt.Errorf("the %dth slice element was null", i))
+			ss.actual.OnError(fmt.Errorf("the %dth slice element was null", i))
 			return
 		}
-		p.actual.OnNext(v)
+		ss.actual.OnNext(v)
 	}
-	if p.isCancelled() {
+	if ss.isCancelled() {
 		return
 	}
-	p.actual.OnComplete()
+	ss.actual.OnComplete()
 }
 
 func newSliceSubscription(s reactor.Subscriber, values []Any) *sliceSubscription {

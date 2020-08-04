@@ -60,10 +60,8 @@ func init() {
 }
 
 func TestSuite(t *testing.T) {
-	inputs := append([]Any(nil), testData...)
-
 	all := make(map[string]func() flux.Flux)
-	var instJust = flux.Just(inputs...)
+	var instJust = flux.Just(testData...)
 	var instCreate = flux.Create(func(ctx context.Context, sink flux.Sink) {
 		for _, it := range testData {
 			sink.Next(it)
@@ -88,7 +86,6 @@ func TestSuite(t *testing.T) {
 			}
 			vv.Complete()
 		}()
-		time.Sleep(100 * time.Millisecond)
 		return vv
 	}
 	for k, gen := range all {
@@ -110,29 +107,28 @@ func TestSuite(t *testing.T) {
 		t.Run(fmt.Sprintf("%s_BlockFirst", k), func(t *testing.T) {
 			testBlockFirst(gen(), t)
 		})
-		// TODO: fix onSubscribe test
-		//t.Run(fmt.Sprintf("%s_DoSubscribeOn", k), func(t *testing.T) {
-		//	InnerTestDoOnSubscribe(gen(), t)
-		//})
+		t.Run(fmt.Sprintf("%s_DoSubscribeOn", k), func(t *testing.T) {
+			testDoOnSubscribe(gen(), t)
+		})
 	}
 }
 
-//func testDoOnSubscribe(f flux.Flux, t *testing.T) {
-//	var su reactor.Subscription
-//	var got int32
-//	f.
-//		DoOnSubscribe(func(s reactor.Subscription) {
-//			su = s
-//			su.Request(1)
-//		}).
-//		DoOnNext(func(v interface{}) error {
-//			atomic.AddInt32(&got, 1)
-//			su.Request(1)
-//			return nil
-//		}).
-//		Subscribe(context.Background())
-//	assert.Len(t, testData, int(got), "bad len")
-//}
+func testDoOnSubscribe(f flux.Flux, t *testing.T) {
+	var su reactor.Subscription
+	var got int32
+	onNext := func(v Any) error {
+		atomic.AddInt32(&got, 1)
+		su.Request(1)
+		return nil
+	}
+	onSubscribe := func(s reactor.Subscription) {
+		su = s
+		su.Request(1)
+	}
+	_, err := f.DoOnNext(onNext).DoOnSubscribe(onSubscribe).BlockLast(context.Background())
+	assert.NoError(t, err)
+	assert.Len(t, testData, int(atomic.LoadInt32(&got)), "bad len")
+}
 
 func testBlockLast(f flux.Flux, t *testing.T) {
 	last, err := f.BlockLast(context.Background())
@@ -467,4 +463,9 @@ func TestDelayElement(t *testing.T) {
 	_, err := flux.Just(1, 2, 3).DelayElement(100 * time.Millisecond).BlockLast(context.Background())
 	assert.NoError(t, err)
 	assert.Equal(t, 3, int(time.Since(start).Milliseconds()/100))
+
+	start = time.Now()
+	_, err = flux.Error(fakeErr).DelayElement(100 * time.Millisecond).BlockLast(context.Background())
+	assert.Equal(t, fakeErr, err)
+	assert.True(t, time.Since(start) < 100*time.Millisecond)
 }

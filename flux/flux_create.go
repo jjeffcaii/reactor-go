@@ -27,12 +27,12 @@ type fluxCreate struct {
 	backpressure OverflowStrategy
 }
 
-func (m fluxCreate) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
+func (fc fluxCreate) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
 	var sink interface {
 		reactor.Subscription
 		Sink
 	}
-	switch m.backpressure {
+	switch fc.backpressure {
 	case OverflowDrop:
 		// TODO: need implementation
 		panic("implement me")
@@ -49,7 +49,7 @@ func (m fluxCreate) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
 		sink = newBufferedSink(s, _buffSize)
 	}
 	s.OnSubscribe(sink)
-	m.source(ctx, sink)
+	fc.source(ctx, sink)
 }
 
 type CreateOption func(*fluxCreate)
