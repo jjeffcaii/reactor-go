@@ -22,22 +22,18 @@ func TestNewElastic(t *testing.T) {
 	const size = 100
 	sc := scheduler.NewElastic(size)
 
-	assert.NotPanics(t, func() {
-		wg := sync.WaitGroup{}
-		wg.Add(size * 2)
-		for i := 0; i < size*2; i++ {
-			sc.Worker().Do(func() {
-				wg.Done()
-			})
-		}
-		wg.Wait()
-	})
+	wg := sync.WaitGroup{}
+	wg.Add(size * 2)
+	for i := 0; i < size*2; i++ {
+		assert.NoError(t, sc.Worker().Do(func() {
+			wg.Done()
+		}), "should not return error")
+	}
+	wg.Wait()
+
 	assert.NoError(t, sc.Close())
 
-	assert.Panics(t, func() {
-		sc.Worker().Do(func() {
-			// noop
-		})
-	}, "should panic after closing scheduler")
-
+	assert.Error(t, sc.Worker().Do(func() {
+		// noop
+	}), "should return error after closing scheduler")
 }

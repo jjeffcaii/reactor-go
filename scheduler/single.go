@@ -1,12 +1,14 @@
 package scheduler
 
 import (
+	"errors"
 	"sync"
-	"sync/atomic"
 )
 
 // DefaultSingleCap is default task queue size.
 const DefaultSingleCap = 1000
+
+var errSchedulerClosed = errors.New("scheduler has been closed")
 
 const _singleName = "single"
 
@@ -17,7 +19,7 @@ var (
 
 type singleScheduler struct {
 	jobs    chan Task
-	started int64
+	started sync.Once
 }
 
 func (p *singleScheduler) Name() string {
@@ -35,14 +37,20 @@ func (p *singleScheduler) start() {
 	}
 }
 
-func (p *singleScheduler) Do(j Task) {
+func (p *singleScheduler) Do(j Task) (err error) {
+	defer func() {
+		if e := recover(); e != nil {
+			err = errSchedulerClosed
+		}
+	}()
 	p.jobs <- j
+	return
 }
 
 func (p *singleScheduler) Worker() Worker {
-	if atomic.AddInt64(&p.started, 1) == 1 {
+	p.started.Do(func() {
 		go p.start()
-	}
+	})
 	return p
 }
 

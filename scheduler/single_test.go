@@ -15,21 +15,18 @@ func TestSingle(t *testing.T) {
 	single := scheduler.Single()
 	fmt.Println(single.Name())
 
-	assert.NotPanics(t, func() {
-		wg := sync.WaitGroup{}
-		wg.Add(totals)
-		for range [totals]struct{}{} {
-			single.Worker().Do(func() {
-				wg.Done()
-			})
-		}
-		wg.Wait()
-	})
-	assert.NoError(t, single.Close(), "close should not return error")
+	wg := sync.WaitGroup{}
+	wg.Add(totals)
+	for range [totals]struct{}{} {
+		assert.NoError(t, single.Worker().Do(func() {
+			wg.Done()
+		}), "should not return error")
+	}
+	wg.Wait()
 
-	assert.Panics(t, func() {
-		single.Worker().Do(func() {
-			// noop
-		})
-	}, "should panic after closing scheduler")
+	assert.NoError(t, single.Close(), "close should not return error")
+	noop := func() {
+		// noop
+	}
+	assert.Error(t, single.Worker().Do(noop), "should return error after closing scheduler")
 }

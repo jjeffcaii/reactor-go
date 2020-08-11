@@ -27,10 +27,8 @@ func (e *elasticScheduler) Close() (err error) {
 	return
 }
 
-func (e *elasticScheduler) Do(job Task) {
-	if err := e.pool.Submit(job); err != nil {
-		panic(err)
-	}
+func (e *elasticScheduler) Do(job Task) error {
+	return e.pool.Submit(job)
 }
 
 func (e *elasticScheduler) Worker() Worker {

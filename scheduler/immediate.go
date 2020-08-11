@@ -19,8 +19,9 @@ func (i immediateScheduler) Close() error {
 	return nil
 }
 
-func (i immediateScheduler) Do(job Task) {
+func (i immediateScheduler) Do(job Task) error {
 	job()
+	return nil
 }
 
 func (i immediateScheduler) Worker() Worker {

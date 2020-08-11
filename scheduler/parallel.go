@@ -19,8 +19,9 @@ func (p parallelScheduler) Close() error {
 	return nil
 }
 
-func (p parallelScheduler) Do(j Task) {
+func (p parallelScheduler) Do(j Task) error {
 	go j()
+	return nil
 }
 
 func (p parallelScheduler) Worker() Worker {

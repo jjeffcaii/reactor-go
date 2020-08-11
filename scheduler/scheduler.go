@@ -1,6 +1,8 @@
 package scheduler
 
-import "io"
+import (
+	"io"
+)
 
 // Task defines task function.
 type Task func()
@@ -8,7 +10,7 @@ type Task func()
 // Worker is used to execute a task.
 type Worker interface {
 	// Do executes a task.
-	Do(Task)
+	Do(Task) error
 }
 
 // Scheduler schedule tasks.
