@@ -12,7 +12,7 @@ func TestParallel(t *testing.T) {
 	fmt.Println(scheduler.Parallel().Name())
 	defer scheduler.Parallel().Close()
 	done := make(chan int)
-	scheduler.Parallel().Worker().Do(func() {
+	_ = scheduler.Parallel().Worker().Do(func() {
 		done <- 1
 	})
 	assert.Equal(t, 1, <-done)

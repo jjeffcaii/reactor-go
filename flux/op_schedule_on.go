@@ -13,9 +13,12 @@ type fluxSubscribeOn struct {
 }
 
 func (p *fluxSubscribeOn) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
-	p.sc.Worker().Do(func() {
+	err := p.sc.Worker().Do(func() {
 		p.source.SubscribeWith(ctx, s)
 	})
+	if err != nil {
+		panic(err)
+	}
 }
 
 func newFluxSubscribeOn(source reactor.RawPublisher, sc scheduler.Scheduler) *fluxSubscribeOn {

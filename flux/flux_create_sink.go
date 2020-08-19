@@ -14,7 +14,8 @@ type bufferedSink struct {
 	n        int32
 	draining int32
 	stat     int32
-	cond     *sync.Cond
+	lock     sync.Mutex
+	cond     sync.Cond
 }
 
 func (p *bufferedSink) Request(n int) {
@@ -89,9 +90,10 @@ func (p *bufferedSink) dispose() {
 }
 
 func newBufferedSink(s reactor.Subscriber, cap int) *bufferedSink {
-	return &bufferedSink{
-		s:    s,
-		q:    newQueue(cap),
-		cond: sync.NewCond(&sync.Mutex{}),
+	b := &bufferedSink{
+		s: s,
+		q: newQueue(cap),
 	}
+	b.cond.L = &b.lock
+	return b
 }

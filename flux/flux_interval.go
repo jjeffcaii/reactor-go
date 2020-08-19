@@ -86,9 +86,12 @@ type fluxInterval struct {
 func (p *fluxInterval) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
 	su := newIntervalSubscription(s, p.period)
 	s.OnSubscribe(su)
-	p.sc.Worker().Do(func() {
+	err := p.sc.Worker().Do(func() {
 		su.run(ctx)
 	})
+	if err != nil {
+		panic(err)
+	}
 }
 
 func newFluxInterval(period time.Duration, delay time.Duration, sc scheduler.Scheduler) *fluxInterval {

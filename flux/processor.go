@@ -22,114 +22,129 @@ type unicastProcessor struct {
 	requests   int32
 	draining   int32
 	subscribed chan struct{}
-	cond       *sync.Cond
+	lock       sync.RWMutex
+	cond       sync.Cond
 }
 
-func (p *unicastProcessor) Request(n int) {
-	atomic.AddInt32(&p.requests, int32(n))
+func (up *unicastProcessor) Request(n int) {
+	atomic.AddInt32(&up.requests, int32(n))
 }
 
-func (p *unicastProcessor) Cancel() {
-	p.dispose(statCancel)
+func (up *unicastProcessor) Cancel() {
+	up.dispose(statCancel)
 }
 
-func (p *unicastProcessor) OnComplete() {
-	p.cond.L.Lock()
-	for atomic.LoadInt32(&p.draining) != 0 {
-		p.cond.Wait()
+func (up *unicastProcessor) OnComplete() {
+	up.cond.L.Lock()
+	for atomic.LoadInt32(&up.draining) != 0 {
+		up.cond.Wait()
 	}
-	p.cond.L.Unlock()
-	if p.dispose(statComplete) {
-		p.drain()
-		p.actual.OnComplete()
+	up.cond.L.Unlock()
+	if up.dispose(statComplete) {
+		up.drain()
+		up.actual.OnComplete()
 	}
 }
 
-func (p *unicastProcessor) OnError(e error) {
-	if p.dispose(statError) {
-		p.actual.OnError(e)
+func (up *unicastProcessor) OnError(e error) {
+	if up.dispose(statError) {
+		up.actual.OnError(e)
 	} else {
 		hooks.Global().OnErrorDrop(e)
 	}
 }
 
-func (p *unicastProcessor) OnNext(v Any) {
-	if atomic.LoadInt32(&p.stat) != 0 {
+func (up *unicastProcessor) OnNext(v Any) {
+	if atomic.LoadInt32(&up.stat) != 0 {
 		hooks.Global().OnNextDrop(v)
 		return
 	}
-	p.q.offer(v)
-	p.drain()
+	up.q.offer(v)
+	up.drain()
 }
 
-func (p *unicastProcessor) OnSubscribe(su reactor.Subscription) {
-	p.actual.OnSubscribe(su)
+func (up *unicastProcessor) OnSubscribe(su reactor.Subscription) {
+	up.actual.OnSubscribe(su)
 }
 
-func (p *unicastProcessor) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
-	p.cond.L.Lock()
-	if p.actual != nil {
-		p.cond.L.Unlock()
+func (up *unicastProcessor) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
+	up.lock.RLock()
+	conflict := up.actual != nil
+	up.lock.RUnlock()
+	if conflict {
 		panic(errSubscribeOnce)
 	}
+
+	up.cond.L.Lock()
 	raw := internal.ExtractRawSubscriber(s)
-	p.actual = raw
-	p.cond.L.Unlock()
-	raw.OnSubscribe(p)
-	close(p.subscribed)
+	up.actual = raw
+	up.cond.L.Unlock()
+
+	defer close(up.subscribed)
+	raw.OnSubscribe(up)
 }
 
-func (p *unicastProcessor) Complete() {
-	<-p.subscribed
-	p.OnComplete()
+func (up *unicastProcessor) Complete() {
+	select {
+	case <-up.subscribed:
+		up.OnComplete()
+	default:
+	}
 }
 
-func (p *unicastProcessor) Error(e error) {
-	<-p.subscribed
-	p.OnError(e)
+func (up *unicastProcessor) Error(e error) {
+	select {
+	case <-up.subscribed:
+		up.OnError(e)
+	default:
+	}
 }
 
-func (p *unicastProcessor) Next(v Any) {
-	<-p.subscribed
-	p.OnNext(v)
+func (up *unicastProcessor) Next(v Any) {
+	select {
+	case <-up.subscribed:
+		up.OnNext(v)
+	default:
+	}
 }
 
-func (p *unicastProcessor) drain() {
-	if !atomic.CompareAndSwapInt32(&p.draining, 0, 1) {
+func (up *unicastProcessor) drain() {
+	if !atomic.CompareAndSwapInt32(&up.draining, 0, 1) {
 		return
 	}
 	defer func() {
-		p.cond.L.Lock()
-		atomic.StoreInt32(&p.draining, 0)
-		p.cond.Broadcast()
-		p.cond.L.Unlock()
+		up.cond.L.Lock()
+		atomic.StoreInt32(&up.draining, 0)
+		up.cond.Broadcast()
+		up.cond.L.Unlock()
 	}()
-	for atomic.AddInt32(&p.requests, -1) > -1 {
-		if atomic.LoadInt32(&p.stat) != 0 {
+	for atomic.AddInt32(&up.requests, -1) > -1 {
+		if atomic.LoadInt32(&up.stat) != 0 {
 			return
 		}
-		v, ok := p.q.poll()
+		v, ok := up.q.poll()
 		if !ok {
-			atomic.AddInt32(&p.requests, 1)
+			atomic.AddInt32(&up.requests, 1)
 			break
 		}
-		p.actual.OnNext(v)
+		up.actual.OnNext(v)
 	}
-	atomic.CompareAndSwapInt32(&p.requests, -1, 0)
+	atomic.CompareAndSwapInt32(&up.requests, -1, 0)
 }
 
-func (p *unicastProcessor) dispose(stat int32) (ok bool) {
-	ok = atomic.CompareAndSwapInt32(&p.stat, 0, stat)
+func (up *unicastProcessor) dispose(stat int32) (ok bool) {
+	ok = atomic.CompareAndSwapInt32(&up.stat, 0, stat)
 	if ok {
-		_ = p.q.Close()
+		_ = up.q.Close()
 	}
 	return
 }
 
 func newUnicastProcessor(cap int) *unicastProcessor {
-	return &unicastProcessor{
+	u := &unicastProcessor{
 		q:          newQueue(cap),
 		subscribed: make(chan struct{}),
-		cond:       sync.NewCond(&sync.Mutex{}),
 	}
+	u.cond.L = &u.lock
+	return u
 }

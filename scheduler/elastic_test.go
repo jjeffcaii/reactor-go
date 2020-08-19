@@ -12,7 +12,7 @@ import (
 func TestElastic(t *testing.T) {
 	fmt.Println(scheduler.Elastic().Name())
 	done := make(chan int)
-	scheduler.Elastic().Worker().Do(func() {
+	_ = scheduler.Elastic().Worker().Do(func() {
 		done <- 1
 	})
 	assert.Equal(t, 1, <-done)
