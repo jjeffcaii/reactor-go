@@ -10,6 +10,16 @@ import (
 	"github.com/jjeffcaii/reactor-go/internal"
 )
 
+var _dropAllSubscriber = reactor.NewSubscriber(
+	reactor.OnError(func(e error) {
+		hooks.Global().OnErrorDrop(e)
+	}),
+	reactor.OnNext(func(v reactor.Any) error {
+		hooks.Global().OnNextDrop(v)
+		return nil
+	}),
+)
+
 type rawProcessor interface {
 	reactor.RawPublisher
 	Sink
@@ -24,6 +34,17 @@ type unicastProcessor struct {
 	subscribed chan struct{}
 	lock       sync.RWMutex
 	cond       sync.Cond
+}
+
+func (up *unicastProcessor) Close() error {
+	up.lock.Lock()
+	defer up.lock.Unlock()
+	if up.actual == nil {
+		up.actual = _dropAllSubscriber
+		up.dispose(statCancel)
+		close(up.subscribed)
+	}
+	return nil
 }
 
 func (up *unicastProcessor) Request(n int) {
@@ -85,27 +106,18 @@ func (up *unicastProcessor) SubscribeWith(ctx context.Context, s reactor.Subscri
 }
 
 func (up *unicastProcessor) Complete() {
-	select {
-	case <-up.subscribed:
-		up.OnComplete()
-	default:
-	}
+	<-up.subscribed
+	up.OnComplete()
 }
 
 func (up *unicastProcessor) Error(e error) {
-	select {
-	case <-up.subscribed:
-		up.OnError(e)
-	default:
-	}
+	<-up.subscribed
+	up.OnError(e)
 }
 
 func (up *unicastProcessor) Next(v Any) {
-	select {
-	case <-up.subscribed:
-		up.OnNext(v)
-	default:
-	}
+	<-up.subscribed
+	up.OnNext(v)
 }
 
 func (up *unicastProcessor) drain() {

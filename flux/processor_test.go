@@ -3,6 +3,7 @@ package flux_test
 import (
 	"context"
 	"fmt"
+	"io"
 	"testing"
 	"time"
 
@@ -11,6 +12,45 @@ import (
 	"github.com/jjeffcaii/reactor-go/hooks"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestUnicastProcessor_Close(t *testing.T) {
+	droppedError := make(chan error)
+	droppedNext := make(chan Any)
+	hooks.OnErrorDrop(func(e error) {
+		droppedError <- e
+	})
+	hooks.OnNextDrop(func(v reactor.Any) {
+		droppedNext <- v
+	})
+	p := flux.NewUnicastProcessor()
+
+	go func() {
+		p.Error(fakeErr)
+	}()
+
+	_ = p.(io.Closer).Close()
+	select {
+	case e := <-droppedError:
+		assert.Equal(t, fakeErr, e, "should be fake error")
+	case <-droppedNext:
+		assert.Fail(t, "unreachable")
+	}
+	p = flux.NewUnicastProcessor()
+
+	fakeElem := "fake element"
+	go func() {
+		p.Next(fakeElem)
+		p.Complete()
+	}()
+
+	_ = p.(io.Closer).Close()
+	select {
+	case <-droppedError:
+		assert.Fail(t, "unreachable")
+	case next := <-droppedNext:
+		assert.Equal(t, fakeElem, next)
+	}
+}
 
 func TestUnicastProcessor(t *testing.T) {
 	hooks.OnNextDrop(func(v Any) {

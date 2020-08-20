@@ -3,6 +3,7 @@ package flux
 import (
 	"context"
 	"errors"
+	"io"
 	"reflect"
 	"time"
 
@@ -225,6 +226,15 @@ func (w wrapper) Error(e error) {
 
 func (w wrapper) Next(v Any) {
 	w.mustProcessor().Next(v)
+}
+
+func (w wrapper) Close() (err error) {
+	closer, ok := w.RawPublisher.(io.Closer)
+	if !ok {
+		return
+	}
+	err = closer.Close()
+	return
 }
 
 func (w wrapper) mustProcessor() rawProcessor {
