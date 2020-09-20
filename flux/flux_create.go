@@ -48,7 +48,7 @@ func (fc fluxCreate) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
 	default:
 		sink = newBufferedSink(s, _buffSize)
 	}
-	s.OnSubscribe(sink)
+	s.OnSubscribe(ctx, sink)
 	fc.source(ctx, sink)
 }
 

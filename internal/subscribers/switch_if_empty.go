@@ -41,7 +41,8 @@ func (s *SwitchIfEmptySubscriber) OnNext(v reactor.Any) {
 	s.actual.OnNext(v)
 }
 
-func (s *SwitchIfEmptySubscriber) OnSubscribe(su reactor.Subscription) {
+func (s *SwitchIfEmptySubscriber) OnSubscribe(ctx context.Context, su reactor.Subscription) {
+	s.ctx = ctx
 	if old := s.su; old != nil {
 		// TODO: check should cancel
 		old.Cancel()
@@ -61,9 +62,8 @@ func (s *SwitchIfEmptySubscriber) OnComplete() {
 	}
 }
 
-func NewSwitchIfEmptySubscriber(ctx context.Context, alternative reactor.RawPublisher, actual reactor.Subscriber) *SwitchIfEmptySubscriber {
+func NewSwitchIfEmptySubscriber(alternative reactor.RawPublisher, actual reactor.Subscriber) *SwitchIfEmptySubscriber {
 	return &SwitchIfEmptySubscriber{
-		ctx:    ctx,
 		actual: actual,
 		other:  alternative,
 	}

@@ -11,8 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-
-
 func TestInterval(t *testing.T) {
 	done := make(chan struct{})
 	var amount int32
@@ -25,7 +23,7 @@ func TestInterval(t *testing.T) {
 				atomic.AddInt32(&amount, 1)
 				return nil
 			}),
-			reactor.OnSubscribe(func(su reactor.Subscription) {
+			reactor.OnSubscribe(func(ctx context.Context, su reactor.Subscription) {
 				su.Request(3)
 			}),
 		)

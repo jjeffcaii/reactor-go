@@ -1,6 +1,7 @@
 package subscribers
 
 import (
+	"context"
 	"sync"
 
 	"github.com/jjeffcaii/reactor-go"
@@ -31,9 +32,9 @@ func (p *DoFinallySubscriber) OnNext(v reactor.Any) {
 	p.actual.OnNext(v)
 }
 
-func (p *DoFinallySubscriber) OnSubscribe(s reactor.Subscription) {
+func (p *DoFinallySubscriber) OnSubscribe(ctx context.Context, s reactor.Subscription) {
 	p.s = s
-	p.actual.OnSubscribe(p)
+	p.actual.OnSubscribe(ctx, p)
 }
 
 func (p *DoFinallySubscriber) OnComplete() {

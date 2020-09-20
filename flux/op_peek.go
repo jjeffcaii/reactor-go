@@ -61,15 +61,15 @@ func (p *peekSubscriber) OnNext(v Any) {
 	p.actual.OnNext(v)
 }
 
-func (p *peekSubscriber) OnSubscribe(s reactor.Subscription) {
+func (p *peekSubscriber) OnSubscribe(ctx context.Context, s reactor.Subscription) {
 	if p.s != nil {
 		panic(internal.ErrCallOnSubscribeDuplicated)
 	}
 	p.s = s
 	if call := p.parent.onSubscribeCall; call != nil {
-		call(p)
+		call(ctx, p)
 	}
-	p.actual.OnSubscribe(p)
+	p.actual.OnSubscribe(ctx, p)
 }
 
 func newPeekSubscriber(peek *fluxPeek, actual reactor.Subscriber) *peekSubscriber {
@@ -91,7 +91,7 @@ type fluxPeek struct {
 
 func (fp *fluxPeek) SubscribeWith(ctx context.Context, actual reactor.Subscriber) {
 	actual = internal.ExtractRawSubscriber(actual)
-	actual = internal.NewCoreSubscriber(ctx, newPeekSubscriber(fp, actual))
+	actual = internal.NewCoreSubscriber(newPeekSubscriber(fp, actual))
 	fp.source.SubscribeWith(ctx, actual)
 }
 

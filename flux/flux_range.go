@@ -16,7 +16,7 @@ type fluxRange struct {
 func (r fluxRange) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
 	raw := internal.ExtractRawSubscriber(s)
 	su := newRangeSubscription(raw, r.begin, r.end)
-	internal.NewCoreSubscriber(ctx, raw).OnSubscribe(su)
+	internal.NewCoreSubscriber(raw).OnSubscribe(ctx, su)
 }
 
 type rangeSubscription struct {

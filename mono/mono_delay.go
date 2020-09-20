@@ -35,7 +35,7 @@ func (p *monoDelay) SubscribeWith(ctx context.Context, actual reactor.Subscriber
 	s := &delaySubscriber{
 		actual: actual,
 	}
-	actual.OnSubscribe(s)
+	actual.OnSubscribe(ctx, s)
 
 	time.AfterFunc(p.delay, func() {
 		err := p.sc.Worker().Do(func() {
@@ -43,7 +43,7 @@ func (p *monoDelay) SubscribeWith(ctx context.Context, actual reactor.Subscriber
 			actual.OnComplete()
 		})
 		if err != nil {
-			panic(err)
+			actual.OnError(err)
 		}
 	})
 

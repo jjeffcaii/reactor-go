@@ -51,9 +51,9 @@ func (d *delayElementSubscriber) OnNext(v Any) {
 	d.actual.OnNext(v)
 }
 
-func (d *delayElementSubscriber) OnSubscribe(s reactor.Subscription) {
+func (d *delayElementSubscriber) OnSubscribe(ctx context.Context, s reactor.Subscription) {
 	d.s = s
-	d.actual.OnSubscribe(d)
+	d.actual.OnSubscribe(ctx, d)
 	s.Request(reactor.RequestInfinite)
 }
 
@@ -73,7 +73,7 @@ type fluxDelayElement struct {
 
 func (f *fluxDelayElement) SubscribeWith(ctx context.Context, actual reactor.Subscriber) {
 	actual = internal.ExtractRawSubscriber(actual)
-	actual = internal.NewCoreSubscriber(ctx, newDelayElementSubscriber(actual, f.delay, f.sc))
+	actual = internal.NewCoreSubscriber(newDelayElementSubscriber(actual, f.delay, f.sc))
 	f.source.SubscribeWith(ctx, actual)
 }
 

@@ -28,8 +28,8 @@ func (m mapSubscriber) OnNext(v Any) {
 	}
 }
 
-func (m mapSubscriber) OnSubscribe(s reactor.Subscription) {
-	m.actual.OnSubscribe(s)
+func (m mapSubscriber) OnSubscribe(ctx context.Context, s reactor.Subscription) {
+	m.actual.OnSubscribe(ctx, s)
 }
 
 func newMapSubscriber(s reactor.Subscriber, t reactor.Transformer) mapSubscriber {
@@ -46,7 +46,7 @@ type monoMap struct {
 
 func (m *monoMap) SubscribeWith(ctx context.Context, actual reactor.Subscriber) {
 	actual = internal.ExtractRawSubscriber(actual)
-	actual = internal.NewCoreSubscriber(ctx, newMapSubscriber(actual, m.mapper))
+	actual = internal.NewCoreSubscriber(newMapSubscriber(actual, m.mapper))
 	m.source.SubscribeWith(ctx, actual)
 }
 

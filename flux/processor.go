@@ -84,8 +84,8 @@ func (up *unicastProcessor) OnNext(v Any) {
 	up.drain()
 }
 
-func (up *unicastProcessor) OnSubscribe(su reactor.Subscription) {
-	up.actual.OnSubscribe(su)
+func (up *unicastProcessor) OnSubscribe(ctx context.Context, su reactor.Subscription) {
+	up.actual.OnSubscribe(ctx, su)
 }
 
 func (up *unicastProcessor) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
@@ -102,7 +102,7 @@ func (up *unicastProcessor) SubscribeWith(ctx context.Context, s reactor.Subscri
 	up.cond.L.Unlock()
 
 	defer close(up.subscribed)
-	raw.OnSubscribe(up)
+	raw.OnSubscribe(ctx, up)
 }
 
 func (up *unicastProcessor) Complete() {

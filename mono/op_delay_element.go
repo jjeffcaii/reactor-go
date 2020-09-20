@@ -48,9 +48,9 @@ func (d *delayElementSubscriber) OnNext(v Any) {
 	})
 }
 
-func (d *delayElementSubscriber) OnSubscribe(s reactor.Subscription) {
+func (d *delayElementSubscriber) OnSubscribe(ctx context.Context, s reactor.Subscription) {
 	d.s = s
-	d.actual.OnSubscribe(d)
+	d.actual.OnSubscribe(ctx, d)
 	s.Request(reactor.RequestInfinite)
 }
 
@@ -76,7 +76,7 @@ type monoDelayElement struct {
 
 func (p *monoDelayElement) SubscribeWith(ctx context.Context, actual reactor.Subscriber) {
 	actual = internal.ExtractRawSubscriber(actual)
-	actual = internal.NewCoreSubscriber(ctx, newDelayElementSubscriber(actual, p.delay, p.sc))
+	actual = internal.NewCoreSubscriber(newDelayElementSubscriber(actual, p.delay, p.sc))
 	p.source.SubscribeWith(ctx, actual)
 }
 

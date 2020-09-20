@@ -2,6 +2,7 @@ package mono
 
 import (
 	"context"
+	"log"
 	"sync"
 	"sync/atomic"
 
@@ -11,34 +12,34 @@ import (
 )
 
 type processor struct {
-	v      Any
-	e      error
-	done   bool
-	subs   *internal.Vector
-	locker sync.RWMutex
+	sync.RWMutex
+	v    Any
+	e    error
+	done bool
+	subs *internal.Vector
 }
 
 func (p *processor) stat() (stat int32) {
-	p.locker.RLock()
+	p.RLock()
 	if p.e != nil {
 		stat = statError
 	} else if p.done {
 		stat = statComplete
 	}
-	p.locker.RUnlock()
+	p.RUnlock()
 	return
 }
 
 func (p *processor) Success(v Any) {
-	p.locker.Lock()
+	p.Lock()
 	if p.done {
-		p.locker.Unlock()
+		p.Unlock()
 		hooks.Global().OnNextDrop(v)
 		return
 	}
 	p.done = true
 	p.v = v
-	p.locker.Unlock()
+	p.Unlock()
 	for _, it := range p.subs.Snapshot() {
 		s := it.(reactor.Subscriber)
 		if v != nil {
@@ -49,15 +50,15 @@ func (p *processor) Success(v Any) {
 }
 
 func (p *processor) Error(e error) {
-	p.locker.Lock()
+	p.Lock()
 	if p.done {
-		p.locker.Unlock()
+		p.Unlock()
 		hooks.Global().OnErrorDrop(e)
 		return
 	}
 	p.done = true
 	p.e = e
-	p.locker.Unlock()
+	p.Unlock()
 	for _, it := range p.subs.Snapshot() {
 		it.(reactor.Subscriber).OnError(e)
 	}
@@ -69,8 +70,8 @@ func (p *processor) SubscribeWith(ctx context.Context, actual reactor.Subscriber
 		actual: actual,
 		parent: p,
 	}
-	actual = internal.NewCoreSubscriber(ctx, s)
-	actual.OnSubscribe(s)
+	actual = internal.NewCoreSubscriber(s)
+	actual.OnSubscribe(ctx, s)
 	p.subs.Add(actual)
 }
 
@@ -101,6 +102,7 @@ func (p *processorSubscriber) Request(n int) {
 }
 
 func (p *processorSubscriber) Cancel() {
+	log.Println("got cancel")
 	atomic.CompareAndSwapInt32(&p.stat, 0, statCancel)
 }
 
@@ -126,9 +128,9 @@ func (p *processorSubscriber) OnNext(v Any) {
 	p.actual.OnNext(v)
 }
 
-func (p *processorSubscriber) OnSubscribe(s reactor.Subscription) {
+func (p *processorSubscriber) OnSubscribe(ctx context.Context, s reactor.Subscription) {
 	p.s = s
-	p.actual.OnSubscribe(s)
+	p.actual.OnSubscribe(ctx, s)
 }
 
 func newProcessor() *processor {

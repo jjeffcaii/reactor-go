@@ -106,7 +106,7 @@ func (p *fluxSlice) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
 		return
 	}
 	subscription := newSliceSubscription(s, p.slice)
-	s.OnSubscribe(subscription)
+	s.OnSubscribe(ctx, subscription)
 }
 
 func newSliceFlux(values []Any) *fluxSlice {

@@ -1,6 +1,6 @@
 default:
 	echo 'Hello, world!'
 test:
-        go test -cover -race -count=1 ./... -v
+        go test -cover -race -count=1 ./...
 lint:
         golangci-lint run ./...

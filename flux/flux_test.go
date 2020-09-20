@@ -36,7 +36,7 @@ func Example() {
 		}).
 		SubscribeOn(scheduler.Elastic()).
 		Subscribe(context.Background(),
-			reactor.OnSubscribe(func(s reactor.Subscription) {
+			reactor.OnSubscribe(func(ctx context.Context, s reactor.Subscription) {
 				su = s
 				s.Request(1)
 			}),
@@ -121,7 +121,7 @@ func testDoOnSubscribe(f flux.Flux, t *testing.T) {
 		su.Request(1)
 		return nil
 	}
-	onSubscribe := func(s reactor.Subscription) {
+	onSubscribe := func(ctx context.Context, s reactor.Subscription) {
 		su = s
 		su.Request(1)
 	}
@@ -164,7 +164,7 @@ func testFilterRequest(f flux.Flux, t *testing.T) {
 		DoOnRequest(func(n int) {
 			requests++
 		}).
-		Subscribe(context.Background(), reactor.OnSubscribe(func(su reactor.Subscription) {
+		Subscribe(context.Background(), reactor.OnSubscribe(func(ctx context.Context, su reactor.Subscription) {
 			s = su
 			s.Request(1)
 		}))
@@ -235,7 +235,7 @@ func testPeek(f flux.Flux, t *testing.T) {
 		DoFinally(func(s reactor.SignalType) {
 			close(done)
 		}).
-		Subscribe(context.Background(), reactor.OnSubscribe(func(su reactor.Subscription) {
+		Subscribe(context.Background(), reactor.OnSubscribe(func(ctx context.Context, su reactor.Subscription) {
 			ss = su
 			ss.Request(1)
 		}), reactor.OnNext(func(v interface{}) error {
@@ -258,7 +258,7 @@ func testRequest(f flux.Flux, t *testing.T) {
 			close(done)
 		}).
 		SubscribeOn(scheduler.Elastic()).
-		Subscribe(context.Background(), reactor.OnSubscribe(func(s reactor.Subscription) {
+		Subscribe(context.Background(), reactor.OnSubscribe(func(ctx context.Context, s reactor.Subscription) {
 			su = s
 			su.Request(1)
 		}), reactor.OnNext(func(v Any) error {
@@ -307,7 +307,7 @@ func TestCreateWithRequest(t *testing.T) {
 		fmt.Println("next:", v)
 		processed++
 		return nil
-	}), reactor.OnSubscribe(func(s reactor.Subscription) {
+	}), reactor.OnSubscribe(func(ctx context.Context, s reactor.Subscription) {
 		su <- s
 		s.Request(1)
 	}), reactor.OnComplete(func() {

@@ -1,6 +1,7 @@
 package reactor
 
 import (
+	"context"
 	"math"
 )
 
@@ -17,7 +18,7 @@ type Subscriber interface {
 	OnComplete()
 	OnError(error)
 	OnNext(Any)
-	OnSubscribe(Subscription)
+	OnSubscribe(context.Context, Subscription)
 }
 
 type subscriber struct {
@@ -41,11 +42,11 @@ func (p *subscriber) OnError(err error) {
 	p.fnOnError(err)
 }
 
-func (p *subscriber) OnSubscribe(s Subscription) {
+func (p *subscriber) OnSubscribe(ctx context.Context, s Subscription) {
 	if p == nil || p.fnOnSubscribe == nil {
 		s.Request(RequestInfinite)
 	} else {
-		p.fnOnSubscribe(s)
+		p.fnOnSubscribe(ctx, s)
 	}
 }
 

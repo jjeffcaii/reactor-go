@@ -124,7 +124,7 @@ func TestSuite(t *testing.T) {
 
 func testDoOnSubscribe(m mono.Mono, t *testing.T) {
 	var called bool
-	v, err := m.DoOnSubscribe(func(su reactor.Subscription) {
+	v, err := m.DoOnSubscribe(func(ctx context.Context, su reactor.Subscription) {
 		called = true
 	}).Block(context.Background())
 	assert.NoError(t, err, "oops")
@@ -160,7 +160,7 @@ func testDelayElement(m mono.Mono, t *testing.T) {
 			assert.Equal(t, 1, int(time.Since(begin).Seconds()), "bad passed time")
 			return nil
 		}).
-		Subscribe(context.Background(), reactor.OnSubscribe(func(su reactor.Subscription) {
+		Subscribe(context.Background(), reactor.OnSubscribe(func(ctx context.Context, su reactor.Subscription) {
 			begin = time.Now()
 			su.Request(reactor.RequestInfinite)
 		}))
@@ -263,7 +263,7 @@ func testCancel(m mono.Mono, t *testing.T) {
 		DoOnCancel(func() {
 			cancelled = true
 		}).
-		Subscribe(context.Background(), reactor.OnSubscribe(func(su reactor.Subscription) {
+		Subscribe(context.Background(), reactor.OnSubscribe(func(ctx context.Context, su reactor.Subscription) {
 			su.Cancel()
 		}))
 	assert.True(t, cancelled, "bad cancelled")

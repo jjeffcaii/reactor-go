@@ -71,7 +71,7 @@ func (m *monoCreate) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
 	sink := &defaultSink{
 		actual: s,
 	}
-	s.OnSubscribe(sink)
+	s.OnSubscribe(ctx, sink)
 	m.sinker(ctx, sink)
 }
 

@@ -15,7 +15,7 @@ type fluxFinally struct {
 
 func (p *fluxFinally) SubscribeWith(ctx context.Context, actual reactor.Subscriber) {
 	actual = internal.ExtractRawSubscriber(actual)
-	actual = internal.NewCoreSubscriber(ctx, subscribers.NewDoFinallySubscriber(actual, p.onFinally))
+	actual = internal.NewCoreSubscriber(subscribers.NewDoFinallySubscriber(actual, p.onFinally))
 	p.source.SubscribeWith(ctx, actual)
 }
 

@@ -12,12 +12,13 @@ type CoreSubscriber struct {
 	ctx context.Context
 }
 
-func (p *CoreSubscriber) OnSubscribe(su reactor.Subscription) {
+func (p *CoreSubscriber) OnSubscribe(ctx context.Context, su reactor.Subscription) {
+	p.ctx = ctx
 	select {
-	case <-p.ctx.Done():
+	case <-ctx.Done():
 		p.Subscriber.OnError(reactor.ErrSubscribeCancelled)
 	default:
-		p.Subscriber.OnSubscribe(su)
+		p.Subscriber.OnSubscribe(ctx, su)
 	}
 }
 
@@ -31,13 +32,13 @@ func (p *CoreSubscriber) OnNext(v reactor.Any) {
 	}
 }
 
-func NewCoreSubscriber(ctx context.Context, actual reactor.Subscriber) *CoreSubscriber {
+func NewCoreSubscriber(actual reactor.Subscriber) *CoreSubscriber {
 	if cs, ok := actual.(*CoreSubscriber); ok {
 		return cs
 	}
 	return &CoreSubscriber{
 		Subscriber: actual,
-		ctx:        ctx,
+		ctx:        context.Background(),
 	}
 }
 
