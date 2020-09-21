@@ -9,11 +9,20 @@ import (
 
 type CoreSubscriber struct {
 	reactor.Subscriber
-	ctx context.Context
+	done chan struct{}
 }
 
 func (p *CoreSubscriber) OnSubscribe(ctx context.Context, su reactor.Subscription) {
-	p.ctx = ctx
+	if ctx != context.Background() && ctx != context.TODO() {
+		go func() {
+			select {
+			case <-p.done:
+			case <-ctx.Done():
+				p.OnError(reactor.ErrSubscribeCancelled)
+			}
+		}()
+	}
+
 	select {
 	case <-ctx.Done():
 		p.Subscriber.OnError(reactor.ErrSubscribeCancelled)
@@ -22,9 +31,27 @@ func (p *CoreSubscriber) OnSubscribe(ctx context.Context, su reactor.Subscriptio
 	}
 }
 
+func (p *CoreSubscriber) OnComplete() {
+	select {
+	case <-p.done:
+	default:
+		close(p.done)
+		p.Subscriber.OnComplete()
+	}
+}
+
+func (p *CoreSubscriber) OnError(err error) {
+	select {
+	case <-p.done:
+	default:
+		close(p.done)
+		p.Subscriber.OnError(err)
+	}
+}
+
 func (p *CoreSubscriber) OnNext(v reactor.Any) {
 	select {
-	case <-p.ctx.Done():
+	case <-p.done:
 		hooks.Global().OnNextDrop(v)
 		p.Subscriber.OnError(reactor.ErrSubscribeCancelled)
 	default:
@@ -38,7 +65,7 @@ func NewCoreSubscriber(actual reactor.Subscriber) *CoreSubscriber {
 	}
 	return &CoreSubscriber{
 		Subscriber: actual,
-		ctx:        context.Background(),
+		done:       make(chan struct{}),
 	}
 }
 

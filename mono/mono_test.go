@@ -61,6 +61,11 @@ func TestDelay(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, int(time.Since(begin).Nanoseconds()/1e7))
 	assert.Equal(t, int64(0), v)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	_, err = mono.Delay(300 * time.Millisecond).Block(ctx)
+	assert.Error(t, err)
+	cancel()
 }
 
 func TestSwitchIfEmpty(t *testing.T) {

@@ -9,13 +9,13 @@ import (
 )
 
 type Any = reactor.Any
-type flatMapper = func(reactor.Any) Mono
+type FlatMapper = func(reactor.Any) Mono
 
 type Mono interface {
 	reactor.Publisher
 	Filter(reactor.Predicate) Mono
 	Map(reactor.Transformer) Mono
-	FlatMap(flatMapper) Mono
+	FlatMap(FlatMapper) Mono
 	SubscribeOn(scheduler.Scheduler) Mono
 	Block(context.Context) (Any, error)
 	DoOnNext(reactor.FnOnNext) Mono

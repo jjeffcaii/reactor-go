@@ -31,7 +31,7 @@ func (p wrapper) Map(t reactor.Transformer) Mono {
 	return wrap(newMonoMap(p.RawPublisher, t))
 }
 
-func (p wrapper) FlatMap(mapper flatMapper) Mono {
+func (p wrapper) FlatMap(mapper FlatMapper) Mono {
 	return wrap(newMonoFlatMap(p.RawPublisher, mapper))
 }
 
@@ -71,29 +71,31 @@ func (p wrapper) DelayElement(delay time.Duration) Mono {
 	return wrap(newMonoDelayElement(p.RawPublisher, delay, scheduler.Elastic()))
 }
 
-func (p wrapper) Block(ctx context.Context) (Any, error) {
-	ch := make(chan Any, 1)
+func (p wrapper) Block(ctx context.Context) (value Any, err error) {
+	done := make(chan struct{})
 	p.
 		DoFinally(func(signal reactor.SignalType) {
-			close(ch)
+			close(done)
 		}).
 		Subscribe(ctx,
 			reactor.OnNext(func(v Any) error {
-				ch <- v
+				select {
+				case <-done:
+				default:
+					value = v
+				}
 				return nil
 			}),
 			reactor.OnError(func(e error) {
-				ch <- e
+				select {
+				case <-done:
+				default:
+					err = e
+				}
 			}),
 		)
-	v, ok := <-ch
-	if !ok {
-		return nil, nil
-	}
-	if err, ok := v.(error); ok {
-		return nil, err
-	}
-	return v, nil
+	<-done
+	return
 }
 
 func (p wrapper) Success(v Any) {
