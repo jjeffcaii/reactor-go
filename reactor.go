@@ -1,5 +1,7 @@
 package reactor
 
+import "context"
+
 type SignalType int8
 
 func (s SignalType) String() string {
@@ -32,7 +34,7 @@ type (
 	FnOnComplete  = func()
 	FnOnNext      = func(v Any) error
 	FnOnCancel    = func()
-	FnOnSubscribe = func(su Subscription)
+	FnOnSubscribe = func(ctx context.Context, su Subscription)
 	FnOnRequest   = func(n int)
 	FnOnError     = func(e error)
 	FnOnFinally   = func(s SignalType)

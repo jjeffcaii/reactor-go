@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"time"
-
-	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
 var empty = wrap(newMonoJust(nil))
@@ -38,7 +36,7 @@ func Create(gen func(ctx context.Context, s Sink)) Mono {
 }
 
 func Delay(delay time.Duration) Mono {
-	return wrap(newMonoDelay(delay, scheduler.Parallel()))
+	return wrap(newMonoDelay(delay))
 }
 
 func CreateProcessor() Processor {

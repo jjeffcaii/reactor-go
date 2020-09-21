@@ -15,7 +15,7 @@ type monoDoFinally struct {
 
 func (m *monoDoFinally) SubscribeWith(ctx context.Context, actual reactor.Subscriber) {
 	actual = internal.ExtractRawSubscriber(actual)
-	actual = internal.NewCoreSubscriber(ctx, subscribers.NewDoFinallySubscriber(actual, m.onFinally))
+	actual = internal.NewCoreSubscriber(subscribers.NewDoFinallySubscriber(actual, m.onFinally))
 	m.source.SubscribeWith(ctx, actual)
 }
 

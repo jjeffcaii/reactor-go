@@ -36,14 +36,14 @@ func (p *filterSubscriber) OnNext(v Any) {
 	internal.TryDiscard(p.ctx, v)
 }
 
-func (p *filterSubscriber) OnSubscribe(su reactor.Subscription) {
+func (p *filterSubscriber) OnSubscribe(ctx context.Context, su reactor.Subscription) {
+	p.ctx = ctx
 	p.su = su
-	p.actual.OnSubscribe(su)
+	p.actual.OnSubscribe(ctx, su)
 }
 
-func newFilterSubscriber(ctx context.Context, s reactor.Subscriber, p reactor.Predicate) *filterSubscriber {
+func newFilterSubscriber(s reactor.Subscriber, p reactor.Predicate) *filterSubscriber {
 	return &filterSubscriber{
-		ctx:    ctx,
 		actual: s,
 		f:      p,
 	}
@@ -57,10 +57,10 @@ type fluxFilter struct {
 func (f *fluxFilter) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
 	var actual reactor.Subscriber
 	if cs, ok := s.(*internal.CoreSubscriber); ok {
-		cs.Subscriber = newFilterSubscriber(ctx, cs.Subscriber, f.predicate)
+		cs.Subscriber = newFilterSubscriber(cs.Subscriber, f.predicate)
 		actual = cs
 	} else {
-		actual = internal.NewCoreSubscriber(ctx, newFilterSubscriber(ctx, s, f.predicate))
+		actual = internal.NewCoreSubscriber(newFilterSubscriber(s, f.predicate))
 	}
 	f.source.SubscribeWith(ctx, actual)
 }

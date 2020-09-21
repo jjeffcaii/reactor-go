@@ -5,56 +5,75 @@ import (
 	"time"
 
 	"github.com/jjeffcaii/reactor-go"
-	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
 const _delayValue = int64(0)
 
-type delaySubscriber struct {
+type delaySubscription struct {
 	actual    reactor.Subscriber
-	requested bool
+	timer     *time.Timer
+	done      chan struct{}
+	requested chan struct{}
 }
 
-func (p *delaySubscriber) Request(n int) {
+func (d *delaySubscription) Request(n int) {
 	if n < 1 {
 		panic(reactor.ErrNegativeRequest)
 	}
-	p.requested = true
+	select {
+	case <-d.requested:
+	default:
+		close(d.requested)
+	}
 }
 
-func (*delaySubscriber) Cancel() {
-	panic("implement me")
+func (d *delaySubscription) Cancel() {
+	select {
+	case <-d.done:
+	default:
+		close(d.done)
+		d.timer.Stop()
+	}
 }
 
 type monoDelay struct {
 	delay time.Duration
-	sc    scheduler.Scheduler
 }
 
 func (p *monoDelay) SubscribeWith(ctx context.Context, actual reactor.Subscriber) {
-	s := &delaySubscriber{
-		actual: actual,
-	}
-	actual.OnSubscribe(s)
+	timer := time.NewTimer(p.delay)
+	done := make(chan struct{})
+	requested := make(chan struct{})
 
-	time.AfterFunc(p.delay, func() {
-		err := p.sc.Worker().Do(func() {
+	s := &delaySubscription{
+		actual:    actual,
+		timer:     timer,
+		done:      done,
+		requested: requested,
+	}
+
+	actual.OnSubscribe(ctx, s)
+	go func() {
+		defer timer.Stop()
+		select {
+		case <-ctx.Done():
+			close(done)
+			actual.OnError(reactor.ErrSubscribeCancelled)
+		case <-timer.C:
+			close(done)
+			// await requested
+			<-requested
+			// emit value
 			actual.OnNext(_delayValue)
 			actual.OnComplete()
-		})
-		if err != nil {
-			panic(err)
+		case <-done:
+			actual.OnError(reactor.ErrSubscribeCancelled)
 		}
-	})
-
+	}()
 }
 
-func newMonoDelay(delay time.Duration, sc scheduler.Scheduler) *monoDelay {
-	if sc == nil {
-		sc = scheduler.Parallel()
-	}
+func newMonoDelay(delay time.Duration) *monoDelay {
 	return &monoDelay{
 		delay: delay,
-		sc:    sc,
 	}
 }

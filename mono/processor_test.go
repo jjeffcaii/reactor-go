@@ -45,7 +45,7 @@ func TestProcessor_Context(t *testing.T) {
 	done := make(chan struct{})
 	p.
 		DoOnError(func(e error) {
-			assert.Equal(t, reactor.ErrSubscribeCancelled, e, "bad error")
+			assert.True(t, reactor.IsCancelledError(e))
 		}).
 		DoFinally(func(signal reactor.SignalType) {
 			close(done)

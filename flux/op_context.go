@@ -16,7 +16,7 @@ func (p *fluxContext) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
 	for i := 0; i < len(p.kv); i += 2 {
 		ctx = context.WithValue(ctx, p.kv[i], p.kv[i+1])
 	}
-	p.source.SubscribeWith(ctx, internal.NewCoreSubscriber(ctx, s))
+	p.source.SubscribeWith(ctx, internal.NewCoreSubscriber(s))
 }
 
 type fluxContextOption func(*fluxContext)

@@ -8,34 +8,35 @@ import (
 )
 
 type filterSubscriber struct {
-	ctx    context.Context
-	actual reactor.Subscriber
-	f      reactor.Predicate
+	ctx       context.Context
+	actual    reactor.Subscriber
+	predicate reactor.Predicate
 }
 
-func (f filterSubscriber) OnComplete() {
+func (f *filterSubscriber) OnComplete() {
 	f.actual.OnComplete()
 }
 
-func (f filterSubscriber) OnError(err error) {
+func (f *filterSubscriber) OnError(err error) {
 	f.actual.OnError(err)
 }
 
-func (f filterSubscriber) OnNext(v Any) {
+func (f *filterSubscriber) OnNext(v Any) {
 	defer func() {
 		if err := internal.TryRecoverError(recover()); err != nil {
 			f.OnError(err)
 		}
 	}()
-	if f.f(v) {
+	if f.predicate(v) {
 		f.actual.OnNext(v)
 		return
 	}
 	internal.TryDiscard(f.ctx, v)
 }
 
-func (f filterSubscriber) OnSubscribe(s reactor.Subscription) {
-	f.actual.OnSubscribe(s)
+func (f *filterSubscriber) OnSubscribe(ctx context.Context, s reactor.Subscription) {
+	f.ctx = ctx
+	f.actual.OnSubscribe(ctx, s)
 }
 
 type monoFilter struct {
@@ -45,15 +46,14 @@ type monoFilter struct {
 
 func (m *monoFilter) SubscribeWith(ctx context.Context, actual reactor.Subscriber) {
 	actual = internal.ExtractRawSubscriber(actual)
-	actual = internal.NewCoreSubscriber(ctx, newFilterSubscriber(ctx, actual, m.f))
+	actual = internal.NewCoreSubscriber(newFilterSubscriber(actual, m.f))
 	m.s.SubscribeWith(ctx, actual)
 }
 
-func newFilterSubscriber(ctx context.Context, actual reactor.Subscriber, predicate reactor.Predicate) filterSubscriber {
-	return filterSubscriber{
-		ctx:    ctx,
-		actual: actual,
-		f:      predicate,
+func newFilterSubscriber(actual reactor.Subscriber, predicate reactor.Predicate) *filterSubscriber {
+	return &filterSubscriber{
+		actual:    actual,
+		predicate: predicate,
 	}
 }
 

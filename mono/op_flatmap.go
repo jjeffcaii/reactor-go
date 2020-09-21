@@ -32,7 +32,7 @@ func (in *innerFlatMapSubscriber) OnNext(v Any) {
 	in.OnComplete()
 }
 
-func (in *innerFlatMapSubscriber) OnSubscribe(s reactor.Subscription) {
+func (in *innerFlatMapSubscriber) OnSubscribe(ctx context.Context, s reactor.Subscription) {
 	s.Request(reactor.RequestInfinite)
 }
 
@@ -44,7 +44,7 @@ func (in *innerFlatMapSubscriber) OnComplete() {
 
 type flatMapSubscriber struct {
 	actual reactor.Subscriber
-	mapper flatMapper
+	mapper FlatMapper
 	stat   int32
 	ctx    context.Context
 }
@@ -79,13 +79,13 @@ func (p *flatMapSubscriber) OnNext(v Any) {
 	m.SubscribeWith(p.ctx, inner)
 }
 
-func (p *flatMapSubscriber) OnSubscribe(s reactor.Subscription) {
+func (p *flatMapSubscriber) OnSubscribe(ctx context.Context, s reactor.Subscription) {
+	p.ctx = ctx
 	s.Request(reactor.RequestInfinite)
 }
 
-func newFlatMapSubscriber(ctx context.Context, actual reactor.Subscriber, mapper flatMapper) *flatMapSubscriber {
+func newFlatMapSubscriber(actual reactor.Subscriber, mapper FlatMapper) *flatMapSubscriber {
 	return &flatMapSubscriber{
-		ctx:    ctx,
 		actual: actual,
 		mapper: mapper,
 	}
@@ -93,17 +93,17 @@ func newFlatMapSubscriber(ctx context.Context, actual reactor.Subscriber, mapper
 
 type monoFlatMap struct {
 	source reactor.RawPublisher
-	mapper flatMapper
+	mapper FlatMapper
 }
 
 func (m *monoFlatMap) SubscribeWith(ctx context.Context, actual reactor.Subscriber) {
 	actual = internal.ExtractRawSubscriber(actual)
-	s := newFlatMapSubscriber(ctx, actual, m.mapper)
-	actual.OnSubscribe(s)
+	s := newFlatMapSubscriber(actual, m.mapper)
+	actual.OnSubscribe(ctx, s)
 	m.source.SubscribeWith(ctx, s)
 }
 
-func newMonoFlatMap(source reactor.RawPublisher, mapper flatMapper) *monoFlatMap {
+func newMonoFlatMap(source reactor.RawPublisher, mapper FlatMapper) *monoFlatMap {
 	return &monoFlatMap{
 		source: source,
 		mapper: mapper,

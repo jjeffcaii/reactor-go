@@ -17,7 +17,7 @@ type fluxTake struct {
 func (ft *fluxTake) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
 	actual := internal.ExtractRawSubscriber(s)
 	take := newTakeSubscriber(actual, int64(ft.n))
-	ft.source.SubscribeWith(ctx, internal.NewCoreSubscriber(ctx, take))
+	ft.source.SubscribeWith(ctx, internal.NewCoreSubscriber(take))
 }
 
 type takeSubscriber struct {
@@ -50,13 +50,13 @@ func (ts *takeSubscriber) OnNext(v Any) {
 	ts.OnComplete()
 }
 
-func (ts *takeSubscriber) OnSubscribe(su reactor.Subscription) {
+func (ts *takeSubscriber) OnSubscribe(ctx context.Context, su reactor.Subscription) {
 	if atomic.LoadInt64(&ts.remaining) < 1 {
 		su.Cancel()
 		return
 	}
 	ts.su = su
-	ts.actual.OnSubscribe(su)
+	ts.actual.OnSubscribe(ctx, su)
 }
 
 func (ts *takeSubscriber) OnComplete() {

@@ -44,8 +44,8 @@ type monoJust struct {
 }
 
 func (m *monoJust) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
-	s.OnSubscribe(&justSubscriber{
-		s:      internal.NewCoreSubscriber(ctx, s),
+	s.OnSubscribe(ctx, &justSubscriber{
+		s:      internal.NewCoreSubscriber(s),
 		parent: m,
 	})
 }

@@ -88,7 +88,7 @@ func TestUnicastProcessor(t *testing.T) {
 			fmt.Println("complete")
 			close(results)
 		}).
-		Subscribe(context.Background(), reactor.OnSubscribe(func(s reactor.Subscription) {
+		Subscribe(context.Background(), reactor.OnSubscribe(func(ctx context.Context, s reactor.Subscription) {
 			su = s
 			su.Request(1)
 		}))

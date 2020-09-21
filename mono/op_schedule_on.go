@@ -14,7 +14,7 @@ type monoScheduleOn struct {
 }
 
 func (m *monoScheduleOn) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
-	actual := internal.NewCoreSubscriber(ctx, s)
+	actual := internal.NewCoreSubscriber(s)
 	err := m.sc.Worker().Do(func() {
 		m.source.SubscribeWith(ctx, actual)
 	})

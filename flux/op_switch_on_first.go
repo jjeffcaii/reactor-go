@@ -55,7 +55,7 @@ func (p *switchOnFirstInner) SubscribeWith(ctx context.Context, actual reactor.S
 		panic(errSubscribeOnce)
 	}
 	p.inner = actual
-	actual.OnSubscribe(p)
+	actual.OnSubscribe(ctx, p)
 }
 
 func (p *switchOnFirstInner) Request(n int) {
@@ -120,7 +120,7 @@ func (p *switchOnFirstInner) OnNext(v Any) {
 	i.OnNext(v)
 }
 
-func (p *switchOnFirstInner) OnSubscribe(s reactor.Subscription) {
+func (p *switchOnFirstInner) OnSubscribe(ctx context.Context, s reactor.Subscription) {
 	p.s = s
 	s.Request(1)
 }
@@ -148,8 +148,8 @@ func (p *switchOnFirstInnerSubscriber) OnNext(t Any) {
 	p.inner.OnNext(t)
 }
 
-func (p *switchOnFirstInnerSubscriber) OnSubscribe(s reactor.Subscription) {
-	p.inner.OnSubscribe(s)
+func (p *switchOnFirstInnerSubscriber) OnSubscribe(ctx context.Context, s reactor.Subscription) {
+	p.inner.OnSubscribe(ctx, s)
 }
 
 func newFluxSwitchOnFirst(source reactor.RawPublisher, transformer FnSwitchOnFirst) *fluxSwitchOnFirst {

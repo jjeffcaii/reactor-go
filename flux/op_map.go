@@ -27,8 +27,8 @@ func (s mapSubscriber) OnNext(i Any) {
 	}
 }
 
-func (s mapSubscriber) OnSubscribe(subscription reactor.Subscription) {
-	s.source.OnSubscribe(subscription)
+func (s mapSubscriber) OnSubscribe(ctx context.Context, subscription reactor.Subscription) {
+	s.source.OnSubscribe(ctx, subscription)
 }
 
 func newMapSubscriber(s reactor.Subscriber, mapper reactor.Transformer) reactor.Subscriber {

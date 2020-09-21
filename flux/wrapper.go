@@ -181,7 +181,7 @@ func (w wrapper) BlockFirst(ctx context.Context) (first Any, err error) {
 			first = v
 			su.Cancel()
 			return nil
-		}), reactor.OnSubscribe(func(s reactor.Subscription) {
+		}), reactor.OnSubscribe(func(ctx context.Context, s reactor.Subscription) {
 			su = s
 			su.Request(1)
 		}), reactor.OnError(func(e error) {
