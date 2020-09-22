@@ -1,7 +1,7 @@
 # reactor-go 🚀🚀🚀
 
 [![Build Status](https://travis-ci.com/jjeffcaii/reactor-go.svg?branch=master)](https://travis-ci.com/jjeffcaii/reactor-go)
-[![Coverage Status](https://coveralls.io/repos/github/jjeffcaii/reactor-go/badge.svg?branch=master)](https://coveralls.io/github/jjeffcaii/reactor-go?branch=master)
+[![codecov](https://codecov.io/gh/jjeffcaii/reactor-go/branch/master/graph/badge.svg)](https://codecov.io/gh/jjeffcaii/reactor-go)
 [![GoDoc](https://godoc.org/github.com/jjeffcaii/reactor-go?status.svg)](https://godoc.org/github.com/jjeffcaii/reactor-go)
 [![Go Report Card](https://goreportcard.com/badge/github.com/jjeffcaii/reactor-go)](https://goreportcard.com/report/github.com/jjeffcaii/reactor-go)
 [![License](https://img.shields.io/github/license/jjeffcaii/reactor-go.svg)](https://github.com/jjeffcaii/reactor-go/blob/master/LICENSE)
