@@ -58,7 +58,6 @@ func (p *monoDelay) SubscribeWith(ctx context.Context, actual reactor.Subscriber
 		select {
 		case <-ctx.Done():
 			close(done)
-			actual.OnError(reactor.ErrSubscribeCancelled)
 		case <-timer.C:
 			close(done)
 			// await requested
