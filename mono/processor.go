@@ -2,7 +2,6 @@ package mono
 
 import (
 	"context"
-	"log"
 	"sync"
 	"sync/atomic"
 
@@ -102,7 +101,6 @@ func (p *processorSubscriber) Request(n int) {
 }
 
 func (p *processorSubscriber) Cancel() {
-	log.Println("got cancel")
 	atomic.CompareAndSwapInt32(&p.stat, 0, statCancel)
 }
 
