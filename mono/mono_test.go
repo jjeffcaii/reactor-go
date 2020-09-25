@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go/hooks"
 	"github.com/jjeffcaii/reactor-go/mono"
 	"github.com/jjeffcaii/reactor-go/scheduler"
 	"github.com/stretchr/testify/assert"
@@ -376,4 +377,46 @@ func TestMapWithError(t *testing.T) {
 		}).
 		Block(context.Background())
 	assert.Equal(t, fakeErr, err, "should return error")
+}
+
+func TestTimeout(t *testing.T) {
+	fakeErr := errors.New("fake err")
+	dropped := new(int32)
+	errorDropped := new(int32)
+	hooks.OnNextDrop(func(v reactor.Any) {
+		atomic.AddInt32(dropped, 1)
+	})
+	hooks.OnErrorDrop(func(e error) {
+		atomic.AddInt32(errorDropped, 1)
+	})
+	_, err := mono.
+		Create(func(ctx context.Context, s mono.Sink) {
+			time.Sleep(200 * time.Millisecond)
+			s.Success("hello")
+		}).
+		Timeout(100 * time.Millisecond).
+		Block(context.Background())
+	assert.Error(t, err)
+	time.Sleep(200 * time.Millisecond)
+	assert.Equal(t, int32(1), atomic.LoadInt32(dropped))
+
+	value, err := mono.Just("hello").Timeout(100 * time.Millisecond).Block(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, "hello", value)
+
+	_, err = mono.Error(fakeErr).Timeout(100 * time.Millisecond).Block(context.Background())
+	assert.Equal(t, fakeErr, err)
+
+	_, err = mono.Create(func(ctx context.Context, s mono.Sink) {
+		time.Sleep(100 * time.Millisecond)
+		s.Error(err)
+	}).Timeout(500 * time.Millisecond).Block(context.Background())
+	assert.Equal(t, fakeErr, err)
+
+	_, err = mono.Create(func(ctx context.Context, s mono.Sink) {
+		time.Sleep(100 * time.Millisecond)
+		s.Error(err)
+	}).Timeout(50 * time.Millisecond).Block(context.Background())
+	assert.True(t, reactor.IsCancelledError(err))
+	assert.Equal(t, int32(1), atomic.LoadInt32(errorDropped))
 }
