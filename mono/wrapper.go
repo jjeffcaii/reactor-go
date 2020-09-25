@@ -71,6 +71,13 @@ func (p wrapper) DelayElement(delay time.Duration) Mono {
 	return wrap(newMonoDelayElement(p.RawPublisher, delay, scheduler.Elastic()))
 }
 
+func (p wrapper) Timeout(timeout time.Duration) Mono {
+	if timeout <= 0 {
+		return p
+	}
+	return wrap(newMonoTimeout(p.RawPublisher, timeout))
+}
+
 func (p wrapper) Block(ctx context.Context) (value Any, err error) {
 	done := make(chan struct{})
 	p.
