@@ -25,7 +25,11 @@ func (p *DoFinallySubscriber) Cancel() {
 
 func (p *DoFinallySubscriber) OnError(err error) {
 	p.actual.OnError(err)
-	p.runFinally(reactor.SignalTypeError)
+	if reactor.IsCancelledError(err) {
+		p.runFinally(reactor.SignalTypeCancel)
+	} else {
+		p.runFinally(reactor.SignalTypeError)
+	}
 }
 
 func (p *DoFinallySubscriber) OnNext(v reactor.Any) {

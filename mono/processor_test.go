@@ -49,7 +49,7 @@ func TestProcessor_Context(t *testing.T) {
 		}).
 		DoFinally(func(signal reactor.SignalType) {
 			close(done)
-			assert.Equal(t, reactor.SignalTypeError, signal)
+			assert.Equal(t, reactor.SignalTypeCancel, signal)
 		}).
 		Subscribe(ctx)
 	<-done
