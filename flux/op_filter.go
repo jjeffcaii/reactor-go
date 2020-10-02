@@ -7,11 +7,30 @@ import (
 	"github.com/jjeffcaii/reactor-go/internal"
 )
 
+type fluxFilter struct {
+	source    reactor.RawPublisher
+	predicate reactor.Predicate
+}
+
 type filterSubscriber struct {
 	ctx    context.Context
 	actual reactor.Subscriber
 	f      reactor.Predicate
 	su     reactor.Subscription
+}
+
+func newFluxFilter(source reactor.RawPublisher, predicate reactor.Predicate) *fluxFilter {
+	return &fluxFilter{
+		source:    source,
+		predicate: predicate,
+	}
+}
+
+func newFilterSubscriber(s reactor.Subscriber, p reactor.Predicate) *filterSubscriber {
+	return &filterSubscriber{
+		actual: s,
+		f:      p,
+	}
 }
 
 func (p *filterSubscriber) OnComplete() {
@@ -42,32 +61,8 @@ func (p *filterSubscriber) OnSubscribe(ctx context.Context, su reactor.Subscript
 	p.actual.OnSubscribe(ctx, su)
 }
 
-func newFilterSubscriber(s reactor.Subscriber, p reactor.Predicate) *filterSubscriber {
-	return &filterSubscriber{
-		actual: s,
-		f:      p,
-	}
-}
-
-type fluxFilter struct {
-	source    reactor.RawPublisher
-	predicate reactor.Predicate
-}
-
 func (f *fluxFilter) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
-	var actual reactor.Subscriber
-	if cs, ok := s.(*internal.CoreSubscriber); ok {
-		cs.Subscriber = newFilterSubscriber(cs.Subscriber, f.predicate)
-		actual = cs
-	} else {
-		actual = internal.NewCoreSubscriber(newFilterSubscriber(s, f.predicate))
-	}
-	f.source.SubscribeWith(ctx, actual)
-}
-
-func newFluxFilter(source reactor.RawPublisher, predicate reactor.Predicate) *fluxFilter {
-	return &fluxFilter{
-		source:    source,
-		predicate: predicate,
-	}
+	// TODO: fuse
+	sub := newFilterSubscriber(s, f.predicate)
+	f.source.SubscribeWith(ctx, sub)
 }

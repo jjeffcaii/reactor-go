@@ -44,10 +44,8 @@ type monoFilter struct {
 	f reactor.Predicate
 }
 
-func (m *monoFilter) SubscribeWith(ctx context.Context, actual reactor.Subscriber) {
-	actual = internal.ExtractRawSubscriber(actual)
-	actual = internal.NewCoreSubscriber(newFilterSubscriber(actual, m.f))
-	m.s.SubscribeWith(ctx, actual)
+func (m *monoFilter) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
+	m.s.SubscribeWith(ctx, newFilterSubscriber(s, m.f))
 }
 
 func newFilterSubscriber(actual reactor.Subscriber, predicate reactor.Predicate) *filterSubscriber {

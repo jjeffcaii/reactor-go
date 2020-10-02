@@ -8,13 +8,23 @@ import (
 	"github.com/jjeffcaii/reactor-go/internal"
 )
 
-type justSubscriber struct {
+type monoJust struct {
+	value Any
+}
+
+type justSubscription struct {
 	s      reactor.Subscriber
 	parent *monoJust
 	n      int32
 }
 
-func (j *justSubscriber) Request(n int) {
+func newMonoJust(v Any) *monoJust {
+	return &monoJust{
+		value: v,
+	}
+}
+
+func (j *justSubscription) Request(n int) {
 	if n < 1 {
 		panic(reactor.ErrNegativeRequest)
 	}
@@ -35,23 +45,18 @@ func (j *justSubscriber) Request(n int) {
 	j.s.OnNext(j.parent.value)
 }
 
-func (j *justSubscriber) Cancel() {
+func (j *justSubscription) Cancel() {
 	atomic.CompareAndSwapInt32(&j.n, 0, statCancel)
 }
 
-type monoJust struct {
-	value Any
-}
-
 func (m *monoJust) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
-	s.OnSubscribe(ctx, &justSubscriber{
-		s:      internal.NewCoreSubscriber(s),
-		parent: m,
-	})
-}
-
-func newMonoJust(v Any) *monoJust {
-	return &monoJust{
-		value: v,
+	select {
+	case <-ctx.Done():
+		s.OnError(ctx.Err())
+	default:
+		s.OnSubscribe(ctx, &justSubscription{
+			s:      s,
+			parent: m,
+		})
 	}
 }

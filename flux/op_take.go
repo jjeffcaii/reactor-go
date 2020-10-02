@@ -6,7 +6,6 @@ import (
 
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/hooks"
-	"github.com/jjeffcaii/reactor-go/internal"
 )
 
 type fluxTake struct {
@@ -15,9 +14,7 @@ type fluxTake struct {
 }
 
 func (ft *fluxTake) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
-	actual := internal.ExtractRawSubscriber(s)
-	take := newTakeSubscriber(actual, int64(ft.n))
-	ft.source.SubscribeWith(ctx, internal.NewCoreSubscriber(take))
+	ft.source.SubscribeWith(ctx, newTakeSubscriber(s, int64(ft.n)))
 }
 
 type takeSubscriber struct {

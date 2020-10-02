@@ -6,7 +6,6 @@ import (
 
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/hooks"
-	"github.com/jjeffcaii/reactor-go/internal"
 )
 
 type monoTimeout struct {
@@ -61,15 +60,12 @@ func (t *timeoutSubscriber) OnSubscribe(ctx context.Context, subscription reacto
 	t.actual.OnSubscribe(ctx, subscription)
 }
 
-func (m *monoTimeout) SubscribeWith(ctx context.Context, subscriber reactor.Subscriber) {
-	subscriber = internal.ExtractRawSubscriber(subscriber)
-	ts := &timeoutSubscriber{
-		actual:  subscriber,
+func (m *monoTimeout) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
+	m.source.SubscribeWith(ctx, &timeoutSubscriber{
+		actual:  s,
 		timeout: m.timeout,
 		done:    make(chan struct{}),
-	}
-	subscriber = internal.NewCoreSubscriber(ts)
-	m.source.SubscribeWith(ctx, subscriber)
+	})
 }
 
 func newMonoTimeout(source reactor.RawPublisher, timeout time.Duration) *monoTimeout {

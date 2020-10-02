@@ -27,38 +27,7 @@ type fluxCreate struct {
 	backpressure OverflowStrategy
 }
 
-func (fc fluxCreate) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
-	var sink interface {
-		reactor.Subscription
-		Sink
-	}
-	switch fc.backpressure {
-	case OverflowDrop:
-		// TODO: need implementation
-		panic("implement me")
-	case OverflowError:
-		// TODO: need implementation
-		panic("implement me")
-	case OverflowIgnore:
-		// TODO: need implementation
-		panic("implement me")
-	case OverflowLatest:
-		// TODO: need implementation
-		panic("implement me")
-	default:
-		sink = newBufferedSink(s, _buffSize)
-	}
-	s.OnSubscribe(ctx, sink)
-	fc.source(ctx, sink)
-}
-
 type CreateOption func(*fluxCreate)
-
-func WithOverflowStrategy(o OverflowStrategy) CreateOption {
-	return func(create *fluxCreate) {
-		create.backpressure = o
-	}
-}
 
 func newFluxCreate(c func(ctx context.Context, sink Sink), options ...CreateOption) *fluxCreate {
 	fc := &fluxCreate{
@@ -69,4 +38,40 @@ func newFluxCreate(c func(ctx context.Context, sink Sink), options ...CreateOpti
 		options[i](fc)
 	}
 	return fc
+}
+
+func (fc fluxCreate) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
+	select {
+	case <-ctx.Done():
+		s.OnError(ctx.Err())
+	default:
+		var sink interface {
+			reactor.Subscription
+			Sink
+		}
+		switch fc.backpressure {
+		case OverflowDrop:
+			// TODO: need implementation
+			panic("implement me")
+		case OverflowError:
+			// TODO: need implementation
+			panic("implement me")
+		case OverflowIgnore:
+			// TODO: need implementation
+			panic("implement me")
+		case OverflowLatest:
+			// TODO: need implementation
+			panic("implement me")
+		default:
+			sink = newBufferedSink(s, _buffSize)
+		}
+		s.OnSubscribe(ctx, sink)
+		fc.source(ctx, sink)
+	}
+}
+
+func WithOverflowStrategy(o OverflowStrategy) CreateOption {
+	return func(create *fluxCreate) {
+		create.backpressure = o
+	}
 }

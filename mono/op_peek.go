@@ -8,11 +8,39 @@ import (
 	"github.com/jjeffcaii/reactor-go/internal"
 )
 
+type monoPeek struct {
+	source          reactor.RawPublisher
+	onSubscribeCall reactor.FnOnSubscribe
+	onNextCall      reactor.FnOnNext
+	onErrorCall     reactor.FnOnError
+	onCompleteCall  reactor.FnOnComplete
+	onRequestCall   reactor.FnOnRequest
+	onCancelCall    reactor.FnOnCancel
+}
+
 type peekSubscriber struct {
 	actual reactor.Subscriber
 	parent *monoPeek
 	s      reactor.Subscription
 	stat   int32
+}
+
+func newMonoPeek(source reactor.RawPublisher, first monoPeekOption, others ...monoPeekOption) *monoPeek {
+	m := &monoPeek{
+		source: source,
+	}
+	first(m)
+	for _, value := range others {
+		value(m)
+	}
+	return m
+}
+
+func newPeekSubscriber(parent *monoPeek, actual reactor.Subscriber) *peekSubscriber {
+	return &peekSubscriber{
+		parent: parent,
+		actual: actual,
+	}
 }
 
 func (p *peekSubscriber) Request(n int) {
@@ -77,38 +105,8 @@ func (p *peekSubscriber) OnSubscribe(ctx context.Context, s reactor.Subscription
 	p.actual.OnSubscribe(ctx, p)
 }
 
-func newPeekSubscriber(parent *monoPeek, actual reactor.Subscriber) *peekSubscriber {
-	return &peekSubscriber{
-		parent: parent,
-		actual: actual,
-	}
-}
-
-type monoPeek struct {
-	source          reactor.RawPublisher
-	onSubscribeCall reactor.FnOnSubscribe
-	onNextCall      reactor.FnOnNext
-	onErrorCall     reactor.FnOnError
-	onCompleteCall  reactor.FnOnComplete
-	onRequestCall   reactor.FnOnRequest
-	onCancelCall    reactor.FnOnCancel
-}
-
-func (p *monoPeek) SubscribeWith(ctx context.Context, actual reactor.Subscriber) {
-	actual = internal.ExtractRawSubscriber(actual)
-	actual = internal.NewCoreSubscriber(newPeekSubscriber(p, actual))
-	p.source.SubscribeWith(ctx, actual)
-}
-
-func newMonoPeek(source reactor.RawPublisher, first monoPeekOption, others ...monoPeekOption) *monoPeek {
-	m := &monoPeek{
-		source: source,
-	}
-	first(m)
-	for _, value := range others {
-		value(m)
-	}
-	return m
+func (p *monoPeek) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
+	p.source.SubscribeWith(ctx, newPeekSubscriber(p, s))
 }
 
 type monoPeekOption func(*monoPeek)

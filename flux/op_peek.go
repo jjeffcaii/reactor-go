@@ -90,9 +90,7 @@ type fluxPeek struct {
 }
 
 func (fp *fluxPeek) SubscribeWith(ctx context.Context, actual reactor.Subscriber) {
-	actual = internal.ExtractRawSubscriber(actual)
-	actual = internal.NewCoreSubscriber(newPeekSubscriber(fp, actual))
-	fp.source.SubscribeWith(ctx, actual)
+	fp.source.SubscribeWith(ctx, newPeekSubscriber(fp, actual))
 }
 
 func newFluxPeek(source reactor.RawPublisher, options ...fluxPeekOption) *fluxPeek {

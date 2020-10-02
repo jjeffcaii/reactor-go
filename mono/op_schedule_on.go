@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/jjeffcaii/reactor-go"
-	"github.com/jjeffcaii/reactor-go/internal"
 	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
@@ -14,9 +13,8 @@ type monoScheduleOn struct {
 }
 
 func (m *monoScheduleOn) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
-	actual := internal.NewCoreSubscriber(s)
 	err := m.sc.Worker().Do(func() {
-		m.source.SubscribeWith(ctx, actual)
+		m.source.SubscribeWith(ctx, s)
 	})
 	if err != nil {
 		panic(err)

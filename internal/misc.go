@@ -30,3 +30,11 @@ func (emptySubscription) Request(n int) {
 
 func (emptySubscription) Cancel() {
 }
+
+func SafeCloseDone(done chan<- struct{}) (ok bool) {
+	defer func() {
+		ok = recover() == nil
+	}()
+	close(done)
+	return
+}

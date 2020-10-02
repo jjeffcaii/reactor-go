@@ -15,11 +15,12 @@ const (
 )
 
 type sliceSubscription struct {
-	actual reactor.Subscriber
-	values []Any
-	cursor int32
-	flags  uint8
-	locker sync.Mutex
+	actual    reactor.Subscriber
+	values    []Any
+	cursor    int32
+	flags     uint8
+	locker    sync.Mutex
+	completed int32
 }
 
 func (ss *sliceSubscription) Request(n int) {
@@ -72,7 +73,11 @@ func (ss *sliceSubscription) slowPath(n int) {
 }
 
 func (ss *sliceSubscription) fastPath() {
-	for i, l := int(ss.cursor), len(ss.values); i < l; i++ {
+	i, l := int(ss.cursor), len(ss.values)
+	if i >= l {
+		return
+	}
+	for ; i < l; i++ {
 		if ss.isCancelled() {
 			return
 		}

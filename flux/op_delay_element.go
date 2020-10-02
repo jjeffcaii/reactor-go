@@ -7,9 +7,14 @@ import (
 
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/hooks"
-	"github.com/jjeffcaii/reactor-go/internal"
 	"github.com/jjeffcaii/reactor-go/scheduler"
 )
+
+type fluxDelayElement struct {
+	source reactor.RawPublisher
+	delay  time.Duration
+	sc     scheduler.Scheduler
+}
 
 type delayElementSubscriber struct {
 	delay  time.Duration
@@ -17,6 +22,14 @@ type delayElementSubscriber struct {
 	s      reactor.Subscription
 	actual reactor.Subscriber
 	stat   int32
+}
+
+func newFluxDelayElement(source reactor.RawPublisher, delay time.Duration, sc scheduler.Scheduler) *fluxDelayElement {
+	return &fluxDelayElement{
+		source: source,
+		delay:  delay,
+		sc:     sc,
+	}
 }
 
 func (d *delayElementSubscriber) Request(n int) {
@@ -57,30 +70,10 @@ func (d *delayElementSubscriber) OnSubscribe(ctx context.Context, s reactor.Subs
 	s.Request(reactor.RequestInfinite)
 }
 
-func newDelayElementSubscriber(actual reactor.Subscriber, delay time.Duration, sc scheduler.Scheduler) reactor.Subscriber {
-	return &delayElementSubscriber{
-		delay:  delay,
-		actual: actual,
-		sc:     sc,
-	}
-}
-
-type fluxDelayElement struct {
-	source reactor.RawPublisher
-	delay  time.Duration
-	sc     scheduler.Scheduler
-}
-
 func (f *fluxDelayElement) SubscribeWith(ctx context.Context, actual reactor.Subscriber) {
-	actual = internal.ExtractRawSubscriber(actual)
-	actual = internal.NewCoreSubscriber(newDelayElementSubscriber(actual, f.delay, f.sc))
-	f.source.SubscribeWith(ctx, actual)
-}
-
-func newFluxDelayElement(source reactor.RawPublisher, delay time.Duration, sc scheduler.Scheduler) *fluxDelayElement {
-	return &fluxDelayElement{
-		source: source,
-		delay:  delay,
-		sc:     sc,
-	}
+	f.source.SubscribeWith(ctx, &delayElementSubscriber{
+		delay:  f.delay,
+		actual: actual,
+		sc:     f.sc,
+	})
 }

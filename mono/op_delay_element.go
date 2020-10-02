@@ -7,7 +7,6 @@ import (
 
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/hooks"
-	"github.com/jjeffcaii/reactor-go/internal"
 	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
@@ -75,8 +74,7 @@ type monoDelayElement struct {
 }
 
 func (p *monoDelayElement) SubscribeWith(ctx context.Context, actual reactor.Subscriber) {
-	actual = internal.ExtractRawSubscriber(actual)
-	actual = internal.NewCoreSubscriber(newDelayElementSubscriber(actual, p.delay, p.sc))
+	actual = newDelayElementSubscriber(actual, p.delay, p.sc)
 	p.source.SubscribeWith(ctx, actual)
 }
 

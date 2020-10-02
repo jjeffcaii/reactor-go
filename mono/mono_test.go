@@ -42,18 +42,17 @@ const num = 333
 var fakeErr = errors.New("fake error")
 
 func TestCreate_Panic(t *testing.T) {
-	mock := errors.New("mock error")
-	var catches error
+	var err error
 	mono.
 		Create(func(i context.Context, sink mono.Sink) {
-			panic(mock)
+			panic("mock error")
 		}).
 		DoOnError(func(e error) {
-			catches = e
+			err = e
 		}).
 		SubscribeOn(scheduler.Immediate()).
 		Subscribe(context.Background())
-	assert.Equal(t, mock, catches, "bad catches")
+	assert.Error(t, err)
 }
 
 func TestDelay(t *testing.T) {
@@ -278,17 +277,17 @@ func testCancel(m mono.Mono, t *testing.T) {
 func testContextDone(m mono.Mono, t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	var catches error
+	var err error
 	m.
 		DoOnNext(func(v Any) error {
 			assert.Fail(t, "should never run here")
 			return nil
 		}).
 		DoOnError(func(e error) {
-			catches = e
+			err = e
 		}).
 		Subscribe(ctx)
-	assert.Equal(t, reactor.ErrSubscribeCancelled, catches, "bad cancelled error")
+	assert.Error(t, err, "should catch error")
 }
 
 func BenchmarkNative(b *testing.B) {
@@ -420,3 +419,23 @@ func TestTimeout(t *testing.T) {
 	assert.True(t, reactor.IsCancelledError(err))
 	assert.Equal(t, int32(1), atomic.LoadInt32(errorDropped))
 }
+
+func TestBlock(t *testing.T) {
+	v, err := mono.
+		Create(func(ctx context.Context, s mono.Sink) {
+			s.Success(1)
+		}).
+		SubscribeOn(scheduler.Parallel()).
+		Block(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, 1, v)
+
+	v, err = mono.Create(func(ctx context.Context, s mono.Sink) {
+		s.Success(1)
+	}).Filter(func(any reactor.Any) bool {
+		return false
+	}).Block(context.Background())
+	assert.NoError(t, err)
+	assert.Nil(t, v)
+}
+

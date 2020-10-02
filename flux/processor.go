@@ -7,7 +7,6 @@ import (
 
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/hooks"
-	"github.com/jjeffcaii/reactor-go/internal"
 )
 
 var _dropAllSubscriber = reactor.NewSubscriber(
@@ -97,12 +96,11 @@ func (up *unicastProcessor) SubscribeWith(ctx context.Context, s reactor.Subscri
 	}
 
 	up.cond.L.Lock()
-	raw := internal.ExtractRawSubscriber(s)
-	up.actual = raw
+	up.actual = s
 	up.cond.L.Unlock()
 
 	defer close(up.subscribed)
-	raw.OnSubscribe(ctx, up)
+	s.OnSubscribe(ctx, up)
 }
 
 func (up *unicastProcessor) Complete() {
