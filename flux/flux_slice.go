@@ -15,12 +15,11 @@ const (
 )
 
 type sliceSubscription struct {
-	actual    reactor.Subscriber
-	values    []Any
-	cursor    int32
-	flags     uint8
-	locker    sync.Mutex
-	completed int32
+	actual reactor.Subscriber
+	values []Any
+	cursor int32
+	flags  uint8
+	locker sync.Mutex
 }
 
 func (ss *sliceSubscription) Request(n int) {
