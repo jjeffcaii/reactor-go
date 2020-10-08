@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go/internal/subscribers"
 	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
@@ -78,31 +79,25 @@ func (p wrapper) Timeout(timeout time.Duration) Mono {
 	return wrap(newMonoTimeout(p.RawPublisher, timeout))
 }
 
-func (p wrapper) Block(ctx context.Context) (value Any, err error) {
+func (p wrapper) Block(ctx context.Context) (Any, error) {
 	done := make(chan struct{})
-	p.
-		DoFinally(func(signal reactor.SignalType) {
-			close(done)
-		}).
-		Subscribe(ctx,
-			reactor.OnNext(func(v Any) error {
-				select {
-				case <-done:
-				default:
-					value = v
-				}
-				return nil
-			}),
-			reactor.OnError(func(e error) {
-				select {
-				case <-done:
-				default:
-					err = e
-				}
-			}),
-		)
+	vchan := make(chan reactor.Any, 1)
+	echan := make(chan error, 1)
+	b := subscribers.NewBlockSubscriber(done, vchan, echan)
+	p.SubscribeWith(ctx, b)
 	<-done
-	return
+
+	defer close(vchan)
+	defer close(echan)
+
+	select {
+	case value := <-vchan:
+		return value, nil
+	case err := <-echan:
+		return nil, err
+	default:
+		return nil, nil
+	}
 }
 
 func (p wrapper) Success(v Any) {

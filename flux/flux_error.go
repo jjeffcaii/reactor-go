@@ -12,9 +12,8 @@ type fluxError struct {
 }
 
 func (p fluxError) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
-	actual := internal.NewCoreSubscriber(s)
-	actual.OnSubscribe(ctx, internal.EmptySubscription)
-	actual.OnError(p.e)
+	s.OnSubscribe(ctx, internal.EmptySubscription)
+	s.OnError(p.e)
 }
 
 func newFluxError(e error) fluxError {

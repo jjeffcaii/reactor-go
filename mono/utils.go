@@ -40,5 +40,5 @@ func Delay(delay time.Duration) Mono {
 }
 
 func CreateProcessor() Processor {
-	return wrap(newProcessor())
+	return wrap(&processor{})
 }

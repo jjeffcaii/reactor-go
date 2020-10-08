@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/jjeffcaii/reactor-go"
-	"github.com/jjeffcaii/reactor-go/internal"
 )
 
 type mapSubscriber struct {
@@ -44,10 +43,8 @@ type monoMap struct {
 	mapper reactor.Transformer
 }
 
-func (m *monoMap) SubscribeWith(ctx context.Context, actual reactor.Subscriber) {
-	actual = internal.ExtractRawSubscriber(actual)
-	actual = internal.NewCoreSubscriber(newMapSubscriber(actual, m.mapper))
-	m.source.SubscribeWith(ctx, actual)
+func (m *monoMap) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
+	m.source.SubscribeWith(ctx, newMapSubscriber(s, m.mapper))
 }
 
 func newMonoMap(source reactor.RawPublisher, tf reactor.Transformer) *monoMap {

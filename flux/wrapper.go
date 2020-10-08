@@ -9,6 +9,7 @@ import (
 
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/hooks"
+	"github.com/jjeffcaii/reactor-go/internal/subscribers"
 	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
@@ -170,48 +171,35 @@ func (w wrapper) ToChan(ctx context.Context, cap int) (<-chan Any, <-chan error)
 	return ch, err
 }
 
-func (w wrapper) BlockFirst(ctx context.Context) (first Any, err error) {
+func (w wrapper) BlockFirst(ctx context.Context) (Any, error) {
 	done := make(chan struct{})
-	var su reactor.Subscription
-	w.
-		DoFinally(func(s reactor.SignalType) {
-			close(done)
-		}).
-		Subscribe(ctx, reactor.OnNext(func(v Any) error {
-			first = v
-			su.Cancel()
-			return nil
-		}), reactor.OnSubscribe(func(ctx context.Context, s reactor.Subscription) {
-			su = s
-			su.Request(1)
-		}), reactor.OnError(func(e error) {
-			err = e
-		}))
+	vchan := make(chan Any, 1)
+	echan := make(chan error, 1)
+	w.SubscribeWith(ctx, subscribers.NewBlockFirstSubscriber(done, vchan, echan))
 	<-done
-	return
+	select {
+	case v := <-vchan:
+		return v, nil
+	case err := <-echan:
+		return nil, err
+	default:
+		return nil, nil
+	}
 }
 
 func (w wrapper) BlockLast(ctx context.Context) (last Any, err error) {
 	done := make(chan struct{})
-	w.
-		DoFinally(func(s reactor.SignalType) {
-			close(done)
-		}).
-		DoOnCancel(func() {
-			err = reactor.ErrSubscribeCancelled
-		}).
-		Subscribe(ctx,
-			reactor.OnNext(func(v Any) error {
-				if old := last; old != nil {
-					hooks.Global().OnNextDrop(old)
-				}
-				last = v
-				return nil
-			}),
-			reactor.OnError(func(e error) {
-				err = e
-			}),
-		)
+	s := subscribers.NewBlockLastSubscriber(done, func(v reactor.Any, e error) {
+		if e != nil {
+			err = e
+			return
+		}
+		if old := last; old != nil {
+			hooks.Global().OnNextDrop(old)
+		}
+		last = v
+	})
+	w.SubscribeWith(ctx, s)
 	<-done
 	return
 }

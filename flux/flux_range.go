@@ -6,7 +6,6 @@ import (
 	"sync/atomic"
 
 	"github.com/jjeffcaii/reactor-go"
-	"github.com/jjeffcaii/reactor-go/internal"
 )
 
 type fluxRange struct {
@@ -14,9 +13,8 @@ type fluxRange struct {
 }
 
 func (r fluxRange) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
-	raw := internal.ExtractRawSubscriber(s)
-	su := newRangeSubscription(raw, r.begin, r.end)
-	internal.NewCoreSubscriber(raw).OnSubscribe(ctx, su)
+	su := newRangeSubscription(s, r.begin, r.end)
+	s.OnSubscribe(ctx, su)
 }
 
 type rangeSubscription struct {

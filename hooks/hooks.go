@@ -14,32 +14,32 @@ type Hooks struct {
 	errDrops  []reactor.FnOnError
 }
 
-func (p *Hooks) OnNextDrop(t reactor.Any) {
-	p.RLock()
-	defer p.RUnlock()
-	for _, fn := range p.nextDrops {
+func (h *Hooks) OnNextDrop(t reactor.Any) {
+	h.RLock()
+	defer h.RUnlock()
+	for _, fn := range h.nextDrops {
 		fn(t)
 	}
 }
 
-func (p *Hooks) OnErrorDrop(e error) {
-	p.RLock()
-	defer p.RUnlock()
-	for _, fn := range p.errDrops {
+func (h *Hooks) OnErrorDrop(e error) {
+	h.RLock()
+	defer h.RUnlock()
+	for _, fn := range h.errDrops {
 		fn(e)
 	}
 }
 
-func (p *Hooks) registerOnNextDrop(fn reactor.FnOnDiscard) {
-	p.Lock()
-	defer p.Unlock()
-	p.nextDrops = append(p.nextDrops, fn)
+func (h *Hooks) registerOnNextDrop(fn reactor.FnOnDiscard) {
+	h.Lock()
+	defer h.Unlock()
+	h.nextDrops = append(h.nextDrops, fn)
 }
 
-func (p *Hooks) registerOnErrorDrop(fn reactor.FnOnError) {
-	p.Lock()
-	defer p.Unlock()
-	p.errDrops = append(p.errDrops, fn)
+func (h *Hooks) registerOnErrorDrop(fn reactor.FnOnError) {
+	h.Lock()
+	defer h.Unlock()
+	h.errDrops = append(h.errDrops, fn)
 }
 
 func Global() *Hooks {

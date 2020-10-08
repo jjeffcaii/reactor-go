@@ -37,19 +37,16 @@ func TestProcessor(t *testing.T) {
 
 func TestProcessor_Context(t *testing.T) {
 	p := mono.CreateProcessor()
-	ctx, cancel := context.WithTimeout(context.Background(), 22*time.Millisecond)
-	defer cancel()
-	time.AfterFunc(33*time.Millisecond, func() {
-		p.Success(77778888)
-	})
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
 	done := make(chan struct{})
 	p.
 		DoOnError(func(e error) {
 			assert.True(t, reactor.IsCancelledError(e))
 		}).
 		DoFinally(func(signal reactor.SignalType) {
-			close(done)
 			assert.Equal(t, reactor.SignalTypeCancel, signal)
+			close(done)
 		}).
 		Subscribe(ctx)
 	<-done
