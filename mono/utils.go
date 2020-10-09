@@ -10,7 +10,7 @@ var empty = wrap(newMonoJust(nil))
 var errJustNilValue = errors.New("require non nil value")
 
 func Error(e error) Mono {
-	return wrap(newMonoError(e))
+	return getObjFromPool(newMonoError(e))
 }
 
 func Empty() Mono {
@@ -28,17 +28,17 @@ func Just(v Any) Mono {
 	if v == nil {
 		panic(errJustNilValue)
 	}
-	return wrap(newMonoJust(v))
+	return getObjFromPool(newMonoJust(v))
 }
 
 func Create(gen func(ctx context.Context, s Sink)) Mono {
-	return wrap(newMonoCreate(gen))
+	return getObjFromPool(newMonoCreate(gen))
 }
 
 func Delay(delay time.Duration) Mono {
-	return wrap(newMonoDelay(delay))
+	return getObjFromPool(newMonoDelay(delay))
 }
 
 func CreateProcessor() Processor {
-	return wrap(&processor{})
+	return getObjFromPool(&processor{})
 }
