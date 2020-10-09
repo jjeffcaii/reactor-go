@@ -403,7 +403,7 @@ func TestOneshot(t *testing.T) {
 			s.Success(1)
 		}),
 	} {
-		m.
+		result, err := m.
 			Map(func(any reactor.Any) (reactor.Any, error) {
 				return any.(int) * 2, nil
 			}).
@@ -412,5 +412,7 @@ func TestOneshot(t *testing.T) {
 				return nil
 			}).
 			Block(context.Background())
+		assert.NoError(t, err)
+		assert.Equal(t, 2, result)
 	}
 }
