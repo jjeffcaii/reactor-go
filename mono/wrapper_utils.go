@@ -5,7 +5,25 @@ import (
 
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/internal/subscribers"
+	"github.com/jjeffcaii/reactor-go/scheduler"
 )
+
+func IsSubscribeAsync(m Mono) bool {
+	var publisher reactor.RawPublisher
+	switch t := m.(type) {
+	case wrapper:
+		publisher = t.RawPublisher
+	case *oneshotWrapper:
+		publisher = t.RawPublisher
+	default:
+		return false
+	}
+	s, ok := publisher.(*monoScheduleOn)
+	if !ok {
+		return false
+	}
+	return scheduler.IsParallel(s.sc) || scheduler.IsElastic(s.sc) || scheduler.IsSingle(s.sc)
+}
 
 func block(ctx context.Context, publisher reactor.RawPublisher) (Any, error) {
 	done := make(chan struct{})

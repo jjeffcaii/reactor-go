@@ -93,3 +93,4 @@ func (p wrapper) Error(e error) {
 func wrap(r reactor.RawPublisher) wrapper {
 	return wrapper{r}
 }
+

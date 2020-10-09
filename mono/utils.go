@@ -13,6 +13,10 @@ func Error(e error) Mono {
 	return wrap(newMonoError(e))
 }
 
+func ErrorOneshot(e error) Mono {
+	return borrowOneshotWrapper(newMonoError(e))
+}
+
 func Empty() Mono {
 	return empty
 }
@@ -52,8 +56,4 @@ func Delay(delay time.Duration) Mono {
 
 func CreateProcessor() Processor {
 	return wrap(&processor{})
-}
-
-func CreateProcessorOneshot() Processor {
-	return borrowOneshotWrapper(&processor{})
 }

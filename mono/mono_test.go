@@ -411,8 +411,34 @@ func TestOneshot(t *testing.T) {
 				assert.Equal(t, 2, v.(int))
 				return nil
 			}).
+			DoOnError(func(e error) {
+				assert.FailNow(t, "unreachable")
+			}).
 			Block(context.Background())
 		assert.NoError(t, err)
 		assert.Equal(t, 2, result)
 	}
+}
+
+func TestErrorOneshot(t *testing.T) {
+	fakeErr := errors.New("fake error")
+	_, err := mono.
+		ErrorOneshot(fakeErr).
+		DoOnNext(func(v reactor.Any) error {
+			assert.FailNow(t, "unreachable")
+			return nil
+		}).
+		DoOnError(func(e error) {
+			assert.Equal(t, fakeErr, e)
+		}).
+		SubscribeOn(scheduler.Parallel()).
+		Block(context.Background())
+	assert.Error(t, err, "should return error")
+	assert.Equal(t, fakeErr, err)
+}
+
+func TestIsSubscribeOnParallel(t *testing.T) {
+	assert.False(t, mono.IsSubscribeAsync(mono.Just(1)))
+	assert.True(t, mono.IsSubscribeAsync(mono.Just(1).SubscribeOn(scheduler.Parallel())))
+	assert.True(t, mono.IsSubscribeAsync(mono.Just(1).SubscribeOn(scheduler.Single())))
 }
