@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/jjeffcaii/reactor-go"
-	"github.com/jjeffcaii/reactor-go/internal/subscribers"
 	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
@@ -69,7 +68,7 @@ func (p wrapper) DoOnSubscribe(fn reactor.FnOnSubscribe) Mono {
 }
 
 func (p wrapper) DelayElement(delay time.Duration) Mono {
-	return wrap(newMonoDelayElement(p.RawPublisher, delay, scheduler.Elastic()))
+	return wrap(newMonoDelayElement(p.RawPublisher, delay, scheduler.Parallel()))
 }
 
 func (p wrapper) Timeout(timeout time.Duration) Mono {
@@ -80,40 +79,15 @@ func (p wrapper) Timeout(timeout time.Duration) Mono {
 }
 
 func (p wrapper) Block(ctx context.Context) (Any, error) {
-	done := make(chan struct{})
-	vchan := make(chan reactor.Any, 1)
-	echan := make(chan error, 1)
-	b := subscribers.NewBlockSubscriber(done, vchan, echan)
-	p.SubscribeWith(ctx, b)
-	<-done
-
-	defer close(vchan)
-	defer close(echan)
-
-	select {
-	case value := <-vchan:
-		return value, nil
-	case err := <-echan:
-		return nil, err
-	default:
-		return nil, nil
-	}
+	return block(ctx, p.RawPublisher)
 }
 
 func (p wrapper) Success(v Any) {
-	p.mustProcessor().Success(v)
+	mustProcessor(p.RawPublisher).Success(v)
 }
 
 func (p wrapper) Error(e error) {
-	p.mustProcessor().Error(e)
-}
-
-func (p wrapper) mustProcessor() *processor {
-	pp, ok := p.RawPublisher.(*processor)
-	if !ok {
-		panic(errNotProcessor)
-	}
-	return pp
+	mustProcessor(p.RawPublisher).Error(e)
 }
 
 func wrap(r reactor.RawPublisher) wrapper {

@@ -8,14 +8,14 @@ import (
 )
 
 type monoError struct {
-	e error
+	inner error
 }
 
-func (p monoError) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
+func (e monoError) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
 	s.OnSubscribe(ctx, internal.EmptySubscription)
-	s.OnError(p.e)
+	s.OnError(e.inner)
 }
 
 func newMonoError(e error) monoError {
-	return monoError{e: e}
+	return monoError{inner: e}
 }

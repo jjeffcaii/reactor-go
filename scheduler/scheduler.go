@@ -21,3 +21,15 @@ type Scheduler interface {
 	// Worker returns next worker.
 	Worker() Worker
 }
+
+func IsElastic(sc Scheduler) bool {
+	return sc.Name() == _elasticName
+}
+
+func IsParallel(sc Scheduler) bool {
+	return sc.Name() == _parallelName
+}
+
+func IsSingle(sc Scheduler) bool {
+	return sc.Name() == _singleName
+}
