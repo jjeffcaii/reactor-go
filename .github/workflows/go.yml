@@ -7,15 +7,6 @@ on:
     branches: [ master ]
 
 jobs:
-  golangci:
-    name: lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v2
-        with:
-          version: v1.30
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -37,7 +28,9 @@ jobs:
             curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
             dep ensure
         fi
-    - name:
+
+    - name: Run golangci-lint
+      uses: golangci/golangci-lint-action@v1.2.1
 
     - name: Build
       run: go build -v .
