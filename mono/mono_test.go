@@ -418,12 +418,76 @@ func TestOneshot(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, 2, result)
 	}
+
+	n, err := mono.JustOneshot(1).
+		FlatMap(func(any reactor.Any) mono.Mono {
+			return mono.Just(any.(int) * 3)
+		}).
+		Block(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, 3, n)
+
+	discardCalls := new(int32)
+
+	mono.
+		CreateOneshot(func(ctx context.Context, s mono.Sink) {
+			s.Success(111)
+		}).
+		Filter(func(any reactor.Any) bool {
+			return any.(int) > 222
+		}).
+		DoOnDiscard(func(v reactor.Any) {
+			assert.Equal(t, 111, v)
+			atomic.AddInt32(discardCalls, 1)
+		}).
+		SwitchIfEmpty(mono.Just(333)).
+		DoOnNext(func(v reactor.Any) error {
+			assert.Equal(t, 333, v)
+			return nil
+		}).
+		Subscribe(context.Background())
+
+	assert.Equal(t, int32(1), atomic.LoadInt32(discardCalls))
+
+	_, err = mono.
+		CreateOneshot(func(ctx context.Context, s mono.Sink) {
+			time.Sleep(100 * time.Millisecond)
+			s.Success(1)
+		}).
+		Timeout(50 * time.Millisecond).
+		Block(context.Background())
+	assert.Error(t, err)
+	assert.True(t, reactor.IsCancelledError(err))
+
+	done := make(chan struct{})
+	now := time.Now()
+	mono.Just(1).
+		DoFinally(func(s reactor.SignalType) {
+			close(done)
+		}).
+		DelayElement(100*time.Millisecond).
+		Subscribe(context.Background(), reactor.OnNext(func(v reactor.Any) error {
+			assert.True(t, time.Since(now)/1e6 >= 100)
+			return nil
+		}))
+	<-done
 }
 
 func TestErrorOneshot(t *testing.T) {
 	fakeErr := errors.New("fake error")
+	finallyCalls := new(int32)
+	subscribeCalls := new(int32)
 	_, err := mono.
 		ErrorOneshot(fakeErr).
+		DoFinally(func(s reactor.SignalType) {
+			atomic.AddInt32(finallyCalls, 1)
+		}).
+		DoOnSubscribe(func(ctx context.Context, su reactor.Subscription) {
+			atomic.AddInt32(subscribeCalls, 1)
+		}).
+		DoOnCancel(func() {
+			assert.FailNow(t, "unreachable")
+		}).
 		DoOnNext(func(v reactor.Any) error {
 			assert.FailNow(t, "unreachable")
 			return nil
@@ -435,10 +499,24 @@ func TestErrorOneshot(t *testing.T) {
 		Block(context.Background())
 	assert.Error(t, err, "should return error")
 	assert.Equal(t, fakeErr, err)
+	assert.Equal(t, int32(1), atomic.LoadInt32(finallyCalls))
+	assert.Equal(t, int32(1), atomic.LoadInt32(subscribeCalls))
 }
 
 func TestIsSubscribeOnParallel(t *testing.T) {
 	assert.False(t, mono.IsSubscribeAsync(mono.Just(1)))
 	assert.True(t, mono.IsSubscribeAsync(mono.Just(1).SubscribeOn(scheduler.Parallel())))
 	assert.True(t, mono.IsSubscribeAsync(mono.Just(1).SubscribeOn(scheduler.Single())))
+	assert.True(t, mono.IsSubscribeAsync(mono.JustOneshot(1).SubscribeOn(scheduler.Elastic())))
+}
+
+func TestJust(t *testing.T) {
+	assert.Panics(t, func() {
+		mono.Just(nil)
+	})
+	assert.Panics(t, func() {
+		mono.JustOneshot(nil)
+	})
+	assert.NotNil(t, mono.Just(1))
+	assert.NotNil(t, mono.JustOneshot(1))
 }

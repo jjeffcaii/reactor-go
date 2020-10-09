@@ -19,14 +19,6 @@ type oneshotWrapper struct {
 	reactor.RawPublisher
 }
 
-func (o *oneshotWrapper) Success(any Any) {
-	mustProcessor(o.RawPublisher).Success(any)
-}
-
-func (o *oneshotWrapper) Error(err error) {
-	mustProcessor(o.RawPublisher).Error(err)
-}
-
 func borrowOneshotWrapper(origin reactor.RawPublisher) *oneshotWrapper {
 	wrapper := _oneshotWrapperPool.Get().(*oneshotWrapper)
 	wrapper.RawPublisher = origin

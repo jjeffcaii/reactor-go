@@ -2,12 +2,11 @@ package mono
 
 import (
 	"context"
-	"errors"
 	"time"
 )
 
 var empty = wrap(newMonoJust(nil))
-var errJustNilValue = errors.New("require non nil value")
+var _errJustNilValue = "require non nil value"
 
 func Error(e error) Mono {
 	return wrap(newMonoError(e))
@@ -30,14 +29,14 @@ func JustOrEmpty(v Any) Mono {
 
 func Just(v Any) Mono {
 	if v == nil {
-		panic(errJustNilValue)
+		panic(_errJustNilValue)
 	}
 	return wrap(newMonoJust(v))
 }
 
 func JustOneshot(v Any) Mono {
 	if v == nil {
-		panic(errJustNilValue)
+		panic(_errJustNilValue)
 	}
 	return borrowOneshotWrapper(newMonoJust(v))
 }

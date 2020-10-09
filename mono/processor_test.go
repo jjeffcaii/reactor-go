@@ -2,6 +2,7 @@ package mono_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -50,4 +51,20 @@ func TestProcessor_Context(t *testing.T) {
 		}).
 		Subscribe(ctx)
 	<-done
+}
+
+func TestProcessor_Error(t *testing.T) {
+	fakeErr := errors.New("fake error")
+	p := mono.CreateProcessor()
+	done := make(chan error, 1)
+	p.
+		DoOnError(func(e error) {
+			done <- e
+		}).
+		Subscribe(context.Background())
+
+	time.Sleep(100 * time.Millisecond)
+	p.Error(fakeErr)
+	e := <-done
+	assert.Equal(t, fakeErr, e)
 }
