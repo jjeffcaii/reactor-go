@@ -290,49 +290,6 @@ func testContextDone(m mono.Mono, t *testing.T) {
 	assert.Error(t, err, "should catch error")
 }
 
-func BenchmarkNative(b *testing.B) {
-	var sum int64
-	b.ResetTimer()
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			var v Any = int64(1)
-			atomic.AddInt64(&sum, v.(int64))
-		}
-	})
-}
-
-func BenchmarkJust(b *testing.B) {
-	var sum int64
-	m := mono.Just(int64(1))
-	b.ResetTimer()
-	b.RunParallel(func(pb *testing.PB) {
-		s := reactor.NewSubscriber(reactor.OnNext(func(v Any) error {
-			atomic.AddInt64(&sum, v.(int64))
-			return nil
-		}))
-		for pb.Next() {
-			m.SubscribeWith(context.Background(), s)
-		}
-	})
-}
-
-func BenchmarkCreate(b *testing.B) {
-	var sum int64
-	m := mono.Create(func(i context.Context, sink mono.Sink) {
-		sink.Success(int64(1))
-	})
-	b.ResetTimer()
-	b.RunParallel(func(pb *testing.PB) {
-		s := reactor.NewSubscriber(reactor.OnNext(func(v Any) error {
-			atomic.AddInt64(&sum, v.(int64))
-			return nil
-		}))
-		for pb.Next() {
-			m.SubscribeWith(context.Background(), s)
-		}
-	})
-}
-
 func TestError(t *testing.T) {
 	mockErr := errors.New("this is a mock error")
 	var sig reactor.SignalType
@@ -437,4 +394,23 @@ func TestBlock(t *testing.T) {
 	}).Block(context.Background())
 	assert.NoError(t, err)
 	assert.Nil(t, v)
+}
+
+func TestOneshot(t *testing.T) {
+	for _, m := range []mono.Mono{
+		mono.JustOneshot(1),
+		mono.CreateOneshot(func(ctx context.Context, s mono.Sink) {
+			s.Success(1)
+		}),
+	} {
+		m.
+			Map(func(any reactor.Any) (reactor.Any, error) {
+				return any.(int) * 2, nil
+			}).
+			DoOnNext(func(v reactor.Any) error {
+				assert.Equal(t, 2, v.(int))
+				return nil
+			}).
+			Block(context.Background())
+	}
 }

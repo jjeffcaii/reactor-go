@@ -31,8 +31,19 @@ func Just(v Any) Mono {
 	return wrap(newMonoJust(v))
 }
 
+func JustOneshot(v Any) Mono {
+	if v == nil {
+		panic(errJustNilValue)
+	}
+	return borrowOneshotWrapper(newMonoJust(v))
+}
+
 func Create(gen func(ctx context.Context, s Sink)) Mono {
 	return wrap(newMonoCreate(gen))
+}
+
+func CreateOneshot(gen func(ctx context.Context, s Sink)) Mono {
+	return borrowOneshotWrapper(newMonoCreate(gen))
 }
 
 func Delay(delay time.Duration) Mono {
@@ -41,4 +52,8 @@ func Delay(delay time.Duration) Mono {
 
 func CreateProcessor() Processor {
 	return wrap(&processor{})
+}
+
+func CreateProcessorOneshot() Processor {
+	return borrowOneshotWrapper(&processor{})
 }
