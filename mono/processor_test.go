@@ -26,14 +26,9 @@ func TestProcessor(t *testing.T) {
 	assert.NoError(t, err, "block failed")
 	assert.Equal(t, 666, v.(int), "bad result")
 
-	var actual int
-	p.
-		DoOnNext(func(v Any) error {
-			actual = v.(int)
-			return nil
-		}).
-		Subscribe(context.Background())
-	assert.Equal(t, 333, actual, "bad result")
+	assert.Panics(t, func() {
+		p.Subscribe(context.Background())
+	})
 }
 
 func TestProcessor_Context(t *testing.T) {
