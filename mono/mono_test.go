@@ -83,18 +83,18 @@ func TestSwitchIfEmpty(t *testing.T) {
 }
 
 func TestSuite(t *testing.T) {
-	pc := mono.CreateProcessor()
+	// TODO: processor
+	//pc := mono.CreateProcessor()
+	//go func() {
+	//	pc.Success(num)
+	//}()
 	all := map[string]mono.Mono{
 		"Just": mono.Just(num),
 		"Create": mono.Create(func(i context.Context, sink mono.Sink) {
 			sink.Success(num)
 		}),
-		"Processor": pc,
+		//"Processor": pc,
 	}
-
-	go func() {
-		pc.Success(num)
-	}()
 
 	for k, v := range all {
 		t.Run(k+"_Map", func(t *testing.T) {
