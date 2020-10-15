@@ -12,17 +12,16 @@ type monoScheduleOn struct {
 	sc     scheduler.Scheduler
 }
 
-func (m *monoScheduleOn) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
-	err := m.sc.Worker().Do(func() {
+func (m monoScheduleOn) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
+	if err := m.sc.Worker().Do(func() {
 		m.source.SubscribeWith(ctx, s)
-	})
-	if err != nil {
+	}); err != nil {
 		panic(err)
 	}
 }
 
-func newMonoScheduleOn(s reactor.RawPublisher, sc scheduler.Scheduler) *monoScheduleOn {
-	return &monoScheduleOn{
+func newMonoScheduleOn(s reactor.RawPublisher, sc scheduler.Scheduler) monoScheduleOn {
+	return monoScheduleOn{
 		source: s,
 		sc:     sc,
 	}

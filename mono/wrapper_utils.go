@@ -18,11 +18,17 @@ func IsSubscribeAsync(m Mono) bool {
 	default:
 		return false
 	}
-	s, ok := publisher.(*monoScheduleOn)
-	if !ok {
+
+	var sc scheduler.Scheduler
+	switch pub := publisher.(type) {
+	case monoScheduleOn:
+		sc = pub.sc
+	case *monoScheduleOn:
+		sc = pub.sc
+	default:
 		return false
 	}
-	return scheduler.IsParallel(s.sc) || scheduler.IsElastic(s.sc) || scheduler.IsSingle(s.sc)
+	return scheduler.IsParallel(sc) || scheduler.IsElastic(sc) || scheduler.IsSingle(sc)
 }
 
 func block(ctx context.Context, publisher reactor.RawPublisher) (Any, error) {

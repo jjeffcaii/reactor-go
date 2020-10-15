@@ -2,70 +2,83 @@ package subscribers
 
 import (
 	"context"
+	"sync"
+	"sync/atomic"
 
 	"github.com/jjeffcaii/reactor-go"
-	"github.com/jjeffcaii/reactor-go/internal"
 )
+
+var _finallySubscriberPool = sync.Pool{
+	New: func() interface{} {
+		return new(DoFinallySubscriber)
+	},
+}
 
 type DoFinallySubscriber struct {
 	actual    reactor.Subscriber
 	onFinally reactor.FnOnFinally
-	done      chan struct{}
 	s         reactor.Subscription
+	done      int32
 }
 
-func NewDoFinallySubscriber(actual reactor.Subscriber, onFinally reactor.FnOnFinally) *DoFinallySubscriber {
-	return &DoFinallySubscriber{
-		actual:    actual,
-		onFinally: onFinally,
-		done:      make(chan struct{}),
+func BorrowDoFinallySubscriber(actual reactor.Subscriber, onFinally reactor.FnOnFinally) *DoFinallySubscriber {
+	sub := _finallySubscriberPool.Get().(*DoFinallySubscriber)
+	atomic.StoreInt32(&sub.done, 0)
+	sub.actual = actual
+	sub.onFinally = onFinally
+	return sub
+}
+
+func ReturnDoFinallySubscriber(sub *DoFinallySubscriber) {
+	sub.actual = nil
+	sub.onFinally = nil
+	sub.s = nil
+	atomic.StoreInt32(&sub.done, 1)
+	_finallySubscriberPool.Put(sub)
+}
+
+func (d *DoFinallySubscriber) Request(n int) {
+	if atomic.LoadInt32(&d.done) == 0 {
+		d.s.Request(n)
 	}
 }
 
-func (p *DoFinallySubscriber) Request(n int) {
-	p.s.Request(n)
+func (d *DoFinallySubscriber) Cancel() {
+	d.s.Cancel()
+	d.runFinally(reactor.SignalTypeCancel)
 }
 
-func (p *DoFinallySubscriber) Cancel() {
-	p.s.Cancel()
-	p.runFinally(reactor.SignalTypeCancel)
-}
-
-func (p *DoFinallySubscriber) OnError(err error) {
-	p.actual.OnError(err)
+func (d *DoFinallySubscriber) OnError(err error) {
+	d.actual.OnError(err)
 	if reactor.IsCancelledError(err) {
-		p.runFinally(reactor.SignalTypeCancel)
+		d.runFinally(reactor.SignalTypeCancel)
 	} else {
-		p.runFinally(reactor.SignalTypeError)
+		d.runFinally(reactor.SignalTypeError)
 	}
 }
 
-func (p *DoFinallySubscriber) OnNext(v reactor.Any) {
-	p.actual.OnNext(v)
+func (d *DoFinallySubscriber) OnNext(v reactor.Any) {
+	d.actual.OnNext(v)
 }
 
-func (p *DoFinallySubscriber) OnSubscribe(ctx context.Context, s reactor.Subscription) {
+func (d *DoFinallySubscriber) OnSubscribe(ctx context.Context, s reactor.Subscription) {
 	select {
 	case <-ctx.Done():
-		p.OnError(reactor.ErrSubscribeCancelled)
+		d.OnError(reactor.ErrSubscribeCancelled)
 	default:
-		p.s = s
-		p.actual.OnSubscribe(ctx, p)
+		d.s = s
+		d.actual.OnSubscribe(ctx, d)
 	}
 }
 
-func (p *DoFinallySubscriber) OnComplete() {
-	p.actual.OnComplete()
-	p.runFinally(reactor.SignalTypeComplete)
+func (d *DoFinallySubscriber) OnComplete() {
+	d.actual.OnComplete()
+	d.runFinally(reactor.SignalTypeComplete)
 }
 
-func (p *DoFinallySubscriber) runFinally(sig reactor.SignalType) {
-	select {
-	case <-p.done:
-	default:
-		if !internal.SafeCloseDone(p.done) {
-			return
-		}
-		p.onFinally(sig)
+func (d *DoFinallySubscriber) runFinally(sig reactor.SignalType) {
+	defer ReturnDoFinallySubscriber(d)
+	if atomic.AddInt32(&d.done, 1) == 1 {
+		d.onFinally(sig)
 	}
 }

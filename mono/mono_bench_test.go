@@ -46,3 +46,13 @@ func BenchmarkCreateOneshot(b *testing.B) {
 		}
 	})
 }
+
+func BenchmarkProcessor(b *testing.B) {
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			p := mono.CreateProcessor()
+			p.Success(1)
+			p.Subscribe(context.Background())
+		}
+	})
+}

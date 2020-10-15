@@ -3,6 +3,7 @@ package mono
 import (
 	"context"
 	"errors"
+	"sync"
 	"sync/atomic"
 
 	"github.com/jjeffcaii/reactor-go"
@@ -11,6 +12,12 @@ import (
 )
 
 var _errRunSinkFailed = errors.New("execute creation func failed")
+
+var _sinkPool = sync.Pool{
+	New: func() interface{} {
+		return new(sink)
+	},
+}
 
 type Sink interface {
 	Success(Any)
@@ -26,8 +33,20 @@ type sink struct {
 	stat   int32
 }
 
-func newMonoCreate(gen func(context.Context, Sink)) *monoCreate {
-	return &monoCreate{
+func borrowSink(sub reactor.Subscriber) *sink {
+	s := _sinkPool.Get().(*sink)
+	atomic.StoreInt32(&s.stat, 0)
+	s.actual = sub
+	return s
+}
+
+func returnSink(s *sink) {
+	s.actual = nil
+	_sinkPool.Put(s)
+}
+
+func newMonoCreate(gen func(context.Context, Sink)) monoCreate {
+	return monoCreate{
 		sinker: func(ctx context.Context, sink Sink) {
 			defer func() {
 				if e := recover(); e != nil {
@@ -37,7 +56,7 @@ func newMonoCreate(gen func(context.Context, Sink)) *monoCreate {
 
 			select {
 			case <-ctx.Done():
-				sink.Error(ctx.Err())
+				sink.Error(reactor.ErrSubscribeCancelled)
 			default:
 				gen(ctx, sink)
 			}
@@ -67,12 +86,14 @@ func (s *sink) Cancel() {
 }
 
 func (s *sink) Complete() {
+	defer returnSink(s)
 	if atomic.CompareAndSwapInt32(&s.stat, 0, statComplete) {
 		s.actual.OnComplete()
 	}
 }
 
 func (s *sink) Error(err error) {
+	defer returnSink(s)
 	if atomic.CompareAndSwapInt32(&s.stat, 0, statError) {
 		s.actual.OnError(err)
 		return
@@ -89,10 +110,8 @@ func (s *sink) Next(v Any) {
 	s.actual.OnNext(v)
 }
 
-func (m *monoCreate) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
-	sink := &sink{
-		actual: s,
-	}
+func (m monoCreate) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
+	sink := borrowSink(s)
 	s.OnSubscribe(ctx, sink)
 	m.sinker(ctx, sink)
 }
