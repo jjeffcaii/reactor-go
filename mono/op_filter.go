@@ -13,6 +13,25 @@ type filterSubscriber struct {
 	predicate reactor.Predicate
 }
 
+type monoFilter struct {
+	s reactor.RawPublisher
+	f reactor.Predicate
+}
+
+func newFilterSubscriber(actual reactor.Subscriber, predicate reactor.Predicate) *filterSubscriber {
+	return &filterSubscriber{
+		actual:    actual,
+		predicate: predicate,
+	}
+}
+
+func newMonoFilter(s reactor.RawPublisher, f reactor.Predicate) monoFilter {
+	return monoFilter{
+		s: s,
+		f: f,
+	}
+}
+
 func (f *filterSubscriber) OnComplete() {
 	f.actual.OnComplete()
 }
@@ -39,25 +58,6 @@ func (f *filterSubscriber) OnSubscribe(ctx context.Context, s reactor.Subscripti
 	f.actual.OnSubscribe(ctx, s)
 }
 
-type monoFilter struct {
-	s reactor.RawPublisher
-	f reactor.Predicate
-}
-
-func (m *monoFilter) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
+func (m monoFilter) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
 	m.s.SubscribeWith(ctx, newFilterSubscriber(s, m.f))
-}
-
-func newFilterSubscriber(actual reactor.Subscriber, predicate reactor.Predicate) *filterSubscriber {
-	return &filterSubscriber{
-		actual:    actual,
-		predicate: predicate,
-	}
-}
-
-func newMonoFilter(s reactor.RawPublisher, f reactor.Predicate) *monoFilter {
-	return &monoFilter{
-		s: s,
-		f: f,
-	}
 }

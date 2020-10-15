@@ -14,4 +14,3 @@ func IsCancelledError(err error) bool {
 	return err == ErrSubscribeCancelled
 }
 
-var CoreCounts int32
