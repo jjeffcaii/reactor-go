@@ -56,3 +56,8 @@ func Delay(delay time.Duration) Mono {
 func CreateProcessor() Processor {
 	return wrap(&processor{})
 }
+
+func CreateProcessorOneshot() (Mono, Sink) {
+	p := &processor{}
+	return borrowOneshotWrapper(p), p
+}

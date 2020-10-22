@@ -12,6 +12,10 @@ type monoContext struct {
 	kv     []Any
 }
 
+func (p *monoContext) Parent() reactor.RawPublisher {
+	return p.source
+}
+
 func (p *monoContext) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
 	for i := 0; i < len(p.kv); i += 2 {
 		ctx = context.WithValue(ctx, p.kv[i], p.kv[i+1])

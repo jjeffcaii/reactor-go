@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go/internal"
 	"github.com/jjeffcaii/reactor-go/internal/subscribers"
 	"github.com/jjeffcaii/reactor-go/scheduler"
 )
@@ -33,20 +34,18 @@ func IsSubscribeAsync(m Mono) bool {
 
 func block(ctx context.Context, publisher reactor.RawPublisher) (Any, error) {
 	done := make(chan struct{})
-	vchan := make(chan reactor.Any, 1)
-	echan := make(chan error, 1)
-	b := subscribers.NewBlockSubscriber(done, vchan, echan)
+	c := make(chan internal.Item, 1)
+	b := subscribers.NewBlockSubscriber(done, c)
 	publisher.SubscribeWith(ctx, b)
 	<-done
-
-	defer close(vchan)
-	defer close(echan)
+	defer close(c)
 
 	select {
-	case value := <-vchan:
-		return value, nil
-	case err := <-echan:
-		return nil, err
+	case result := <-c:
+		if result.E != nil {
+			return nil, result.E
+		}
+		return result.V, nil
 	default:
 		return nil, nil
 	}

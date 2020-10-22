@@ -2,11 +2,7 @@ package scheduler
 
 const _parallelName = "parallel"
 
-var _parallel Scheduler
-
-func init() {
-	_parallel = parallelScheduler{}
-}
+var _parallel Scheduler = parallelScheduler{}
 
 type parallelScheduler struct {
 }

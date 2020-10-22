@@ -72,6 +72,7 @@ func (p *processor) Error(e error) {
 		p.setValue(e)
 		return
 	}
+	p.RUnlock()
 
 	if atomic.LoadInt32(&p.requested) > 0 {
 		p.subscriber.OnError(e)

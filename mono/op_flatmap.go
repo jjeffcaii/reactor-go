@@ -95,6 +95,10 @@ type monoFlatMap struct {
 	mapper FlatMapper
 }
 
+func (m *monoFlatMap) Parent() reactor.RawPublisher {
+	return m.source
+}
+
 func (m *monoFlatMap) SubscribeWith(ctx context.Context, actual reactor.Subscriber) {
 	s := newFlatMapSubscriber(actual, m.mapper)
 	actual.OnSubscribe(ctx, s)

@@ -18,6 +18,10 @@ type monoPeek struct {
 	onCancelCall    reactor.FnOnCancel
 }
 
+func (p *monoPeek) Parent() reactor.RawPublisher {
+	return p.source
+}
+
 type peekSubscriber struct {
 	actual reactor.Subscriber
 	parent *monoPeek

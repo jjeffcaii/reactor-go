@@ -4,19 +4,18 @@ import (
 	"context"
 
 	"github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go/internal"
 )
 
 type blockSubscriber struct {
-	done  chan struct{}
-	vchan chan<- reactor.Any
-	echan chan<- error
+	done chan struct{}
+	c    chan<- internal.Item
 }
 
-func NewBlockSubscriber(done chan struct{}, vchan chan reactor.Any, echan chan error) reactor.Subscriber {
+func NewBlockSubscriber(done chan struct{}, c chan internal.Item) reactor.Subscriber {
 	return blockSubscriber{
-		done:  done,
-		vchan: vchan,
-		echan: echan,
+		done: done,
+		c:    c,
 	}
 }
 
@@ -33,7 +32,9 @@ func (b blockSubscriber) OnError(err error) {
 	case <-b.done:
 	default:
 		close(b.done)
-		b.echan <- err
+		b.c <- internal.Item{
+			E: err,
+		}
 	}
 }
 
@@ -41,7 +42,9 @@ func (b blockSubscriber) OnNext(any reactor.Any) {
 	select {
 	case <-b.done:
 	default:
-		b.vchan <- any
+		b.c <- internal.Item{
+			V: any,
+		}
 	}
 }
 

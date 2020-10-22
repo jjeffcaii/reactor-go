@@ -13,6 +13,10 @@ type monoTimeout struct {
 	timeout time.Duration
 }
 
+func (m *monoTimeout) Parent() reactor.RawPublisher {
+	return m.source
+}
+
 type timeoutSubscriber struct {
 	actual  reactor.Subscriber
 	timeout time.Duration
