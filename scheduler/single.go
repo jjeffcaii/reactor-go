@@ -3,10 +3,10 @@ package scheduler
 import (
 	"errors"
 	"sync"
-)
+	"sync/atomic"
 
-// DefaultSingleCap is default task queue size.
-const DefaultSingleCap = 1000
+	"github.com/jjeffcaii/reactor-go/internal/buffer"
+)
 
 var errSchedulerClosed = errors.New("scheduler has been closed")
 
@@ -18,7 +18,8 @@ var (
 )
 
 type singleScheduler struct {
-	jobs    chan Task
+	closed  int32
+	jobs    *buffer.Unbounded
 	started sync.Once
 }
 
@@ -27,24 +28,27 @@ func (p *singleScheduler) Name() string {
 }
 
 func (p *singleScheduler) Close() (err error) {
-	close(p.jobs)
+	p.jobs.Dispose()
 	return
 }
 
 func (p *singleScheduler) start() {
-	for j := range p.jobs {
-		j()
+	for {
+		p.jobs.Load()
+		if next, ok := <-p.jobs.Get(); ok {
+			next.(Task)()
+		}
 	}
 }
 
-func (p *singleScheduler) Do(j Task) (err error) {
-	defer func() {
-		if e := recover(); e != nil {
-			err = errSchedulerClosed
-		}
-	}()
-	p.jobs <- j
-	return
+func (p *singleScheduler) Do(j Task) error {
+	if atomic.LoadInt32(&p.closed) == 1 {
+		return errSchedulerClosed
+	}
+	if !p.jobs.Put(j) {
+		return errSchedulerClosed
+	}
+	return nil
 }
 
 func (p *singleScheduler) Worker() Worker {
@@ -55,9 +59,9 @@ func (p *singleScheduler) Worker() Worker {
 }
 
 // NewSingle creates a new single scheduler with customized cap.
-func NewSingle(cap int) Scheduler {
+func NewSingle() Scheduler {
 	return &singleScheduler{
-		jobs: make(chan Task, cap),
+		jobs: buffer.NewUnbounded(),
 	}
 }
 
@@ -65,7 +69,7 @@ func NewSingle(cap int) Scheduler {
 // It will execute tasks one by one.
 func Single() Scheduler {
 	_singleInit.Do(func() {
-		_single = NewSingle(DefaultSingleCap)
+		_single = NewSingle()
 	})
 	return _single
 }

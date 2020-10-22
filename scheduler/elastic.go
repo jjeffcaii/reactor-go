@@ -8,10 +8,13 @@ import (
 )
 
 const _elasticName = "elastic"
+const _elasticBoundedSize = 10000
 
 var (
-	_elastic     Scheduler
-	_elasticInit sync.Once
+	_elastic            Scheduler
+	_elasticInit        sync.Once
+	_elasticBounded     Scheduler
+	_elasticBoundedInit sync.Once
 )
 
 type elasticScheduler struct {
@@ -50,4 +53,13 @@ func Elastic() Scheduler {
 		_elastic = NewElastic(math.MaxInt32)
 	})
 	return _elastic
+}
+
+// ElasticBounded is a dynamic scheduler with bounded size.
+// It's based on ants goroutine pool.
+func ElasticBounded() Scheduler {
+	_elasticBoundedInit.Do(func() {
+		_elasticBounded = NewElastic(_elasticBoundedSize)
+	})
+	return _elasticBounded
 }

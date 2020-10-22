@@ -23,6 +23,10 @@ type monoMap struct {
 	mapper reactor.Transformer
 }
 
+func (m monoMap) Parent() reactor.RawPublisher {
+	return m.source
+}
+
 func newMonoMap(source reactor.RawPublisher, tf reactor.Transformer) monoMap {
 	return monoMap{
 		source: source,

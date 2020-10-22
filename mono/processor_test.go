@@ -31,6 +31,26 @@ func TestProcessor(t *testing.T) {
 	})
 }
 
+func TestProcessorOneshot(t *testing.T) {
+	m, s := mono.CreateProcessorOneshot()
+	time.AfterFunc(100*time.Millisecond, func() {
+		s.Success(333)
+	})
+
+	v, err := m.
+		Map(func(i Any) (Any, error) {
+			return i.(int) * 2, nil
+		}).
+		Block(context.Background())
+	assert.NoError(t, err, "block failed")
+	assert.Equal(t, 666, v.(int), "bad result")
+
+	assert.Panics(t, func() {
+		m.Subscribe(context.Background())
+	})
+
+}
+
 func TestProcessor_Context(t *testing.T) {
 	p := mono.CreateProcessor()
 	ctx, cancel := context.WithCancel(context.Background())

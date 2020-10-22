@@ -18,6 +18,10 @@ type monoFilter struct {
 	f reactor.Predicate
 }
 
+func (m monoFilter) Parent() reactor.RawPublisher {
+	return m.s
+}
+
 func newFilterSubscriber(actual reactor.Subscriber, predicate reactor.Predicate) *filterSubscriber {
 	return &filterSubscriber{
 		actual:    actual,

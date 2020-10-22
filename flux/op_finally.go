@@ -13,7 +13,7 @@ type fluxFinally struct {
 }
 
 func (p *fluxFinally) SubscribeWith(ctx context.Context, actual reactor.Subscriber) {
-	p.source.SubscribeWith(ctx, subscribers.BorrowDoFinallySubscriber(actual, p.onFinally))
+	p.source.SubscribeWith(ctx, subscribers.NewDoFinallySubscriber(actual, p.onFinally))
 }
 
 func newFluxFinally(source reactor.RawPublisher, onFinally reactor.FnOnFinally) *fluxFinally {

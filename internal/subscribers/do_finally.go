@@ -2,17 +2,10 @@ package subscribers
 
 import (
 	"context"
-	"sync"
 	"sync/atomic"
 
 	"github.com/jjeffcaii/reactor-go"
 )
-
-var _finallySubscriberPool = sync.Pool{
-	New: func() interface{} {
-		return new(DoFinallySubscriber)
-	},
-}
 
 type DoFinallySubscriber struct {
 	actual    reactor.Subscriber
@@ -21,20 +14,11 @@ type DoFinallySubscriber struct {
 	done      int32
 }
 
-func BorrowDoFinallySubscriber(actual reactor.Subscriber, onFinally reactor.FnOnFinally) *DoFinallySubscriber {
-	sub := _finallySubscriberPool.Get().(*DoFinallySubscriber)
-	atomic.StoreInt32(&sub.done, 0)
-	sub.actual = actual
-	sub.onFinally = onFinally
-	return sub
-}
-
-func ReturnDoFinallySubscriber(sub *DoFinallySubscriber) {
-	sub.actual = nil
-	sub.onFinally = nil
-	sub.s = nil
-	atomic.StoreInt32(&sub.done, 1)
-	_finallySubscriberPool.Put(sub)
+func NewDoFinallySubscriber(actual reactor.Subscriber, onFinally reactor.FnOnFinally) *DoFinallySubscriber {
+	return &DoFinallySubscriber{
+		actual:    actual,
+		onFinally: onFinally,
+	}
 }
 
 func (d *DoFinallySubscriber) Request(n int) {
@@ -77,7 +61,6 @@ func (d *DoFinallySubscriber) OnComplete() {
 }
 
 func (d *DoFinallySubscriber) runFinally(sig reactor.SignalType) {
-	defer ReturnDoFinallySubscriber(d)
 	if atomic.AddInt32(&d.done, 1) == 1 {
 		d.onFinally(sig)
 	}

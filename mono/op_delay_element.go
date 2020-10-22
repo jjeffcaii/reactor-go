@@ -73,6 +73,10 @@ type monoDelayElement struct {
 	sc     scheduler.Scheduler
 }
 
+func (p *monoDelayElement) Parent() reactor.RawPublisher {
+	return p.source
+}
+
 func (p *monoDelayElement) SubscribeWith(ctx context.Context, actual reactor.Subscriber) {
 	actual = newDelayElementSubscriber(actual, p.delay, p.sc)
 	p.source.SubscribeWith(ctx, actual)
