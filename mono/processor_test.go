@@ -3,11 +3,15 @@ package mono_test
 import (
 	"context"
 	"errors"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go/hooks"
 	"github.com/jjeffcaii/reactor-go/mono"
+	"github.com/jjeffcaii/reactor-go/scheduler"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -82,4 +86,64 @@ func TestProcessor_Error(t *testing.T) {
 	p.Error(fakeErr)
 	e := <-done
 	assert.Equal(t, fakeErr, e)
+}
+
+func TestOneshotProcess(t *testing.T) {
+	dropped := new(int32)
+
+	hooks.OnErrorDrop(func(e error) {
+		atomic.AddInt32(dropped, 1)
+	})
+
+	const total = 10000
+
+	var wg sync.WaitGroup
+	wg.Add(total)
+
+	c := make(chan mono.Sink, 10)
+
+	go func() {
+		var n int
+		for next := range c {
+			next.Success(n)
+			n++
+		}
+	}()
+
+	success := new(int32)
+
+	sub := reactor.
+		NewSubscriber(
+			reactor.OnNext(func(v reactor.Any) error {
+				atomic.AddInt32(success, 1)
+				return nil
+			}),
+			reactor.OnComplete(func() {
+				wg.Done()
+			}),
+			reactor.OnError(func(e error) {
+				wg.Done()
+			}),
+		)
+
+	doFinallyCalls := new(int32)
+
+	for i := 0; i < total; i++ {
+		m, s := mono.CreateProcessorOneshot()
+		c <- s
+		m.
+			DoFinally(func(s reactor.SignalType) {
+				atomic.AddInt32(doFinallyCalls, 1)
+			}).
+			SubscribeOn(scheduler.Parallel()).
+			SubscribeWith(context.Background(), sub)
+	}
+
+	close(c)
+
+	wg.Wait()
+
+	assert.Equal(t, int32(0), atomic.LoadInt32(dropped))
+	assert.Equal(t, int32(total), atomic.LoadInt32(success))
+	assert.Equal(t, int32(total), atomic.LoadInt32(doFinallyCalls))
 }
