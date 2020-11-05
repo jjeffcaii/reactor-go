@@ -38,7 +38,6 @@ type (
 	FnOnRequest   = func(n int)
 	FnOnError     = func(e error)
 	FnOnFinally   = func(s SignalType)
-	FnOnSwitchError   = func(v Any)  Any
 	FnOnDiscard   = func(v Any)
 )
 
