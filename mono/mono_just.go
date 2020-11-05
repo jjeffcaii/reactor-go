@@ -2,18 +2,25 @@ package mono
 
 import (
 	"context"
+	"sync"
 	"sync/atomic"
 
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/internal"
 )
 
+var _justSubscriptionPool = sync.Pool{
+	New: func() interface{} {
+		return new(justSubscription)
+	},
+}
+
 type monoJust struct {
 	value Any
 }
 
 type justSubscription struct {
-	s      reactor.Subscriber
+	actual reactor.Subscriber
 	parent *monoJust
 	n      int32
 }
@@ -24,39 +31,63 @@ func newMonoJust(v Any) *monoJust {
 	}
 }
 
+func borrowJustSubscription() *justSubscription {
+	return _justSubscriptionPool.Get().(*justSubscription)
+}
+
+func returnJustSubscription(s *justSubscription) {
+	if s == nil {
+		return
+	}
+	s.actual = nil
+	s.parent = nil
+	atomic.StoreInt32(&s.n, 0)
+	_justSubscriptionPool.Put(s)
+}
+
 func (j *justSubscription) Request(n int) {
+	if j == nil || j.actual == nil || j.parent == nil {
+		return
+	}
 	if n < 1 {
+		returnJustSubscription(j)
 		panic(reactor.ErrNegativeRequest)
 	}
 	if !atomic.CompareAndSwapInt32(&j.n, 0, statComplete) {
 		return
 	}
+
+	defer returnJustSubscription(j)
+
 	if j.parent.value == nil {
-		j.s.OnComplete()
+		j.actual.OnComplete()
 		return
 	}
 	defer func() {
 		if err := internal.TryRecoverError(recover()); err != nil {
-			j.s.OnError(err)
+			j.actual.OnError(err)
 		} else {
-			j.s.OnComplete()
+			j.actual.OnComplete()
 		}
 	}()
-	j.s.OnNext(j.parent.value)
+	j.actual.OnNext(j.parent.value)
 }
 
 func (j *justSubscription) Cancel() {
+	if j == nil || j.parent == nil || j.actual == nil {
+		return
+	}
 	atomic.CompareAndSwapInt32(&j.n, 0, statCancel)
 }
 
-func (m *monoJust) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
+func (m *monoJust) SubscribeWith(ctx context.Context, sub reactor.Subscriber) {
 	select {
 	case <-ctx.Done():
-		s.OnError(ctx.Err())
+		sub.OnError(reactor.ErrSubscribeCancelled)
 	default:
-		s.OnSubscribe(ctx, &justSubscription{
-			s:      s,
-			parent: m,
-		})
+		su := borrowJustSubscription()
+		su.parent = m
+		su.actual = sub
+		sub.OnSubscribe(ctx, su)
 	}
 }

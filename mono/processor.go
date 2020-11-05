@@ -7,69 +7,70 @@ import (
 
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/hooks"
+	"github.com/jjeffcaii/reactor-go/internal"
 )
 
 type processor struct {
-	sync.RWMutex
-	subs []reactor.Subscriber
-	stat int32
-	v    Any
+	sync.Mutex
+	subscriber reactor.Subscriber
+	stat       int32
+	requested  bool
+	executed   int32
+	v          internal.Item
 }
 
 type processorSubscriber struct {
-	parent    *processor
-	actual    reactor.Subscriber
-	stat      int32
-	s         reactor.Subscription
-	requested int32
-}
-
-func (p *processor) getValue() Any {
-	p.RLock()
-	defer p.RUnlock()
-	return p.v
-}
-
-func (p *processor) setValue(v Any) {
-	p.Lock()
-	defer p.Unlock()
-	p.v = v
-}
-
-func (p *processor) getStat() (stat int32) {
-	return atomic.LoadInt32(&p.stat)
+	parent *processor
+	actual reactor.Subscriber
+	stat   int32
+	s      reactor.Subscription
 }
 
 func (p *processor) Success(v Any) {
-	if !atomic.CompareAndSwapInt32(&p.stat, 0, statComplete) {
+	p.Lock()
+	if p.stat != 0 {
 		hooks.Global().OnNextDrop(v)
+		p.Unlock()
+		return
+	}
+	p.stat = statComplete
+	if p.subscriber == nil || !p.requested {
+		p.v = internal.Item{V: v}
+		p.Unlock()
+		return
+	}
+	p.Unlock()
+
+	if atomic.AddInt32(&p.executed, 1) != 1 {
 		return
 	}
 
-	p.setValue(v)
-
-	p.RLock()
-	defer p.RUnlock()
-	for i, l := 0, len(p.subs); i < l; i++ {
-		s := p.subs[i]
-		if v != nil {
-			s.OnNext(v)
-		}
-		s.OnComplete()
+	if v != nil {
+		p.subscriber.OnNext(v)
 	}
+	p.subscriber.OnComplete()
 }
 
 func (p *processor) Error(e error) {
-	if !atomic.CompareAndSwapInt32(&p.stat, 0, statError) {
+	p.Lock()
+	if p.stat != 0 {
+		p.Unlock()
 		hooks.Global().OnErrorDrop(e)
 		return
 	}
-	p.setValue(e)
-	p.RLock()
-	defer p.RUnlock()
-	for i, l := 0, len(p.subs); i < l; i++ {
-		p.subs[i].OnError(e)
+	p.stat = statError
+	if p.subscriber == nil || !p.requested {
+		p.v = internal.Item{E: e}
+		p.Unlock()
+		return
 	}
+	p.Unlock()
+
+	if atomic.AddInt32(&p.executed, 1) != 1 {
+		return
+	}
+
+	p.subscriber.OnError(e)
 }
 
 func (p *processor) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
@@ -77,62 +78,79 @@ func (p *processor) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
 	case <-ctx.Done():
 		s.OnError(reactor.ErrSubscribeCancelled)
 	default:
+		p.Lock()
+		if p.subscriber != nil {
+			p.Unlock()
+			panic("reactor: mono processor can only been subscribed once!")
+		}
+		p.subscriber = s
+		p.Unlock()
 		s.OnSubscribe(ctx, &processorSubscriber{
 			actual: s,
 			parent: p,
 		})
-		p.Lock()
-		p.subs = append(p.subs, s)
-		p.Unlock()
 	}
 }
 
-func (p *processorSubscriber) Request(n int) {
+func (ps *processorSubscriber) Request(n int) {
 	if n < 1 {
 		panic(reactor.ErrNegativeRequest)
 	}
-	if atomic.AddInt32(&p.requested, 1) != 1 {
+
+	ps.parent.Lock()
+	if ps.parent.requested {
+		ps.parent.Unlock()
 		return
 	}
-	v := p.parent.getValue()
-	switch p.parent.getStat() {
+	ps.parent.requested = true
+	curStat := ps.parent.stat
+	ps.parent.Unlock()
+
+	switch curStat {
 	case statError:
-		p.OnError(v.(error))
-	case statComplete:
-		if v != nil {
-			p.OnNext(v)
+		if atomic.AddInt32(&ps.parent.executed, 1) != 1 {
+			return
 		}
-		p.OnComplete()
+		ps.OnError(ps.parent.v.E)
+	case statComplete:
+		if atomic.AddInt32(&ps.parent.executed, 1) != 1 {
+			return
+		}
+		v := ps.parent.v.V
+		if v != nil {
+			ps.OnNext(v)
+		}
+		ps.OnComplete()
 	}
 }
 
-func (p *processorSubscriber) Cancel() {
-	atomic.CompareAndSwapInt32(&p.stat, 0, statCancel)
+func (ps *processorSubscriber) Cancel() {
+	atomic.CompareAndSwapInt32(&ps.stat, 0, statCancel)
 }
 
-func (p *processorSubscriber) OnComplete() {
-	if atomic.CompareAndSwapInt32(&p.stat, 0, statComplete) {
-		p.actual.OnComplete()
+func (ps *processorSubscriber) OnComplete() {
+	if atomic.CompareAndSwapInt32(&ps.stat, 0, statComplete) {
+		ps.actual.OnComplete()
 	}
 }
 
-func (p *processorSubscriber) OnError(e error) {
-	if atomic.CompareAndSwapInt32(&p.stat, 0, statError) {
-		p.actual.OnError(e)
+func (ps *processorSubscriber) OnError(e error) {
+	if atomic.CompareAndSwapInt32(&ps.stat, 0, statError) {
+		ps.actual.OnError(e)
 		return
 	}
 	hooks.Global().OnErrorDrop(e)
 }
 
-func (p *processorSubscriber) OnNext(v Any) {
-	if atomic.LoadInt32(&p.stat) != 0 {
+func (ps *processorSubscriber) OnNext(v Any) {
+	if atomic.LoadInt32(&ps.stat) != 0 {
 		hooks.Global().OnNextDrop(v)
 		return
 	}
-	p.actual.OnNext(v)
+	ps.actual.OnNext(v)
 }
 
-func (p *processorSubscriber) OnSubscribe(ctx context.Context, s reactor.Subscription) {
-	p.s = s
-	p.actual.OnSubscribe(ctx, s)
+func (ps *processorSubscriber) OnSubscribe(ctx context.Context, s reactor.Subscription) {
+	ps.s = s
+	ps.actual.OnSubscribe(ctx, s)
 }

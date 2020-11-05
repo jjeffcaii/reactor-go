@@ -2,15 +2,18 @@ package mono
 
 import (
 	"context"
-	"errors"
 	"time"
 )
 
 var empty = wrap(newMonoJust(nil))
-var errJustNilValue = errors.New("require non nil value")
+var _errJustNilValue = "require non nil value"
 
 func Error(e error) Mono {
-	return getObjFromPool(newMonoError(e))
+	return wrap(newMonoError(e))
+}
+
+func ErrorOneshot(e error) Mono {
+	return borrowOneshotWrapper(newMonoError(e))
 }
 
 func Empty() Mono {
@@ -26,19 +29,35 @@ func JustOrEmpty(v Any) Mono {
 
 func Just(v Any) Mono {
 	if v == nil {
-		panic(errJustNilValue)
+		panic(_errJustNilValue)
 	}
-	return getObjFromPool(newMonoJust(v))
+	return wrap(newMonoJust(v))
+}
+
+func JustOneshot(v Any) Mono {
+	if v == nil {
+		panic(_errJustNilValue)
+	}
+	return borrowOneshotWrapper(newMonoJust(v))
 }
 
 func Create(gen func(ctx context.Context, s Sink)) Mono {
-	return getObjFromPool(newMonoCreate(gen))
+	return wrap(newMonoCreate(gen))
+}
+
+func CreateOneshot(gen func(ctx context.Context, s Sink)) Mono {
+	return borrowOneshotWrapper(newMonoCreate(gen))
 }
 
 func Delay(delay time.Duration) Mono {
-	return getObjFromPool(newMonoDelay(delay))
+	return wrap(newMonoDelay(delay))
 }
 
 func CreateProcessor() Processor {
-	return getObjFromPool(&processor{})
+	return wrap(&processor{})
+}
+
+func CreateProcessorOneshot() (Mono, Sink) {
+	p := &processor{}
+	return borrowOneshotWrapper(p), p
 }

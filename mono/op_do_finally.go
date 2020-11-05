@@ -12,12 +12,16 @@ type monoDoFinally struct {
 	onFinally reactor.FnOnFinally
 }
 
-func (m *monoDoFinally) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
+func (m monoDoFinally) Parent() reactor.RawPublisher {
+	return m.source
+}
+
+func (m monoDoFinally) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
 	m.source.SubscribeWith(ctx, subscribers.NewDoFinallySubscriber(s, m.onFinally))
 }
 
-func newMonoDoFinally(source reactor.RawPublisher, onFinally reactor.FnOnFinally) *monoDoFinally {
-	return &monoDoFinally{
+func newMonoDoFinally(source reactor.RawPublisher, onFinally reactor.FnOnFinally) monoDoFinally {
+	return monoDoFinally{
 		source:    source,
 		onFinally: onFinally,
 	}
