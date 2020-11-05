@@ -82,7 +82,7 @@ func TestSwitchIfEmpty(t *testing.T) {
 	assert.Equal(t, 666, v.(int), "bad result")
 }
 
-func TestCreateIfEmpty(t *testing.T) {
+func TestCreateIfError(t *testing.T) {
 	v, err := mono.JustOneshot(15555).Map(func(any reactor.Any) (reactor.Any, error) {
 		return any,nil
 	}).Map(func(any reactor.Any) (reactor.Any, error) {
