@@ -99,6 +99,11 @@ func (o *oneshotWrapper) SwitchIfEmpty(alternative Mono) Mono {
 	return o
 }
 
+func (o *oneshotWrapper) SwitchIfError(alternative func(error) Mono) Mono {
+	o.RawPublisher = newMonoSwitchIfError(o.RawPublisher, alternative)
+	return o
+}
+
 func (o *oneshotWrapper) DelayElement(delay time.Duration) Mono {
 	o.RawPublisher = newMonoDelayElement(o.RawPublisher, delay, scheduler.Parallel())
 	return o

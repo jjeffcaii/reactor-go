@@ -26,6 +26,7 @@ type Mono interface {
 	DoFinally(reactor.FnOnFinally) Mono
 	DoOnDiscard(reactor.FnOnDiscard) Mono
 	SwitchIfEmpty(alternative Mono) Mono
+	SwitchIfError(alternative func(error) Mono) Mono
 	DelayElement(delay time.Duration) Mono
 	Timeout(timeout time.Duration) Mono
 }
