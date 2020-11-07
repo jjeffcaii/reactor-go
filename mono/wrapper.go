@@ -23,6 +23,10 @@ func (p wrapper) SwitchIfEmpty(alternative Mono) Mono {
 	return wrap(newMonoSwitchIfEmpty(p.RawPublisher, alternative))
 }
 
+func (p wrapper) SwitchIfError(alternative func(error) Mono) Mono {
+	return wrap(newMonoSwitchIfError(p.RawPublisher, alternative))
+}
+
 func (p wrapper) Filter(f reactor.Predicate) Mono {
 	return wrap(newMonoFilter(p.RawPublisher, f))
 }
