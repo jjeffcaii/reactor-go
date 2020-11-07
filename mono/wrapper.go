@@ -67,7 +67,7 @@ func (p wrapper) DoFinally(fn reactor.FnOnFinally) Mono {
 	return wrap(newMonoDoFinally(p.RawPublisher, fn))
 }
 
-func (p wrapper) CreatteMonoIfError(v Any) Mono {
+func (p wrapper) SwitchValueIfError(v Any) Mono {
 	return wrap(newMonoDoCreateIfError(p.RawPublisher, v))
 }
 
