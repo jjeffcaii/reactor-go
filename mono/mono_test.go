@@ -82,6 +82,18 @@ func TestSwitchIfEmpty(t *testing.T) {
 	assert.Equal(t, 666, v.(int), "bad result")
 }
 
+func TestCreateIfError(t *testing.T) {
+	v, err := mono.JustOneshot(15555).Map(func(any reactor.Any) (reactor.Any, error) {
+		return any,nil
+	}).Map(func(any reactor.Any) (reactor.Any, error) {
+		return any,fmt.Errorf("trigger err")
+	}).DoOnError(func(e error) {
+	}).CreatteMonoIfError(123).Map(func(any reactor.Any) (reactor.Any, error) {
+			return any,nil
+	}).Block(context.Background())
+	assert.NoError(t, err, "err occurred")
+	assert.Equal(t, 123, v.(int), "bad result")
+}
 func TestSuite(t *testing.T) {
 	// TODO: processor
 	//pc := mono.CreateProcessor()

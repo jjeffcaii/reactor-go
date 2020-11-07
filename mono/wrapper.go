@@ -67,6 +67,10 @@ func (p wrapper) DoFinally(fn reactor.FnOnFinally) Mono {
 	return wrap(newMonoDoFinally(p.RawPublisher, fn))
 }
 
+func (p wrapper) CreatteMonoIfError(v Any) Mono {
+	return wrap(newMonoDoCreateIfError(p.RawPublisher, v))
+}
+
 func (p wrapper) DoOnSubscribe(fn reactor.FnOnSubscribe) Mono {
 	return wrap(newMonoPeek(p.RawPublisher, peekSubscribe(fn)))
 }
