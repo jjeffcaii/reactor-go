@@ -88,7 +88,7 @@ func (o *oneshotWrapper) DoFinally(finally reactor.FnOnFinally) Mono {
 	o.RawPublisher = newMonoDoFinally(o.RawPublisher, finally)
 	return o
 }
-func (o *oneshotWrapper) CreatteMonoIfError(v Any) Mono {
+func (o *oneshotWrapper) SwitchValueIfError(v Any) Mono {
 	o.RawPublisher = newMonoDoCreateIfError(o.RawPublisher, v)
 	return o
 }
