@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/jjeffcaii/reactor-go"
-	"github.com/jjeffcaii/reactor-go/hooks"
 	"github.com/jjeffcaii/reactor-go/internal/subscribers"
 	"github.com/jjeffcaii/reactor-go/scheduler"
 )
@@ -187,21 +186,11 @@ func (w wrapper) BlockFirst(ctx context.Context) (Any, error) {
 	}
 }
 
-func (w wrapper) BlockLast(ctx context.Context) (last Any, err error) {
-	done := make(chan struct{})
-	s := subscribers.NewBlockLastSubscriber(done, func(v reactor.Any, e error) {
-		if e != nil {
-			err = e
-			return
-		}
-		if old := last; old != nil {
-			hooks.Global().OnNextDrop(old)
-		}
-		last = v
-	})
+func (w wrapper) BlockLast(ctx context.Context) (Any, error) {
+	s := subscribers.BorrowBlockLastSubscriber()
+	defer subscribers.ReturnBlockLastSubscriber(s)
 	w.SubscribeWith(ctx, s)
-	<-done
-	return
+	return s.Block()
 }
 
 func (w wrapper) Complete() {

@@ -104,7 +104,7 @@ type fluxSlice struct {
 	slice []Any
 }
 
-func (p *fluxSlice) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
+func (p fluxSlice) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
 	if len(p.slice) < 1 {
 		s.OnComplete()
 		return
@@ -113,8 +113,8 @@ func (p *fluxSlice) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
 	s.OnSubscribe(ctx, subscription)
 }
 
-func newSliceFlux(values []Any) *fluxSlice {
-	return &fluxSlice{
+func newSliceFlux(values []Any) fluxSlice {
+	return fluxSlice{
 		slice: values,
 	}
 }

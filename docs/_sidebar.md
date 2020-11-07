@@ -24,16 +24,16 @@
     - [SwitchIfEmpty](mono/switch_if_empty.md)
   - Flux Only
     - [Take](flux/take.md)
-    - [Reduce](unimplement)
+    - [Reduce](unimplement.md)
     - [RateLimit](unimplement.md)
     - [SwitchOnFirst](flux/switch_on_first.md)
 - Subscriber
   - [Subscribe](todo.md)
   - [SubscribeWith](todo.md)
   - Mono Only
-    - [Block](todo.md)
+    - [Block](mono/block.md)
   - Flux Only
-    - [BlockFirst](todo.md)
-    - [BlockLast](todo.md)
+    - [BlockFirst](flux/block_first.md)
+    - [BlockLast](flux/block_last.md)
 - Advanced
   - [Hooks](todo.md)
