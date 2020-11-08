@@ -10,6 +10,7 @@ var (
 	ErrSubscribeCancelled = errors.New("subscriber has been cancelled")
 )
 
+// IsCancelledError returns true if given error is a cancelled subscribe error.
 func IsCancelledError(err error) bool {
 	return err == ErrSubscribeCancelled
 }

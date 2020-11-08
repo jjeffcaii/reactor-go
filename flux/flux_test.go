@@ -10,6 +10,7 @@ import (
 
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/flux"
+	"github.com/jjeffcaii/reactor-go/hooks"
 	"github.com/jjeffcaii/reactor-go/scheduler"
 	"github.com/stretchr/testify/assert"
 )
@@ -469,4 +470,25 @@ func TestDelayElement(t *testing.T) {
 	_, err = flux.Error(fakeErr).DelayElement(100 * time.Millisecond).BlockLast(context.Background())
 	assert.Equal(t, fakeErr, err)
 	assert.True(t, time.Since(start) < 100*time.Millisecond)
+}
+
+func TestBlockLast(t *testing.T) {
+	var dropped []reactor.Any
+
+	hooks.OnNextDrop(func(v reactor.Any) {
+		dropped = append(dropped, v)
+	})
+
+	v, err := flux.Just(1, 2, 3, 4).BlockLast(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, 4, v)
+	assert.Len(t, dropped, 3)
+
+	_, err = flux.
+		Create(func(ctx context.Context, sink flux.Sink) {
+			sink.Error(errors.New("fake error"))
+		}).
+		SubscribeOn(scheduler.Parallel()).
+		BlockLast(context.Background())
+	assert.Error(t, err)
 }

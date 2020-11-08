@@ -2,6 +2,7 @@ package reactor
 
 import "context"
 
+// SignalType is type of terminal signal.
 type SignalType int8
 
 func (s SignalType) String() string {
@@ -26,11 +27,16 @@ const (
 	SignalTypeError
 )
 
+// Any is an alias of interface{} which means a value of any type.
+type Any = interface{}
+
 type (
-	Any         = interface{}
 	Predicate   func(Any) bool
 	Transformer func(Any) (Any, error)
+)
 
+// A group of action functions.
+type (
 	FnOnComplete  = func()
 	FnOnNext      = func(v Any) error
 	FnOnCancel    = func()
@@ -41,12 +47,10 @@ type (
 	FnOnDiscard   = func(v Any)
 )
 
-type (
-	// Disposable is a disposable resource.
-	Disposable interface {
-		// Dispose dispose current resource.
-		Dispose()
-		// IsDisposed returns true if it has been disposed.
-		IsDisposed() bool
-	}
-)
+// Disposable is a disposable resource.
+type Disposable interface {
+	// Dispose dispose current resource.
+	Dispose()
+	// IsDisposed returns true if it has been disposed.
+	IsDisposed() bool
+}
