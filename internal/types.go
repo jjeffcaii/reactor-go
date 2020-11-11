@@ -6,8 +6,3 @@ type InheritableRawPublisher interface {
 	reactor.RawPublisher
 	Parent() reactor.RawPublisher
 }
-
-type Item struct {
-	V reactor.Any
-	E error
-}

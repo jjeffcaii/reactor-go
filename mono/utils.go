@@ -34,9 +34,23 @@ func Just(v Any) Mono {
 	return wrap(newMonoJust(v))
 }
 
-func Zip(m ...Mono) Mono {
-	return wrap(newMonoZip(m...))
+func Zip(first, second Mono, others ...Mono) Mono {
+	sources := make([]Mono, len(others)+2)
+	sources[0] = first
+	sources[1] = second
+	for i := 0; i < len(others); i++ {
+		sources[2+i] = others[i]
+	}
+	return wrap(newMonoZip(sources))
 }
+
+func ZipAll(all ...Mono) Mono {
+	if len(all) < 1 {
+		panic("at least one Mono for zip operation")
+	}
+	return wrap(newMonoZip(all))
+}
+
 func JustOneshot(v Any) Mono {
 	if v == nil {
 		panic(_errJustNilValue)

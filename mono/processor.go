@@ -7,7 +7,6 @@ import (
 
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/hooks"
-	"github.com/jjeffcaii/reactor-go/internal"
 )
 
 type processor struct {
@@ -16,7 +15,7 @@ type processor struct {
 	stat       int32
 	requested  bool
 	executed   int32
-	v          internal.Item
+	v          reactor.Item
 }
 
 type processorSubscriber struct {
@@ -35,7 +34,7 @@ func (p *processor) Success(v Any) {
 	}
 	p.stat = statComplete
 	if p.subscriber == nil || !p.requested {
-		p.v = internal.Item{V: v}
+		p.v = reactor.Item{V: v}
 		p.Unlock()
 		return
 	}
@@ -60,7 +59,7 @@ func (p *processor) Error(e error) {
 	}
 	p.stat = statError
 	if p.subscriber == nil || !p.requested {
-		p.v = internal.Item{E: e}
+		p.v = reactor.Item{E: e}
 		p.Unlock()
 		return
 	}

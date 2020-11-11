@@ -9,36 +9,36 @@ import (
 var globalHooks = &Hooks{}
 
 type Hooks struct {
-	sync.RWMutex
+	mu        sync.RWMutex
 	nextDrops []reactor.FnOnDiscard
 	errDrops  []reactor.FnOnError
 }
 
 func (h *Hooks) OnNextDrop(t reactor.Any) {
-	h.RLock()
-	defer h.RUnlock()
+	h.mu.RLock()
+	defer h.mu.RUnlock()
 	for _, fn := range h.nextDrops {
 		fn(t)
 	}
 }
 
 func (h *Hooks) OnErrorDrop(e error) {
-	h.RLock()
-	defer h.RUnlock()
+	h.mu.RLock()
+	defer h.mu.RUnlock()
 	for _, fn := range h.errDrops {
 		fn(e)
 	}
 }
 
 func (h *Hooks) registerOnNextDrop(fn reactor.FnOnDiscard) {
-	h.Lock()
-	defer h.Unlock()
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	h.nextDrops = append(h.nextDrops, fn)
 }
 
 func (h *Hooks) registerOnErrorDrop(fn reactor.FnOnError) {
-	h.Lock()
-	defer h.Unlock()
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	h.errDrops = append(h.errDrops, fn)
 }
 
