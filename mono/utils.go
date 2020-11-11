@@ -34,6 +34,9 @@ func Just(v Any) Mono {
 	return wrap(newMonoJust(v))
 }
 
+func Zip(m ...Mono) Mono {
+	return wrap(newMonoZip(m...))
+}
 func JustOneshot(v Any) Mono {
 	if v == nil {
 		panic(_errJustNilValue)
