@@ -2,33 +2,103 @@ package mono_test
 
 import (
 	"context"
-	"fmt"
+	"errors"
+	"sync/atomic"
+	"testing"
+	"time"
+
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/mono"
-	"github.com/jjeffcaii/reactor-go/scheduler"
+	"github.com/jjeffcaii/reactor-go/tuple"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
-func TestZipMono(t *testing.T) {
-	mono.Zip(mono.JustOneshot(1).Map(func(any reactor.Any) (reactor.Any, error) {
-		return any.(int)+1,nil
-	}).SubscribeOn(scheduler.Parallel()), mono.JustOneshot(3).Map(func(any reactor.Any) (reactor.Any, error) {
-		return any.(int)+1,nil
-	}).SubscribeOn(scheduler.Parallel())).Map(func(any reactor.Any) (reactor.Any, error) {
-		var a = any.(*mono.Items)
-		t.Log("-----",a.It[1],a.It[0])
-		assert.NoError(t, a.It[1].Err, "should not return error")
-		assert.NoError(t, a.It[0].Err, "should not return error")
-		return any,nil
-	}).Subscribe(context.Background())
-	var r,e = mono.Zip(mono.Error(fmt.Errorf("ddddddddd")),mono.Empty()).Map(func(any reactor.Any) (reactor.Any, error) {
-		var a = any.(*mono.Items)
-		t.Log("-----",a.It[1],a.It[0])
-		return any,nil
-	}).DoOnError(func(e error) {
-		t.Log("DoOnError")
-	}).Block(context.Background())
-	t.Log("mono.zip.block:",r)
-	assert.NoError(t, e, "should not return error")
+func TestZip(t *testing.T) {
+	begin := time.Now()
+	val, err := mono.Zip(mono.Delay(100*time.Millisecond), mono.Delay(200*time.Millisecond)).Block(context.Background())
+	assert.NoError(t, err)
+	t.Log("cost:", time.Since(begin))
+	tup := val.(tuple.Tuple)
+	for i := 0; i < tup.Len(); i++ {
+		v, e := tup.Get(i)
+		assert.NoError(t, e)
+		assert.Equal(t, int64(0), v)
+	}
+
+	_, err = tup.Get(-1)
+	assert.True(t, tuple.IsIndexOutOfBoundsError(err))
+
+	_, err = tup.Get(tup.Len())
+	assert.True(t, tuple.IsIndexOutOfBoundsError(err))
+}
+
+func TestZipWithError(t *testing.T) {
+	var (
+		fakeErr1 = errors.New("fake error 1")
+		fakeErr2 = errors.New("fake error 2")
+	)
+	val, err := mono.Zip(mono.Error(fakeErr1), mono.Error(fakeErr2)).Block(context.Background())
+	assert.NoError(t, err)
+	tup := val.(tuple.Tuple)
+	_, err = tup.First()
+	assert.Equal(t, fakeErr1, err)
+	_, err = tup.Second()
+	assert.Equal(t, fakeErr2, err)
+}
+
+func TestZipWithValueAndError(t *testing.T) {
+	val, err := mono.Zip(mono.Just(1), mono.Just(2), mono.Error(fakeErr)).Block(context.Background())
+	assert.NoError(t, err)
+	tup := val.(tuple.Tuple)
+	assert.Equal(t, 3, tup.Len())
+}
+
+func TestZipMap(t *testing.T) {
+	v, err := mono.Zip(mono.Just(1), mono.Just(2), mono.Just(3)).
+		Map(func(any reactor.Any) (reactor.Any, error) {
+			tup := any.(tuple.Tuple)
+			var sum int
+			tup.ForEach(func(v reactor.Any, e error) (ok bool) {
+				sum += v.(int)
+				ok = true
+				return
+			})
+			return sum, nil
+		}).
+		Block(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, 6, v)
+}
+
+func TestZipCancel(t *testing.T) {
+	callDoOnCancel := new(int32)
+	done := make(chan struct{})
+	mono.Zip(
+		mono.Delay(1*time.Second).DoOnCancel(func() {
+			t.Log("cancelled1")
+			atomic.AddInt32(callDoOnCancel, 1)
+		}),
+		mono.Delay(2*time.Second).DoOnCancel(func() {
+			t.Log("cancelled2")
+			atomic.AddInt32(callDoOnCancel, 1)
+		})).
+		DoFinally(func(s reactor.SignalType) {
+			close(done)
+		}).
+		DoOnCancel(func() {
+			t.Log("cancelled")
+			atomic.AddInt32(callDoOnCancel, 1)
+		}).
+		Subscribe(context.Background(),
+			reactor.OnSubscribe(func(ctx context.Context, su reactor.Subscription) {
+				time.Sleep(100 * time.Millisecond)
+				su.Cancel()
+			}),
+			reactor.OnNext(func(v reactor.Any) error {
+				t.Log("next:", v)
+				return nil
+			}),
+		)
+	<-done
+	assert.Equal(t, int32(3), atomic.LoadInt32(callDoOnCancel))
 }

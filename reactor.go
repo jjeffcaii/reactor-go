@@ -2,6 +2,12 @@ package reactor
 
 import "context"
 
+// Item is type of element.
+type Item struct {
+	V Any
+	E error
+}
+
 // SignalType is type of terminal signal.
 type SignalType int8
 

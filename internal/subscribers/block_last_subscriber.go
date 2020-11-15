@@ -7,14 +7,13 @@ import (
 
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/hooks"
-	"github.com/jjeffcaii/reactor-go/internal"
 )
 
 var _blockLastSubscriberPool = sync.Pool{
 	New: func() interface{} {
 		return &BlockLastSubscriber{
 			doneNotify: make(chan struct{}, 1),
-			prev:       new(internal.Item),
+			prev:       new(reactor.Item),
 		}
 	},
 }
@@ -23,7 +22,7 @@ var _ reactor.Subscriber = (*BlockLastSubscriber)(nil)
 
 type BlockLastSubscriber struct {
 	doneNotify chan struct{}
-	prev       *internal.Item
+	prev       *reactor.Item
 	done       int32
 }
 
