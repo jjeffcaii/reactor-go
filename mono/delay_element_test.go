@@ -24,7 +24,7 @@ func TestDelayElement(t *testing.T) {
 	assert.True(t, int64(time.Since(start)) < int64(delay), "should less than delay duration")
 
 	start = time.Now()
-	v, err = mono.Error(fakeErr).DelayElement(delay).Block(context.Background())
+	_, err = mono.Error(fakeErr).DelayElement(delay).Block(context.Background())
 	assert.Equal(t, fakeErr, err, "should be fake error")
 	assert.True(t, int64(time.Since(start)) < int64(delay), "should less than delay duration")
 }
