@@ -102,3 +102,22 @@ func TestZipCancel(t *testing.T) {
 	<-done
 	assert.Equal(t, int32(3), atomic.LoadInt32(callDoOnCancel))
 }
+
+func TestZipAll(t *testing.T) {
+	assert.Panics(t, func() {
+		mono.ZipAll()
+	}, "should panic without sources")
+	v, err := mono.ZipAll(mono.Just(1)).Block(context.Background())
+	assert.NoError(t, err, "should not return error")
+	v, err = v.(tuple.Tuple).First()
+	assert.NoError(t, err, "should not return error")
+	assert.Equal(t, 1, v, "should be same value")
+}
+
+func TestZip_context(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := mono.Zip(mono.Delay(200*time.Millisecond), mono.Delay(100*time.Millisecond)).Block(ctx)
+	assert.Error(t, err)
+	assert.True(t, reactor.IsCancelledError(err))
+}
