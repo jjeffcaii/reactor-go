@@ -117,3 +117,7 @@ func (o *oneshotWrapper) Timeout(timeout time.Duration) Mono {
 	o.RawPublisher = newMonoTimeout(o.RawPublisher, timeout)
 	return o
 }
+
+func (o *oneshotWrapper) Raw() reactor.RawPublisher {
+	return o.RawPublisher
+}

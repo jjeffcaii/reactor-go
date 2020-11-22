@@ -30,9 +30,15 @@ type Mono interface {
 	SwitchValueIfError(v Any) Mono
 	DelayElement(delay time.Duration) Mono
 	Timeout(timeout time.Duration) Mono
+	Raw() reactor.RawPublisher
 }
 
 type Processor interface {
 	Mono
+	Sink
+}
+
+type rawProcessor interface {
+	reactor.RawPublisher
 	Sink
 }

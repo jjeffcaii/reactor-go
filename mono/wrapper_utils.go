@@ -50,10 +50,10 @@ func block(ctx context.Context, publisher reactor.RawPublisher) (Any, error) {
 	}
 }
 
-func mustProcessor(publisher reactor.RawPublisher) *processor {
-	pp, ok := publisher.(*processor)
+func mustProcessor(publisher reactor.RawPublisher) rawProcessor {
+	rp, ok := publisher.(rawProcessor)
 	if !ok {
 		panic(errNotProcessor)
 	}
-	return pp
+	return rp
 }

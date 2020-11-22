@@ -7,149 +7,205 @@ import (
 
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/hooks"
+	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
-type processor struct {
-	sync.Mutex
-	subscriber reactor.Subscriber
-	stat       int32
-	requested  bool
-	executed   int32
-	v          reactor.Item
+type ProcessorFinallyHook func(reactor.SignalType, reactor.Disposable)
+
+var (
+	_ reactor.RawPublisher = (*processor)(nil)
+	_ Sink                 = (*processor)(nil)
+	_ reactor.Disposable   = (*processor)(nil)
+)
+
+var _processorPool = sync.Pool{
+	New: func() interface{} {
+		p := &processor{}
+		p.doneNotify.L = p.mu.RLocker()
+		return p
+	},
 }
+
+var _processorSubscriberPool = sync.Pool{
+	New: func() interface{} {
+		return new(processorSubscriber)
+	},
+}
+
+func borrowProcessor(sc scheduler.Scheduler, doFinally ProcessorFinallyHook) *processor {
+	p := _processorPool.Get().(*processor)
+	p.sc = sc
+	p.hookOnFinally = doFinally
+	return p
+}
+
+func returnProcessor(p *processor) {
+	p.mu.Lock()
+	p.item = nil
+	p.hookOnFinally = nil
+	p.mu.Unlock()
+	_processorPool.Put(p)
+}
+
+type processor struct {
+	sc            scheduler.Scheduler
+	mu            sync.RWMutex
+	item          *reactor.Item
+	doneNotify    sync.Cond
+	hookOnFinally ProcessorFinallyHook
+}
+
+func (p *processor) Dispose() {
+	returnProcessor(p)
+}
+
+func (p *processor) Success(any Any) {
+	p.mu.Lock()
+	if p.item != nil {
+		p.mu.Unlock()
+		hooks.Global().OnNextDrop(any)
+		return
+	}
+	p.item = &reactor.Item{V: any}
+	p.doneNotify.Broadcast()
+	p.mu.Unlock()
+}
+
+func (p *processor) Error(err error) {
+	p.mu.Lock()
+	if p.item != nil {
+		p.mu.Unlock()
+		hooks.Global().OnErrorDrop(err)
+		return
+	}
+	p.item = &reactor.Item{E: err}
+	p.doneNotify.Broadcast()
+	p.mu.Unlock()
+}
+
+func (p *processor) SubscribeWith(ctx context.Context, sub reactor.Subscriber) {
+	s := _processorSubscriberPool.Get().(*processorSubscriber)
+	s.source = p
+	s.actual = sub
+	atomic.StoreInt32(&s.cancelled, 0)
+
+	if p.sc == nil {
+		s.OnSubscribe(ctx, s)
+		return
+	}
+
+	if err := p.sc.Worker().Do(func() {
+		s.OnSubscribe(ctx, s)
+	}); err != nil {
+		s.Dispose()
+		p.Dispose()
+		panic(err)
+	}
+}
+
+var (
+	_ reactor.Subscriber   = (*processorSubscriber)(nil)
+	_ reactor.Subscription = (*processorSubscriber)(nil)
+)
 
 type processorSubscriber struct {
-	parent *processor
-	actual reactor.Subscriber
-	stat   int32
-	s      reactor.Subscription
+	source    *processor
+	actual    reactor.Subscriber
+	requested int32
+	cancelled int32
 }
 
-func (p *processor) Success(v Any) {
-	p.Lock()
-	if p.stat != 0 {
-		hooks.Global().OnNextDrop(v)
-		p.Unlock()
+func (p *processorSubscriber) Request(n int) {
+	if n <= 0 {
 		return
 	}
-	p.stat = statComplete
-	if p.subscriber == nil || !p.requested {
-		p.v = reactor.Item{V: v}
-		p.Unlock()
-		return
-	}
-	p.Unlock()
-
-	if atomic.AddInt32(&p.executed, 1) != 1 {
+	if !atomic.CompareAndSwapInt32(&p.requested, 0, 1) {
 		return
 	}
 
-	if v != nil {
-		p.subscriber.OnNext(v)
+	// return if the subscriber is cancelled
+	if atomic.LoadInt32(&p.cancelled) == 1 {
+		p.OnError(reactor.ErrSubscribeCancelled)
+		return
 	}
-	p.subscriber.OnComplete()
+
+	var item *reactor.Item
+
+	// fetch the item from source publisher
+	p.source.mu.RLock()
+	item = p.source.item
+	if item == nil {
+		// block for done/cancel if item is not ready
+		p.source.doneNotify.Wait()
+		item = p.source.item
+	}
+	p.source.mu.RUnlock()
+
+	// return if the subscriber is cancelled
+	if atomic.LoadInt32(&p.cancelled) == 1 {
+		p.OnError(reactor.ErrSubscribeCancelled)
+		return
+	}
+
+	// handle the item
+	if item == nil {
+		p.OnComplete()
+	} else if item.E != nil {
+		p.OnError(item.E)
+	} else if item.V != nil {
+		p.OnNext(item.V)
+		p.OnComplete()
+	} else {
+		p.OnComplete()
+	}
 }
 
-func (p *processor) Error(e error) {
-	p.Lock()
-	if p.stat != 0 {
-		p.Unlock()
-		hooks.Global().OnErrorDrop(e)
-		return
-	}
-	p.stat = statError
-	if p.subscriber == nil || !p.requested {
-		p.v = reactor.Item{E: e}
-		p.Unlock()
-		return
-	}
-	p.Unlock()
-
-	if atomic.AddInt32(&p.executed, 1) != 1 {
-		return
-	}
-
-	p.subscriber.OnError(e)
+func (p *processorSubscriber) Cancel() {
+	atomic.CompareAndSwapInt32(&p.cancelled, 0, 1)
 }
 
-func (p *processor) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
+func (p *processorSubscriber) OnComplete() {
+	p.actual.OnComplete()
+	p.handleFinally(nil)
+	p.Dispose()
+}
+
+func (p *processorSubscriber) OnError(err error) {
+	p.actual.OnError(err)
+	p.handleFinally(err)
+	p.Dispose()
+}
+
+func (p *processorSubscriber) handleFinally(err error) {
+	fn := p.source.hookOnFinally
+	if fn == nil {
+		return
+	}
+	if err == nil {
+		fn(reactor.SignalTypeComplete, p.source)
+	} else if reactor.IsCancelledError(err) {
+		fn(reactor.SignalTypeCancel, p.source)
+	} else {
+		fn(reactor.SignalTypeError, p.source)
+	}
+}
+
+func (p *processorSubscriber) OnNext(any reactor.Any) {
+	p.actual.OnNext(any)
+}
+
+func (p *processorSubscriber) Dispose() {
+	p.actual = nil
+	p.source = nil
+	atomic.StoreInt32(&p.requested, 0)
+	_processorSubscriberPool.Put(p)
+}
+
+func (p *processorSubscriber) OnSubscribe(ctx context.Context, su reactor.Subscription) {
 	select {
 	case <-ctx.Done():
-		s.OnError(reactor.ErrSubscribeCancelled)
+		p.OnError(reactor.NewContextError(ctx.Err()))
 	default:
-		p.Lock()
-		if p.subscriber != nil {
-			p.Unlock()
-			panic("reactor: mono processor can only been subscribed once!")
-		}
-		p.subscriber = s
-		p.Unlock()
-		s.OnSubscribe(ctx, &processorSubscriber{
-			actual: s,
-			parent: p,
-		})
+		p.actual.OnSubscribe(ctx, su)
 	}
-}
-
-func (ps *processorSubscriber) Request(n int) {
-	if n < 1 {
-		panic(reactor.ErrNegativeRequest)
-	}
-
-	ps.parent.Lock()
-	if ps.parent.requested {
-		ps.parent.Unlock()
-		return
-	}
-	ps.parent.requested = true
-	curStat := ps.parent.stat
-	ps.parent.Unlock()
-
-	switch curStat {
-	case statError:
-		if atomic.AddInt32(&ps.parent.executed, 1) != 1 {
-			return
-		}
-		ps.OnError(ps.parent.v.E)
-	case statComplete:
-		if atomic.AddInt32(&ps.parent.executed, 1) != 1 {
-			return
-		}
-		v := ps.parent.v.V
-		if v != nil {
-			ps.OnNext(v)
-		}
-		ps.OnComplete()
-	}
-}
-
-func (ps *processorSubscriber) Cancel() {
-	atomic.CompareAndSwapInt32(&ps.stat, 0, statCancel)
-}
-
-func (ps *processorSubscriber) OnComplete() {
-	if atomic.CompareAndSwapInt32(&ps.stat, 0, statComplete) {
-		ps.actual.OnComplete()
-	}
-}
-
-func (ps *processorSubscriber) OnError(e error) {
-	if atomic.CompareAndSwapInt32(&ps.stat, 0, statError) {
-		ps.actual.OnError(e)
-		return
-	}
-	hooks.Global().OnErrorDrop(e)
-}
-
-func (ps *processorSubscriber) OnNext(v Any) {
-	if atomic.LoadInt32(&ps.stat) != 0 {
-		hooks.Global().OnNextDrop(v)
-		return
-	}
-	ps.actual.OnNext(v)
-}
-
-func (ps *processorSubscriber) OnSubscribe(ctx context.Context, s reactor.Subscription) {
-	ps.s = s
-	ps.actual.OnSubscribe(ctx, s)
 }
