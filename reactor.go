@@ -57,6 +57,4 @@ type (
 type Disposable interface {
 	// Dispose dispose current resource.
 	Dispose()
-	// IsDisposed returns true if it has been disposed.
-	IsDisposed() bool
 }

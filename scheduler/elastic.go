@@ -8,7 +8,7 @@ import (
 )
 
 const _elasticName = "elastic"
-const _elasticBoundedSize = 10000
+const _elasticBoundedSize = 1000
 
 var (
 	_elastic            Scheduler

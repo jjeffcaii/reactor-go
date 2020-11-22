@@ -52,12 +52,13 @@ func TestProcessor_OnNextDrop(t *testing.T) {
 		assert.Equal(t, 2, i.(int), "bad onNextDrop")
 		hasDrop = true
 	})
-	p := mono.CreateProcessor()
+	p, s, d := mono.NewProcessor(nil, nil)
+	defer d.Dispose()
 	time.AfterFunc(100*time.Millisecond, func() {
-		p.Success(1)
+		s.Success(1)
 	})
 	time.AfterFunc(200*time.Millisecond, func() {
-		p.Success(2)
+		s.Success(2)
 	})
 	p.
 		DoOnNext(func(v Any) error {

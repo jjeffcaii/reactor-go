@@ -3,6 +3,9 @@ package mono
 import (
 	"context"
 	"time"
+
+	"github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
 var empty = wrap(newMonoJust(nil))
@@ -70,11 +73,7 @@ func Delay(delay time.Duration) Mono {
 	return wrap(newMonoDelay(delay))
 }
 
-func CreateProcessor() Processor {
-	return wrap(&processor{})
-}
-
-func CreateProcessorOneshot() (Mono, Sink) {
-	p := &processor{}
-	return borrowOneshotWrapper(p), p
+func NewProcessor(sc scheduler.Scheduler, hook ProcessorFinallyHook) (Mono, Sink, reactor.Disposable) {
+	p := borrowProcessor(sc, hook)
+	return wrap(p), p, p
 }

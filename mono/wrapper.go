@@ -98,6 +98,10 @@ func (p wrapper) Error(e error) {
 	mustProcessor(p.RawPublisher).Error(e)
 }
 
+func (p wrapper) Raw() reactor.RawPublisher {
+	return p.RawPublisher
+}
+
 func wrap(r reactor.RawPublisher) wrapper {
 	return wrapper{r}
 }

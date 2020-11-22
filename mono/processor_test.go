@@ -2,148 +2,133 @@ package mono_test
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/jjeffcaii/reactor-go"
-	"github.com/jjeffcaii/reactor-go/hooks"
 	"github.com/jjeffcaii/reactor-go/mono"
 	"github.com/jjeffcaii/reactor-go/scheduler"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestProcessor(t *testing.T) {
-	p := mono.CreateProcessor()
+	p, s, d := mono.NewProcessor(nil, nil)
+	defer d.Dispose()
 
-	time.AfterFunc(100*time.Millisecond, func() {
-		p.Success(333)
+	go func() {
+		now := time.Now()
+		s.Success("hello world")
+		t.Log("cost:", time.Since(now))
+	}()
+
+	const total = 8
+
+	var wg sync.WaitGroup
+
+	wg.Add(total)
+
+	onNext := reactor.OnNext(func(v reactor.Any) error {
+		time.Sleep(100 * time.Millisecond)
+		t.Log("next:", v)
+		return nil
 	})
 
-	v, err := p.
-		Map(func(i Any) (Any, error) {
-			return i.(int) * 2, nil
-		}).
-		Block(context.Background())
-	assert.NoError(t, err, "block failed")
-	assert.Equal(t, 666, v.(int), "bad result")
-
-	assert.Panics(t, func() {
-		p.Subscribe(context.Background())
-	})
-}
-
-func TestProcessorOneshot(t *testing.T) {
-	m, s := mono.CreateProcessorOneshot()
-	time.AfterFunc(100*time.Millisecond, func() {
-		s.Success(333)
+	onComplete := reactor.OnComplete(func() {
+		wg.Done()
 	})
 
-	v, err := m.
-		Map(func(i Any) (Any, error) {
-			return i.(int) * 2, nil
-		}).
-		Block(context.Background())
-	assert.NoError(t, err, "block failed")
-	assert.Equal(t, 666, v.(int), "bad result")
+	for range [total]struct{}{} {
+		p.SubscribeOn(scheduler.Parallel()).Subscribe(context.Background(), onNext, onComplete)
+	}
 
-	assert.Panics(t, func() {
-		m.Subscribe(context.Background())
-	})
+	wg.Wait()
 
 }
+func TestProcessor_Map(t *testing.T) {
+	p, s, d := mono.NewProcessor(nil, nil)
+	defer d.Dispose()
 
-func TestProcessor_Context(t *testing.T) {
-	p := mono.CreateProcessor()
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
+	time.AfterFunc(100*time.Millisecond, func() {
+		s.Success(1024)
+	})
+
+	transform := func(any reactor.Any) (reactor.Any, error) {
+		return any.(int) * 2, nil
+	}
+	v, err := p.Map(transform).Block(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, 2048, v)
+}
+
+func TestProcessorNG_Order(t *testing.T) {
+	valueChan := make(chan reactor.Any)
+	onNext := reactor.OnNext(func(v reactor.Any) error {
+		valueChan <- v
+		return nil
+	})
+
+	p, s, d := mono.NewProcessor(nil, nil)
+	defer d.Dispose()
+	p.SubscribeOn(scheduler.Parallel()).Subscribe(context.Background(), onNext)
+
+	select {
+	case <-valueChan:
+		assert.Fail(t, "unreachable")
+	default:
+	}
+
+	s.Success(123)
+	assert.Equal(t, 123, <-valueChan)
+}
+
+func TestProcessorSubscriberNG_Cancel(t *testing.T) {
 	done := make(chan struct{})
-	p.
-		DoOnError(func(e error) {
-			assert.True(t, reactor.IsCancelledError(e))
-		}).
-		DoFinally(func(signal reactor.SignalType) {
-			assert.Equal(t, reactor.SignalTypeCancel, signal)
-			close(done)
-		}).
-		Subscribe(ctx)
-	<-done
-}
-
-func TestProcessor_Error(t *testing.T) {
-	fakeErr := errors.New("fake error")
-	p := mono.CreateProcessor()
-	done := make(chan error, 1)
-	p.
-		DoOnError(func(e error) {
-			done <- e
-		}).
-		Subscribe(context.Background())
-
-	time.Sleep(100 * time.Millisecond)
-	p.Error(fakeErr)
-	e := <-done
-	assert.Equal(t, fakeErr, e)
-}
-
-func TestOneshotProcess(t *testing.T) {
-	dropped := new(int32)
-
-	hooks.OnErrorDrop(func(e error) {
-		atomic.AddInt32(dropped, 1)
+	p, _, d := mono.NewProcessor(nil, nil)
+	defer d.Dispose()
+	onSubscribe := reactor.OnSubscribe(func(ctx context.Context, su reactor.Subscription) {
+		su.Cancel()
 	})
+	doFinally := func(s reactor.SignalType) {
+		close(done)
+	}
+	onNext := reactor.OnNext(func(v reactor.Any) error {
+		assert.Fail(t, "unreachable")
+		return nil
+	})
+	p.DoFinally(doFinally).Subscribe(context.Background(), onSubscribe, onNext)
+}
 
-	const total = 10000
+func TestProcessor_Finally(t *testing.T) {
+	const total = 2
 
 	var wg sync.WaitGroup
 	wg.Add(total)
 
-	c := make(chan mono.Sink, 10)
+	cnt := new(int32)
+	fakeValue := 1
 
-	go func() {
-		var n int
-		for next := range c {
-			next.Success(n)
-			n++
-		}
-	}()
+	for range [total]struct{}{} {
+		p, s, _ := mono.NewProcessor(scheduler.Parallel(), func(signalType reactor.SignalType, disposable reactor.Disposable) {
+			disposable.Dispose()
+			wg.Done()
+		})
 
-	success := new(int32)
+		go func() {
+			s.Success(fakeValue)
+		}()
 
-	sub := reactor.
-		NewSubscriber(
-			reactor.OnNext(func(v reactor.Any) error {
-				atomic.AddInt32(success, 1)
-				return nil
-			}),
-			reactor.OnComplete(func() {
-				wg.Done()
-			}),
-			reactor.OnError(func(e error) {
-				wg.Done()
-			}),
-		)
-
-	doFinallyCalls := new(int32)
-
-	for i := 0; i < total; i++ {
-		m, s := mono.CreateProcessorOneshot()
-		c <- s
-		m.
-			DoFinally(func(s reactor.SignalType) {
-				atomic.AddInt32(doFinallyCalls, 1)
-			}).
-			SubscribeOn(scheduler.Parallel()).
-			SubscribeWith(context.Background(), sub)
+		p.Subscribe(context.Background(), reactor.OnNext(func(v reactor.Any) error {
+			assert.Equal(t, fakeValue, v)
+			return nil
+		}), reactor.OnError(func(e error) {
+			assert.NoError(t, e, "should not return error")
+		}), reactor.OnComplete(func() {
+			atomic.AddInt32(cnt, 1)
+		}))
 	}
-
-	close(c)
-
 	wg.Wait()
 
-	assert.Equal(t, int32(0), atomic.LoadInt32(dropped))
-	assert.Equal(t, int32(total), atomic.LoadInt32(success))
-	assert.Equal(t, int32(total), atomic.LoadInt32(doFinallyCalls))
+	assert.Equal(t, int32(total), atomic.LoadInt32(cnt))
 }
