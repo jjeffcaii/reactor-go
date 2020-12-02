@@ -79,13 +79,14 @@ func TestSuite(t *testing.T) {
 	all["Range"] = func() flux.Flux {
 		return instRange
 	}
-	all["Unicast"] = func() flux.Flux {
-		vv := flux.NewUnicastProcessor()
+	all["Processor"] = func() flux.Flux {
+		vv, s, d := flux.NewProcessor(scheduler.Immediate())
 		go func() {
+			defer d.Dispose()
 			for _, it := range testData {
-				vv.Next(it)
+				s.Next(it)
 			}
-			vv.Complete()
+			s.Complete()
 		}()
 		return vv
 	}

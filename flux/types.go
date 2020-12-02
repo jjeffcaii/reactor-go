@@ -48,8 +48,3 @@ type Sink interface {
 	Error(error)
 	Next(Any)
 }
-
-type Processor interface {
-	Flux
-	Sink
-}

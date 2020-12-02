@@ -8,17 +8,15 @@ import (
 )
 
 type blockFirstSubscriber struct {
-	su    reactor.Subscription
-	done  chan struct{}
-	vchan chan<- reactor.Any
-	echan chan<- error
+	su     reactor.Subscription
+	done   chan struct{}
+	result chan<- reactor.Item
 }
 
-func NewBlockFirstSubscriber(done chan struct{}, vchan chan<- reactor.Any, echan chan<- error) reactor.Subscriber {
+func NewBlockFirstSubscriber(done chan struct{}, result chan<- reactor.Item) reactor.Subscriber {
 	return &blockFirstSubscriber{
-		done:  done,
-		vchan: vchan,
-		echan: echan,
+		done:   done,
+		result: result,
 	}
 }
 
@@ -35,7 +33,7 @@ func (b *blockFirstSubscriber) OnError(err error) {
 	case <-b.done:
 	default:
 		if internal.SafeCloseDone(b.done) {
-			b.echan <- err
+			b.result <- reactor.Item{E: err}
 		}
 	}
 }
@@ -45,7 +43,7 @@ func (b *blockFirstSubscriber) OnNext(any reactor.Any) {
 	case <-b.done:
 	default:
 		if internal.SafeCloseDone(b.done) {
-			b.vchan <- any
+			b.result <- reactor.Item{V: any}
 			b.su.Cancel()
 		}
 	}

@@ -18,7 +18,9 @@
 // Package buffer provides an implementation of an unbounded buffer.
 package buffer
 
-import "sync"
+import (
+	"sync"
+)
 
 // Unbounded is an implementation of an unbounded buffer which does not use
 // extra goroutines. This is typically used for passing updates from one entity
@@ -34,9 +36,10 @@ import "sync"
 // defining a new type specific implementation of this buffer is preferred. See
 // internal/transport/transport.go for an example of this.
 type Unbounded struct {
-	c       chan interface{}
-	mu      sync.Mutex
-	backlog []interface{}
+	c        chan interface{}
+	mu       sync.Mutex
+	backlog  []interface{}
+	disposed bool
 }
 
 // NewUnbounded returns a new instance of Unbounded.
@@ -47,35 +50,46 @@ func NewUnbounded() *Unbounded {
 // Put adds t to the unbounded buffer.
 func (b *Unbounded) Put(t interface{}) (ok bool) {
 	b.mu.Lock()
-	defer func() {
-		ok = recover() == nil
+
+	if b.disposed {
 		b.mu.Unlock()
-	}()
+		return
+	}
+
+	ok = true
+
 	if len(b.backlog) == 0 {
 		select {
 		case b.c <- t:
+			b.mu.Unlock()
 			return
 		default:
 		}
 	}
 	b.backlog = append(b.backlog, t)
+	b.mu.Unlock()
 	return
 }
 
 // Load sends the earliest buffered data, if any, onto the read channel
 // returned by Get(). Users are expected to call this every time they read a
 // value from the read channel.
-func (b *Unbounded) Load() {
+func (b *Unbounded) Load() (n int) {
 	b.mu.Lock()
 	if len(b.backlog) > 0 {
 		select {
 		case b.c <- b.backlog[0]:
 			b.backlog[0] = nil
 			b.backlog = b.backlog[1:]
+			n = 1
 		default:
 		}
+	} else if b.disposed {
+		b.close()
+		n = -1
 	}
 	b.mu.Unlock()
+	return
 }
 
 // Get returns a read channel on which values added to the buffer, via Put(),
@@ -87,6 +101,20 @@ func (b *Unbounded) Get() <-chan interface{} {
 	return b.c
 }
 
+// Dispose mark current Unbounded as disposed.
 func (b *Unbounded) Dispose() {
+	b.mu.Lock()
+	b.disposed = true
+	if len(b.backlog) == 0 {
+		b.close()
+	}
+	b.mu.Unlock()
+}
+
+func (b *Unbounded) close() (ok bool) {
+	defer func() {
+		ok = recover() == nil
+	}()
 	close(b.c)
+	return
 }

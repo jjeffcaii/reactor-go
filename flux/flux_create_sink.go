@@ -8,6 +8,9 @@ import (
 	"github.com/jjeffcaii/reactor-go/hooks"
 )
 
+var _ reactor.Subscription = (*bufferedSink)(nil)
+var _ Sink = (*bufferedSink)(nil)
+
 type bufferedSink struct {
 	s        reactor.Subscriber
 	q        queue

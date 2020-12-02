@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"time"
+
+	"github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
 const (
@@ -45,6 +48,10 @@ func Interval(period time.Duration) Flux {
 	return wrap(newFluxInterval(period, 0, nil))
 }
 
-func NewUnicastProcessor() Processor {
-	return wrap(newUnicastProcessor(_buffSize))
+func NewProcessor(sc scheduler.Scheduler) (Flux, Sink, reactor.Disposable) {
+	if sc == nil {
+		sc = scheduler.Immediate()
+	}
+	p := newProcessor(sc)
+	return wrap(p), p, p
 }

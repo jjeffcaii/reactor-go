@@ -6,7 +6,7 @@ type Stopwatch struct {
 	prev time.Time
 }
 
-func NewStopwatch() *Stopwatch {
+func Start() *Stopwatch {
 	return &Stopwatch{
 		prev: time.Now(),
 	}

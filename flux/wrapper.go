@@ -3,7 +3,6 @@ package flux
 import (
 	"context"
 	"errors"
-	"io"
 	"reflect"
 	"time"
 
@@ -170,20 +169,24 @@ func (w wrapper) ToChan(ctx context.Context, cap int) (<-chan Any, <-chan error)
 	return ch, err
 }
 
-func (w wrapper) BlockFirst(ctx context.Context) (Any, error) {
+func (w wrapper) BlockFirst(ctx context.Context) (value Any, err error) {
 	done := make(chan struct{})
-	vchan := make(chan Any, 1)
-	echan := make(chan error, 1)
-	w.SubscribeWith(ctx, subscribers.NewBlockFirstSubscriber(done, vchan, echan))
+	c := make(chan reactor.Item, 1)
+	w.SubscribeWith(ctx, subscribers.NewBlockFirstSubscriber(done, c))
 	<-done
 	select {
-	case v := <-vchan:
-		return v, nil
-	case err := <-echan:
-		return nil, err
+	case v := <-c:
+		if v.E != nil {
+			err = v.E
+			return
+		}
+		if v.V != nil {
+			value = v.V
+			return
+		}
 	default:
-		return nil, nil
 	}
+	return
 }
 
 func (w wrapper) BlockLast(ctx context.Context) (Any, error) {
@@ -191,35 +194,6 @@ func (w wrapper) BlockLast(ctx context.Context) (Any, error) {
 	defer subscribers.ReturnBlockLastSubscriber(s)
 	w.SubscribeWith(ctx, s)
 	return s.Block()
-}
-
-func (w wrapper) Complete() {
-	w.mustProcessor().Complete()
-}
-
-func (w wrapper) Error(e error) {
-	w.mustProcessor().Error(e)
-}
-
-func (w wrapper) Next(v Any) {
-	w.mustProcessor().Next(v)
-}
-
-func (w wrapper) Close() (err error) {
-	closer, ok := w.RawPublisher.(io.Closer)
-	if !ok {
-		return
-	}
-	err = closer.Close()
-	return
-}
-
-func (w wrapper) mustProcessor() rawProcessor {
-	v, ok := w.RawPublisher.(rawProcessor)
-	if !ok {
-		panic(errors.New("require a processor"))
-	}
-	return v
 }
 
 func wrap(r reactor.RawPublisher) wrapper {
