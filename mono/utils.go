@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
@@ -73,7 +72,11 @@ func Delay(delay time.Duration) Mono {
 	return wrap(newMonoDelay(delay))
 }
 
-func NewProcessor(sc scheduler.Scheduler, hook ProcessorFinallyHook) (Mono, Sink, reactor.Disposable) {
-	p := borrowProcessor(sc, hook)
+func NewProcessor(sc scheduler.Scheduler, hook ProcessorFinallyHook) (Mono, Sink, Disposable) {
+	p := globalProcessorPool.get()
+	p.mu.Lock()
+	p.sc = sc
+	p.hookOnFinally = hook
+	p.mu.Unlock()
 	return wrap(p), p, p
 }

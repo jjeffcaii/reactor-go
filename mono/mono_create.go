@@ -56,7 +56,7 @@ func newMonoCreate(gen func(context.Context, Sink)) monoCreate {
 
 			select {
 			case <-ctx.Done():
-				sink.Error(reactor.ErrSubscribeCancelled)
+				sink.Error(reactor.NewContextError(ctx.Err()))
 			default:
 				gen(ctx, sink)
 			}

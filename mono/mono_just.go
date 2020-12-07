@@ -83,7 +83,7 @@ func (j *justSubscription) Cancel() {
 func (m *monoJust) SubscribeWith(ctx context.Context, sub reactor.Subscriber) {
 	select {
 	case <-ctx.Done():
-		sub.OnError(reactor.ErrSubscribeCancelled)
+		sub.OnError(reactor.NewContextError(ctx.Err()))
 	default:
 		su := borrowJustSubscription()
 		su.parent = m

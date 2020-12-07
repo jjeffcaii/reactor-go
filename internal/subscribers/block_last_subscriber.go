@@ -70,7 +70,7 @@ func (b *BlockLastSubscriber) OnNext(value reactor.Any) {
 func (b *BlockLastSubscriber) OnSubscribe(ctx context.Context, subscription reactor.Subscription) {
 	select {
 	case <-ctx.Done():
-		b.OnError(reactor.ErrSubscribeCancelled)
+		b.OnError(reactor.NewContextError(ctx.Err()))
 	default:
 		subscription.Request(reactor.RequestInfinite)
 	}
