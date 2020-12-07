@@ -62,5 +62,20 @@ func TestNewTuple(t *testing.T) {
 }
 
 func TestEmptyTuple(t *testing.T) {
-	tuple.NewTuple()
+	p := tuple.NewTuple()
+	assert.Equal(t, 0, p.Len(), "len should be zero")
+
+	validate := func(err error) {
+		assert.True(t, tuple.IsIndexOutOfBoundsError(err), "should be out of bounds")
+	}
+	_, err := p.First()
+	validate(err)
+	_, err = p.Second()
+	validate(err)
+	_, err = p.Last()
+	validate(err)
+	_, err = p.Last()
+	validate(err)
+	_, err = p.Get(0)
+	validate(err)
 }
