@@ -57,9 +57,7 @@ func (is *intervalSubscription) run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			if err := ctx.Err(); err != nil {
-				is.actual.OnError(err)
-			}
+			is.actual.OnError(reactor.NewContextError(ctx.Err()))
 			return
 		case <-is.done:
 			return

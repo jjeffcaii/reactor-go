@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go/hooks"
 )
 
 type blockSubscriber struct {
@@ -29,20 +30,26 @@ func (b blockSubscriber) OnComplete() {
 func (b blockSubscriber) OnError(err error) {
 	select {
 	case <-b.done:
+		hooks.Global().OnErrorDrop(err)
 	default:
-		close(b.done)
-		b.c <- reactor.Item{
-			E: err,
+		select {
+		case b.c <- reactor.Item{E: err}:
+		default:
+			hooks.Global().OnErrorDrop(err)
 		}
+		close(b.done)
 	}
 }
 
 func (b blockSubscriber) OnNext(any reactor.Any) {
 	select {
 	case <-b.done:
+		hooks.Global().OnNextDrop(any)
 	default:
-		b.c <- reactor.Item{
-			V: any,
+		select {
+		case b.c <- reactor.Item{V: any}:
+		default:
+			hooks.Global().OnNextDrop(any)
 		}
 	}
 }
@@ -53,7 +60,7 @@ func (b blockSubscriber) OnSubscribe(ctx context.Context, subscription reactor.S
 		go func() {
 			select {
 			case <-ctx.Done():
-				b.OnError(reactor.ErrSubscribeCancelled)
+				b.OnError(reactor.NewContextError(ctx.Err()))
 			case <-b.done:
 			}
 		}()

@@ -143,7 +143,7 @@ func (z *zipInner) OnNext(any reactor.Any) {
 func (z *zipInner) OnSubscribe(ctx context.Context, su reactor.Subscription) {
 	select {
 	case <-ctx.Done():
-		z.OnError(reactor.ErrSubscribeCancelled)
+		z.OnError(reactor.NewContextError(ctx.Err()))
 	default:
 		var exist bool
 		z.Lock()
@@ -169,7 +169,7 @@ type monoZip struct {
 func (m *monoZip) SubscribeWith(ctx context.Context, sub reactor.Subscriber) {
 	select {
 	case <-ctx.Done():
-		sub.OnError(reactor.ErrSubscribeCancelled)
+		sub.OnError(reactor.NewContextError(ctx.Err()))
 	default:
 		c := newZipCoordinator(sub, len(m.sources))
 		sub.OnSubscribe(ctx, c)

@@ -54,7 +54,7 @@ func (b *blockFirstSubscriber) OnNext(any reactor.Any) {
 func (b *blockFirstSubscriber) OnSubscribe(ctx context.Context, subscription reactor.Subscription) {
 	select {
 	case <-ctx.Done():
-		b.OnError(reactor.ErrSubscribeCancelled)
+		b.OnError(reactor.NewContextError(ctx.Err()))
 	default:
 		b.su = subscription
 		b.su.Request(1)

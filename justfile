@@ -1,7 +1,7 @@
-default:
-	echo 'Hello, world!'
+alias t := test
+
 test:
-    go test -cover -race -count=1 ./...
+    go test -race -count=1 ./...
 lint:
     golangci-lint run ./...
 fmt:

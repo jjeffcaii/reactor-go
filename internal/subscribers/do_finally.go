@@ -68,7 +68,7 @@ func (d *DoFinallySubscriber) OnNext(v reactor.Any) {
 func (d *DoFinallySubscriber) OnSubscribe(ctx context.Context, s reactor.Subscription) {
 	select {
 	case <-ctx.Done():
-		d.OnError(reactor.ErrSubscribeCancelled)
+		d.OnError(reactor.NewContextError(ctx.Err()))
 	default:
 		d.s = s
 		d.actual.OnSubscribe(ctx, d)

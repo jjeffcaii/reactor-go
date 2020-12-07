@@ -18,33 +18,54 @@ var (
 	_ reactor.Disposable   = (*processor)(nil)
 )
 
-var _processorPool = sync.Pool{
-	New: func() interface{} {
-		p := &processor{}
-		p.doneNotify.L = p.mu.RLocker()
-		return p
-	},
+var (
+	globalProcessorPool           processorPool
+	globalProcessorSubscriberPool processorSubscriberPool
+)
+
+type processorPool struct {
+	inner sync.Pool
 }
 
-var _processorSubscriberPool = sync.Pool{
-	New: func() interface{} {
-		return new(processorSubscriber)
-	},
-}
-
-func borrowProcessor(sc scheduler.Scheduler, doFinally ProcessorFinallyHook) *processor {
-	p := _processorPool.Get().(*processor)
-	p.sc = sc
-	p.hookOnFinally = doFinally
+func (pp *processorPool) get() *processor {
+	if exist, _ := pp.inner.Get().(*processor); exist != nil {
+		return exist
+	}
+	p := &processor{}
+	p.doneNotify.L = p.mu.RLocker()
 	return p
 }
 
-func returnProcessor(p *processor) {
+func (pp *processorPool) put(p *processor) {
+	if p == nil {
+		return
+	}
 	p.mu.Lock()
 	p.item = nil
 	p.hookOnFinally = nil
 	p.mu.Unlock()
-	_processorPool.Put(p)
+	pp.inner.Put(p)
+}
+
+type processorSubscriberPool struct {
+	inner sync.Pool
+}
+
+func (pp *processorSubscriberPool) get() *processorSubscriber {
+	if exist, _ := pp.inner.Get().(*processorSubscriber); exist != nil {
+		return exist
+	}
+	return &processorSubscriber{}
+}
+
+func (pp *processorSubscriberPool) put(p *processorSubscriber) {
+	if p == nil {
+		return
+	}
+	p.actual = nil
+	p.source = nil
+	atomic.StoreInt32(&p.requested, 0)
+	pp.inner.Put(p)
 }
 
 type processor struct {
@@ -56,7 +77,7 @@ type processor struct {
 }
 
 func (p *processor) Dispose() {
-	returnProcessor(p)
+	globalProcessorPool.put(p)
 }
 
 func (p *processor) Success(any Any) {
@@ -84,7 +105,7 @@ func (p *processor) Error(err error) {
 }
 
 func (p *processor) SubscribeWith(ctx context.Context, sub reactor.Subscriber) {
-	s := _processorSubscriberPool.Get().(*processorSubscriber)
+	s := globalProcessorSubscriberPool.get()
 	s.source = p
 	s.actual = sub
 	atomic.StoreInt32(&s.cancelled, 0)
@@ -177,7 +198,9 @@ func (p *processorSubscriber) OnError(err error) {
 }
 
 func (p *processorSubscriber) handleFinally(err error) {
+	p.source.mu.Lock()
 	fn := p.source.hookOnFinally
+	p.source.mu.Unlock()
 	if fn == nil {
 		return
 	}
@@ -195,10 +218,7 @@ func (p *processorSubscriber) OnNext(any reactor.Any) {
 }
 
 func (p *processorSubscriber) Dispose() {
-	p.actual = nil
-	p.source = nil
-	atomic.StoreInt32(&p.requested, 0)
-	_processorSubscriberPool.Put(p)
+	globalProcessorSubscriberPool.put(p)
 }
 
 func (p *processorSubscriber) OnSubscribe(ctx context.Context, su reactor.Subscription) {

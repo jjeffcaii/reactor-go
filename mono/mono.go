@@ -8,7 +8,12 @@ import (
 	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
-type Any = reactor.Any
+// Alias
+type (
+	Any        = reactor.Any
+	Disposable = reactor.Disposable
+)
+
 type FlatMapper = func(reactor.Any) Mono
 
 type Mono interface {

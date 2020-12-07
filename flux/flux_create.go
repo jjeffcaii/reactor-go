@@ -43,7 +43,7 @@ func newFluxCreate(c func(ctx context.Context, sink Sink), options ...CreateOpti
 func (fc fluxCreate) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
 	select {
 	case <-ctx.Done():
-		s.OnError(ctx.Err())
+		s.OnError(reactor.NewContextError(ctx.Err()))
 	default:
 		var sink interface {
 			reactor.Subscription
