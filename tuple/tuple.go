@@ -49,11 +49,17 @@ type tuple struct {
 	inner []*reactor.Item
 }
 
+func (t tuple) checkItem(item *reactor.Item) *reactor.Item {
+	if item != nil {
+		return item
+	}
+	return &reactor.Item{}
+}
 func (t tuple) First() (reactor.Any, error) {
 	if len(t.inner) < 1 {
 		return nil, errIndexOutOfBounds
 	}
-	next := t.inner[0]
+	next := t.checkItem(t.inner[0])
 	return next.V, next.E
 }
 
@@ -61,7 +67,7 @@ func (t tuple) Second() (reactor.Any, error) {
 	if len(t.inner) < 2 {
 		return nil, errIndexOutOfBounds
 	}
-	next := t.inner[1]
+	next := t.checkItem(t.inner[1])
 	return next.V, next.E
 }
 
@@ -69,13 +75,14 @@ func (t tuple) Last() (reactor.Any, error) {
 	if len(t.inner) < 1 {
 		return nil, errIndexOutOfBounds
 	}
-	next := t.inner[len(t.inner)-1]
+	next := t.checkItem(t.inner[len(t.inner)-1])
 	return next.V, next.E
 }
 
 func (t tuple) ForEachWithIndex(callback func(v reactor.Any, e error, index int) (ok bool)) {
 	for i := 0; i < len(t.inner); i++ {
-		if !callback(t.inner[i].V, t.inner[i].E, i) {
+		var next = t.checkItem(t.inner[i])
+		if !callback(next.V, next.E, i) {
 			break
 		}
 	}
@@ -83,7 +90,8 @@ func (t tuple) ForEachWithIndex(callback func(v reactor.Any, e error, index int)
 
 func (t tuple) ForEach(f func(any reactor.Any, err error) bool) {
 	for _, next := range t.inner {
-		if !f(next.V, next.E) {
+		var tmp = t.checkItem(next)
+		if !f(tmp.V, tmp.E) {
 			break
 		}
 	}
@@ -97,6 +105,6 @@ func (t tuple) Get(index int) (reactor.Any, error) {
 	if index < 0 || index >= len(t.inner) {
 		return nil, errIndexOutOfBounds
 	}
-	item := t.inner[index]
+	item := t.checkItem(t.inner[index])
 	return item.V, item.E
 }
