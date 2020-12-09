@@ -123,13 +123,11 @@ func TestZip_context(t *testing.T) {
 }
 
 func TestZip_EdgeCase(t *testing.T) {
-
 	var (
 		nextCnt     = new(int32)
 		completeCnt = new(int32)
 		errorCnt    = new(int32)
 	)
-
 	mono.Zip(mono.JustOneshot("1"), mono.JustOneshot("2")).
 		FlatMap(func(any reactor.Any) mono.Mono {
 			if any != nil {
@@ -138,9 +136,7 @@ func TestZip_EdgeCase(t *testing.T) {
 						panic("fake panic")
 					}).
 					Map(func(any reactor.Any) (reactor.Any, error) {
-						//此处会造成无任何返回值，直接抛出异常
 						panic("ddddddd")
-						return any, nil
 					})
 			}
 			return mono.JustOneshot("dddd")

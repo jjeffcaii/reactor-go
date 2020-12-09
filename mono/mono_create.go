@@ -10,8 +10,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-var _errRunSinkFailed = errors.New("execute creation func failed")
-
 var _sinkPool = sync.Pool{
 	New: func() interface{} {
 		return new(sink)
