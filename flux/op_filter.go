@@ -5,6 +5,7 @@ import (
 
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/internal"
+	"github.com/pkg/errors"
 )
 
 type fluxFilter struct {
@@ -42,11 +43,23 @@ func (p *filterSubscriber) OnError(err error) {
 }
 
 func (p *filterSubscriber) OnNext(v Any) {
+	if p.f == nil {
+		p.OnError(errors.New("the Filter predicate is nil"))
+		return
+	}
+
 	defer func() {
-		if err := internal.TryRecoverError(recover()); err != nil {
-			p.OnError(err)
+		rec := recover()
+		if rec == nil {
+			return
+		}
+		if e, ok := rec.(error); ok {
+			p.OnError(errors.WithStack(e))
+		} else {
+			p.OnError(errors.Errorf("%v", rec))
 		}
 	}()
+
 	if p.f(v) {
 		p.actual.OnNext(v)
 		return

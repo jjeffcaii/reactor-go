@@ -2,16 +2,13 @@ package mono
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"sync/atomic"
 
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/hooks"
-	"github.com/jjeffcaii/reactor-go/internal"
+	"github.com/pkg/errors"
 )
-
-var _errRunSinkFailed = errors.New("execute creation func failed")
 
 var _sinkPool = sync.Pool{
 	New: func() interface{} {
@@ -49,8 +46,14 @@ func newMonoCreate(gen func(context.Context, Sink)) monoCreate {
 	return monoCreate{
 		sinker: func(ctx context.Context, sink Sink) {
 			defer func() {
-				if e := recover(); e != nil {
-					sink.Error(_errRunSinkFailed)
+				rec := recover()
+				if rec == nil {
+					return
+				}
+				if e, ok := rec.(error); ok {
+					sink.Error(errors.WithStack(e))
+				} else {
+					sink.Error(errors.Errorf("%v", rec))
 				}
 			}()
 
@@ -103,8 +106,14 @@ func (s *sink) Error(err error) {
 
 func (s *sink) Next(v Any) {
 	defer func() {
-		if err := internal.TryRecoverError(recover()); err != nil {
-			s.Error(err)
+		rec := recover()
+		if rec == nil {
+			return
+		}
+		if e, ok := rec.(error); ok {
+			s.Error(errors.WithStack(e))
+		} else {
+			s.Error(errors.Errorf("%v", rec))
 		}
 	}()
 	s.actual.OnNext(v)

@@ -121,3 +121,41 @@ func TestZip_context(t *testing.T) {
 	assert.Error(t, err)
 	assert.True(t, reactor.IsCancelledError(err))
 }
+
+func TestZip_EdgeCase(t *testing.T) {
+	var (
+		nextCnt     = new(int32)
+		completeCnt = new(int32)
+		errorCnt    = new(int32)
+	)
+	mono.Zip(mono.JustOneshot("1"), mono.JustOneshot("2")).
+		FlatMap(func(any reactor.Any) mono.Mono {
+			if any != nil {
+				return mono.Zip(mono.JustOneshot("333"), mono.JustOneshot("44444444")).
+					Filter(func(any reactor.Any) bool {
+						panic("fake panic")
+					}).
+					Map(func(any reactor.Any) (reactor.Any, error) {
+						panic("ddddddd")
+					})
+			}
+			return mono.JustOneshot("dddd")
+		}).
+		Subscribe(context.Background(),
+			reactor.OnNext(func(v reactor.Any) error {
+				atomic.AddInt32(nextCnt, 1)
+				return nil
+			}),
+			reactor.OnError(func(e error) {
+				atomic.AddInt32(errorCnt, 1)
+				t.Logf("%v", e)
+			}),
+			reactor.OnComplete(func() {
+				atomic.AddInt32(completeCnt, 1)
+			}),
+		)
+
+	assert.Equal(t, int32(0), atomic.LoadInt32(nextCnt), "next count should be zero")
+	assert.Equal(t, int32(1), atomic.LoadInt32(errorCnt), "error count should be 1")
+	assert.Equal(t, int32(0), atomic.LoadInt32(completeCnt), "complete count should be zero")
+}

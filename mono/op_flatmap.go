@@ -5,6 +5,7 @@ import (
 	"sync/atomic"
 
 	"github.com/jjeffcaii/reactor-go"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -71,11 +72,34 @@ func (p *flatMapSubscriber) OnNext(v Any) {
 	if atomic.LoadInt32(&p.stat) != 0 {
 		return
 	}
-	m := p.mapper(v)
+	nextMono, err := p.computeNextMono(v)
+	if err != nil {
+		p.actual.OnError(err)
+		return
+	}
 	inner := &innerFlatMapSubscriber{
 		parent: p,
 	}
-	m.SubscribeWith(p.ctx, inner)
+	nextMono.SubscribeWith(p.ctx, inner)
+}
+
+func (p *flatMapSubscriber) computeNextMono(v Any) (next Mono, err error) {
+	defer func() {
+		rec := recover()
+		if rec == nil {
+			return
+		}
+		if e, ok := rec.(error); ok {
+			err = errors.WithStack(e)
+		} else {
+			err = errors.Errorf("%v", rec)
+		}
+	}()
+	next = p.mapper(v)
+	if next == nil {
+		err = errors.New("the FlatMap result is nil")
+	}
+	return
 }
 
 func (p *flatMapSubscriber) OnSubscribe(ctx context.Context, s reactor.Subscription) {

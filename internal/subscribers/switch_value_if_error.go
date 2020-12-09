@@ -41,7 +41,9 @@ func (s *SwitchValueIfErrorSubscriber) Cancel() {
 func (s *SwitchValueIfErrorSubscriber) OnError(err error) {
 	if atomic.AddInt32(&s.errorCalls, 1) == 1 {
 		hooks.Global().OnErrorDrop(err)
-		s.actual.OnNext(s.v)
+		if s.v != nil {
+			s.actual.OnNext(s.v)
+		}
 		s.actual.OnComplete()
 	} else {
 		s.actual.OnError(err)

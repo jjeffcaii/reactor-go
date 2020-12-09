@@ -5,6 +5,7 @@ import (
 
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/internal"
+	"github.com/pkg/errors"
 )
 
 type filterSubscriber struct {
@@ -46,8 +47,14 @@ func (f *filterSubscriber) OnError(err error) {
 
 func (f *filterSubscriber) OnNext(v Any) {
 	defer func() {
-		if err := internal.TryRecoverError(recover()); err != nil {
-			f.OnError(err)
+		rec := recover()
+		if rec == nil {
+			return
+		}
+		if e, ok := rec.(error); ok {
+			f.OnError(errors.WithStack(e))
+		} else {
+			f.OnError(errors.Errorf("%v", rec))
 		}
 	}()
 	if f.predicate(v) {
