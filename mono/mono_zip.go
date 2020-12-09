@@ -118,6 +118,9 @@ func (z *zipInner) OnError(err error) {
 	z.Lock()
 	defer z.Unlock()
 	if z.item != nil {
+		if z.coordinator != nil && z.coordinator.actual != nil{
+			z.coordinator.actual.OnError(err)
+		}
 		hooks.Global().OnErrorDrop(err)
 		return
 	}
