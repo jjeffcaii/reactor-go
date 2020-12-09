@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/jjeffcaii/reactor-go"
+	"github.com/pkg/errors"
 )
 
 var _mapSubscriberPool = sync.Pool{
@@ -68,12 +69,25 @@ func (m *mapSubscriber) OnError(err error) {
 
 func (m *mapSubscriber) OnNext(v Any) {
 	if m == nil || m.actual == nil || m.t == nil {
+		// TODO:
 		return
 	}
-	if o, err := m.t(v); err != nil {
+	defer func() {
+		rec := recover()
+		if rec == nil {
+			return
+		}
+		if e, ok := rec.(error); ok {
+			m.actual.OnError(errors.WithStack(e))
+		} else {
+			m.actual.OnError(errors.Errorf("%v", rec))
+		}
+	}()
+
+	if transformed, err := m.t(v); err != nil {
 		m.actual.OnError(err)
 	} else {
-		m.actual.OnNext(o)
+		m.actual.OnNext(transformed)
 	}
 }
 

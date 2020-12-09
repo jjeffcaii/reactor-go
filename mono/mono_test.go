@@ -2,7 +2,6 @@ package mono_test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync/atomic"
 	"testing"
@@ -12,6 +11,7 @@ import (
 	"github.com/jjeffcaii/reactor-go/hooks"
 	"github.com/jjeffcaii/reactor-go/mono"
 	"github.com/jjeffcaii/reactor-go/scheduler"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -144,7 +144,7 @@ func testPanic(m mono.Mono, t *testing.T) {
 		in.DoOnError(func(e error) {
 			catches = e
 		}).Subscribe(context.Background())
-		assert.Equal(t, fakeErr, catches, "not that error")
+		assert.Equal(t, fakeErr, errors.Cause(catches), "not that error")
 	}
 	checker(m.DoOnNext(func(v Any) error {
 		return fakeErr

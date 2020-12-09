@@ -2,6 +2,7 @@ package subscribers
 
 import (
 	"context"
+	"errors"
 
 	"github.com/jjeffcaii/reactor-go"
 )
@@ -54,12 +55,17 @@ func (s *SwitchIfEmptySubscriber) OnSubscribe(ctx context.Context, su reactor.Su
 }
 
 func (s *SwitchIfEmptySubscriber) OnComplete() {
-	if !s.nextOnce {
-		s.nextOnce = true
-		s.other.SubscribeWith(s.ctx, s)
-	} else {
+	if s.nextOnce {
 		s.actual.OnComplete()
+		return
 	}
+	s.nextOnce = true
+	if s.other == nil {
+		s.actual.OnError(errors.New("the alternative SwitchIfEmpty Mono is nil"))
+	} else {
+		s.other.SubscribeWith(s.ctx, s)
+	}
+
 }
 
 func NewSwitchIfEmptySubscriber(alternative reactor.RawPublisher, actual reactor.Subscriber) *SwitchIfEmptySubscriber {

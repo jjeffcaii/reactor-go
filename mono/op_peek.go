@@ -6,6 +6,7 @@ import (
 
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/internal"
+	"github.com/pkg/errors"
 )
 
 type monoPeek struct {
@@ -87,8 +88,14 @@ func (p *peekSubscriber) OnNext(v Any) {
 	}
 	if call := p.parent.onNextCall; call != nil {
 		defer func() {
-			if err := internal.TryRecoverError(recover()); err != nil {
-				p.OnError(err)
+			rec := recover()
+			if rec == nil {
+				return
+			}
+			if e, ok := rec.(error); ok {
+				p.OnError(errors.WithStack(e))
+			} else {
+				p.OnError(errors.Errorf("%v", rec))
 			}
 		}()
 		if err := call(v); err != nil {

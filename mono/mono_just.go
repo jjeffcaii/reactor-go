@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 
 	"github.com/jjeffcaii/reactor-go"
-	"github.com/jjeffcaii/reactor-go/internal"
+	"github.com/pkg/errors"
 )
 
 var _justSubscriptionPool = sync.Pool{
@@ -64,10 +64,15 @@ func (j *justSubscription) Request(n int) {
 		return
 	}
 	defer func() {
-		if err := internal.TryRecoverError(recover()); err != nil {
-			j.actual.OnError(err)
-		} else {
+		rec := recover()
+		if rec == nil {
 			j.actual.OnComplete()
+			return
+		}
+		if e, ok := rec.(error); ok {
+			j.actual.OnError(errors.WithStack(e))
+		} else {
+			j.actual.OnError(errors.Errorf("%v", rec))
 		}
 	}()
 	j.actual.OnNext(j.parent.value)
