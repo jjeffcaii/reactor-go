@@ -98,6 +98,18 @@ func (p wrapper) Error(e error) {
 	mustProcessor(p.RawPublisher).Error(e)
 }
 
+func (p wrapper) ZipWith(other Mono) Mono {
+	return p.ZipCombineWith(other, nil)
+}
+
+func (p wrapper) ZipCombineWith(other Mono, cmb Combinator) Mono {
+	publishers := []reactor.RawPublisher{
+		p.RawPublisher,
+		unpackRawPublisher(other),
+	}
+	return wrap(newMonoZip(publishers, cmb))
+}
+
 func (p wrapper) Raw() reactor.RawPublisher {
 	return p.RawPublisher
 }

@@ -35,6 +35,8 @@ type Mono interface {
 	SwitchValueIfError(v Any) Mono
 	DelayElement(delay time.Duration) Mono
 	Timeout(timeout time.Duration) Mono
+	ZipWith(other Mono) Mono
+	ZipCombineWith(other Mono, cmb Combinator) Mono
 	Raw() reactor.RawPublisher
 }
 

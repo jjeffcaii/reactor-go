@@ -118,6 +118,20 @@ func (o *oneshotWrapper) Timeout(timeout time.Duration) Mono {
 	return o
 }
 
+func (o *oneshotWrapper) ZipWith(other Mono) Mono {
+	return o.ZipCombineWith(other, nil)
+}
+
+func (o *oneshotWrapper) ZipCombineWith(other Mono, cmb Combinator) Mono {
+	second := unpackRawPublisher(other)
+	pubs := []reactor.RawPublisher{
+		o.RawPublisher,
+		second,
+	}
+	o.RawPublisher = newMonoZip(pubs, cmb)
+	return o
+}
+
 func (o *oneshotWrapper) Raw() reactor.RawPublisher {
 	return o.RawPublisher
 }

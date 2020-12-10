@@ -57,3 +57,15 @@ func mustProcessor(publisher reactor.RawPublisher) rawProcessor {
 	}
 	return rp
 }
+
+func unpackRawPublisher(source Mono) reactor.RawPublisher {
+	if source == nil {
+		return nil
+	}
+	switch t := source.(type) {
+	case *oneshotWrapper:
+		return returnOneshotWrapper(t)
+	default:
+		return t.Raw()
+	}
+}

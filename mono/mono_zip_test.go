@@ -15,21 +15,49 @@ import (
 
 func TestZip(t *testing.T) {
 	begin := time.Now()
-	val, err := mono.Zip(mono.Delay(100*time.Millisecond), mono.Delay(200*time.Millisecond)).Block(context.Background())
+	v, err := mono.Zip(mono.Delay(100*time.Millisecond), mono.Delay(200*time.Millisecond)).Block(context.Background())
 	assert.NoError(t, err)
 	t.Log("cost:", time.Since(begin))
-	tup := val.(tuple.Tuple)
-	for i := 0; i < tup.Len(); i++ {
-		v, e := tup.Get(i)
-		assert.NoError(t, e)
-		assert.Equal(t, int64(0), v)
-	}
+	tu, ok := v.(tuple.Tuple)
+	assert.True(t, ok)
+	assert.Equal(t, int64(0), tu.GetValue(0))
+	assert.Equal(t, int64(0), tu.GetValue(1))
+}
 
-	_, err = tup.Get(-1)
-	assert.True(t, tuple.IsIndexOutOfBoundsError(err))
+func TestZip_Bad(t *testing.T) {
+	assert.Panics(t, func() {
+		mono.Zip(nil, nil)
+	})
+	assert.Panics(t, func() {
+		mono.Zip(mono.Just(1), nil)
+	})
+	assert.Panics(t, func() {
+		mono.Zip(mono.Just(1), mono.Just(2), nil)
+	})
+	assert.Panics(t, func() {
+		mono.Zip(mono.Just(1), mono.Just(2), nil, mono.Just(3))
+	})
+	assert.Panics(t, func() {
+		mono.Zip(mono.Just(1), mono.Just(2), mono.Just(3), nil)
+	})
+}
 
-	_, err = tup.Get(tup.Len())
-	assert.True(t, tuple.IsIndexOutOfBoundsError(err))
+func TestZipCombine_Bad(t *testing.T) {
+	assert.Panics(t, func() {
+		mono.ZipCombine(nil)
+	})
+	assert.Panics(t, func() {
+		mono.ZipCombine(nil, mono.Just(1))
+	})
+	assert.Panics(t, func() {
+		mono.ZipCombine(nil, mono.Just(1), mono.Just(2), nil)
+	})
+	assert.Panics(t, func() {
+		mono.ZipCombine(nil, nil)
+	})
+	assert.Panics(t, func() {
+		mono.ZipCombine(nil, mono.Just(1), nil)
+	})
 }
 
 func TestZipWithError(t *testing.T) {
@@ -37,32 +65,30 @@ func TestZipWithError(t *testing.T) {
 		fakeErr1 = errors.New("fake error 1")
 		fakeErr2 = errors.New("fake error 2")
 	)
-	val, err := mono.Zip(mono.Error(fakeErr1), mono.Error(fakeErr2)).Block(context.Background())
-	assert.NoError(t, err)
-	tup := val.(tuple.Tuple)
-	_, err = tup.First()
-	assert.Equal(t, fakeErr1, err)
-	_, err = tup.Second()
-	assert.Equal(t, fakeErr2, err)
+	v, err := mono.Zip(mono.Error(fakeErr1), mono.Error(fakeErr2)).Block(context.Background())
+	assert.NoError(t, err, "should not return error")
+	tu := v.(tuple.Tuple)
+	_, e1 := tu.First()
+	_, e2 := tu.Second()
+	assert.Equal(t, fakeErr1, e1)
+	assert.Equal(t, fakeErr2, e2)
 }
 
-func TestZipWithValueAndError(t *testing.T) {
+func TestZipWith_Mixin(t *testing.T) {
 	val, err := mono.Zip(mono.Just(1), mono.Just(2), mono.Error(fakeErr)).Block(context.Background())
 	assert.NoError(t, err)
 	tup := val.(tuple.Tuple)
 	assert.Equal(t, 3, tup.Len())
 }
 
-func TestZipMap(t *testing.T) {
+func TestZip_Map(t *testing.T) {
 	v, err := mono.Zip(mono.Just(1), mono.Just(2), mono.Just(3)).
 		Map(func(any reactor.Any) (reactor.Any, error) {
-			tup := any.(tuple.Tuple)
+			tu := any.(tuple.Tuple)
 			var sum int
-			tup.ForEach(func(v reactor.Any, e error) (ok bool) {
-				sum += v.(int)
-				ok = true
-				return
-			})
+			for i := 0; i < tu.Len(); i++ {
+				sum += tu.GetValue(i).(int)
+			}
 			return sum, nil
 		}).
 		Block(context.Background())
@@ -70,7 +96,7 @@ func TestZipMap(t *testing.T) {
 	assert.Equal(t, 6, v)
 }
 
-func TestZipCancel(t *testing.T) {
+func TestZip_Cancel(t *testing.T) {
 	callDoOnCancel := new(int32)
 	done := make(chan struct{})
 	mono.Zip(
@@ -103,15 +129,20 @@ func TestZipCancel(t *testing.T) {
 	assert.Equal(t, int32(3), atomic.LoadInt32(callDoOnCancel))
 }
 
-func TestZipAll(t *testing.T) {
-	assert.Panics(t, func() {
-		mono.ZipAll()
-	}, "should panic without sources")
-	v, err := mono.ZipAll(mono.Just(1)).Block(context.Background())
+func TestZipCombine(t *testing.T) {
+	cmb := func(items ...*reactor.Item) (reactor.Any, error) {
+		values := make([]reactor.Any, len(items))
+		for i := 0; i < len(items); i++ {
+			values[i] = items[i].V
+		}
+		return values, nil
+	}
+	v, err := mono.ZipCombine(cmb, mono.Just(1), mono.Just(2)).Block(context.Background())
 	assert.NoError(t, err, "should not return error")
-	v, err = v.(tuple.Tuple).First()
-	assert.NoError(t, err, "should not return error")
-	assert.Equal(t, 1, v, "should be same value")
+	values := v.([]reactor.Any)
+	assert.Len(t, values, 2)
+	assert.Equal(t, 1, values[0], "incorrect first value")
+	assert.Equal(t, 2, values[1], "incorrect second value")
 }
 
 func TestZip_context(t *testing.T) {
@@ -132,11 +163,8 @@ func TestZip_EdgeCase(t *testing.T) {
 		FlatMap(func(any reactor.Any) mono.Mono {
 			if any != nil {
 				return mono.Zip(mono.JustOneshot("333"), mono.JustOneshot("44444444")).
-					Filter(func(any reactor.Any) bool {
-						panic("fake panic")
-					}).
 					Map(func(any reactor.Any) (reactor.Any, error) {
-						panic("ddddddd")
+						panic("fake panic")
 					})
 			}
 			return mono.JustOneshot("dddd")
@@ -158,4 +186,23 @@ func TestZip_EdgeCase(t *testing.T) {
 	assert.Equal(t, int32(0), atomic.LoadInt32(nextCnt), "next count should be zero")
 	assert.Equal(t, int32(1), atomic.LoadInt32(errorCnt), "error count should be 1")
 	assert.Equal(t, int32(0), atomic.LoadInt32(completeCnt), "complete count should be zero")
+}
+
+func TestZipWith(t *testing.T) {
+	cmb := func(values ...*reactor.Item) (reactor.Any, error) {
+		var sum int
+		for i := 0; i < len(values); i++ {
+			sum += values[i].V.(int)
+		}
+		return sum, nil
+	}
+	v, err := mono.Just(1).
+		ZipCombineWith(mono.Just(2), cmb).
+		ZipCombineWith(mono.Just(3), cmb).
+		Map(func(any reactor.Any) (reactor.Any, error) {
+			return any.(int) * 2, nil
+		}).
+		Block(context.Background())
+	assert.NoError(t, err, "should not returns with error")
+	assert.Equal(t, (1+2+3)*2, v, "should be (1+2+3)*2")
 }

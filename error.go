@@ -24,6 +24,12 @@ func IsCancelledError(err error) bool {
 	return false
 }
 
+type CompositeError interface {
+	error
+	Len() int
+	At(int) error
+}
+
 type contextError struct {
 	e error
 }
