@@ -8,8 +8,6 @@ import (
 // RequestInfinite means request items indefinitely.
 const RequestInfinite = math.MaxInt32
 
-var emptySubscriber = &subscriber{}
-
 // Subscription represents a one-to-one lifecycle of a Subscriber subscribing to a Publisher.
 type Subscription interface {
 	// Request requests the next N items.
@@ -31,39 +29,39 @@ type Subscriber interface {
 }
 
 type subscriber struct {
-	fnOnSubscribe FnOnSubscribe
-	fnOnNext      FnOnNext
-	fnOnComplete  FnOnComplete
-	fnOnError     FnOnError
+	onSubscribe FnOnSubscribe
+	onNext      FnOnNext
+	onComplete  FnOnComplete
+	onError     FnOnError
 }
 
 func (p *subscriber) OnComplete() {
-	if p == nil || p.fnOnComplete == nil {
+	if p == nil || p.onComplete == nil {
 		return
 	}
-	p.fnOnComplete()
+	p.onComplete()
 }
 
 func (p *subscriber) OnError(err error) {
-	if p == nil || p.fnOnError == nil {
+	if p == nil || p.onError == nil {
 		return
 	}
-	p.fnOnError(err)
+	p.onError(err)
 }
 
 func (p *subscriber) OnSubscribe(ctx context.Context, s Subscription) {
-	if p == nil || p.fnOnSubscribe == nil {
+	if p == nil || p.onSubscribe == nil {
 		s.Request(RequestInfinite)
 	} else {
-		p.fnOnSubscribe(ctx, s)
+		p.onSubscribe(ctx, s)
 	}
 }
 
 func (p *subscriber) OnNext(i Any) {
-	if p.fnOnNext == nil {
+	if p == nil || p.onNext == nil {
 		return
 	}
-	if err := p.fnOnNext(i); err != nil {
+	if err := p.onNext(i); err != nil {
 		p.OnError(err)
 	}
 }
@@ -74,35 +72,35 @@ type SubscriberOption func(*subscriber)
 // OnNext specified a Subscriber.OnNext action.
 func OnNext(onNext FnOnNext) SubscriberOption {
 	return func(s *subscriber) {
-		s.fnOnNext = onNext
+		s.onNext = onNext
 	}
 }
 
 // OnComplete specified a Subscriber.OnComplete action.
 func OnComplete(onComplete FnOnComplete) SubscriberOption {
 	return func(s *subscriber) {
-		s.fnOnComplete = onComplete
+		s.onComplete = onComplete
 	}
 }
 
 // OnError specified a Subscriber.OnError action.
 func OnError(onError FnOnError) SubscriberOption {
 	return func(i *subscriber) {
-		i.fnOnError = onError
+		i.onError = onError
 	}
 }
 
 // OnSubscribe specified a Subscriber.OnSubscribe action.
 func OnSubscribe(onSubscribe FnOnSubscribe) SubscriberOption {
 	return func(i *subscriber) {
-		i.fnOnSubscribe = onSubscribe
+		i.onSubscribe = onSubscribe
 	}
 }
 
 // NewSubscriber creates a Subscriber with given options.
 func NewSubscriber(opts ...SubscriberOption) Subscriber {
 	if len(opts) < 1 {
-		return emptySubscriber
+		return (*subscriber)(nil)
 	}
 	s := &subscriber{}
 	for _, opt := range opts {

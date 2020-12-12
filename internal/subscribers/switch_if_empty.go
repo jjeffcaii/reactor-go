@@ -7,6 +7,11 @@ import (
 	"github.com/jjeffcaii/reactor-go"
 )
 
+var (
+	_ reactor.Subscriber   = (*SwitchIfEmptySubscriber)(nil)
+	_ reactor.Subscription = (*SwitchIfEmptySubscriber)(nil)
+)
+
 type SwitchIfEmptySubscriber struct {
 	ctx       context.Context
 	actual    reactor.Subscriber
@@ -19,7 +24,7 @@ type SwitchIfEmptySubscriber struct {
 
 func (s *SwitchIfEmptySubscriber) Request(n int) {
 	if n < 1 {
-		panic(reactor.ErrNegativeRequest)
+		return
 	}
 	s.requested = n
 	if s.su != nil {

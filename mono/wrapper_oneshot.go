@@ -99,12 +99,12 @@ func (o *oneshotWrapper) DoOnDiscard(discard reactor.FnOnDiscard) Mono {
 }
 
 func (o *oneshotWrapper) SwitchIfEmpty(alternative Mono) Mono {
-	o.RawPublisher = newMonoSwitchIfEmpty(o.RawPublisher, alternative)
+	o.RawPublisher = newMonoSwitchIfEmpty(o.RawPublisher, unpackRawPublisher(alternative))
 	return o
 }
 
-func (o *oneshotWrapper) SwitchIfError(alternative func(error) Mono) Mono {
-	o.RawPublisher = newMonoSwitchIfError(o.RawPublisher, alternative)
+func (o *oneshotWrapper) SwitchIfError(alternativeFunc func(error) Mono) Mono {
+	o.RawPublisher = newMonoSwitchIfError(o.RawPublisher, alternativeFunc)
 	return o
 }
 

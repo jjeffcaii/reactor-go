@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/mock/gomock"
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/mono"
 	"github.com/jjeffcaii/reactor-go/tuple"
@@ -154,11 +155,20 @@ func TestZip_context(t *testing.T) {
 }
 
 func TestZip_EdgeCase(t *testing.T) {
-	var (
-		nextCnt     = new(int32)
-		completeCnt = new(int32)
-		errorCnt    = new(int32)
-	)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	sub := mono.NewMockSubscriber(ctrl)
+
+	sub.EXPECT().OnSubscribe(gomock.Any(), gomock.Any()).
+		Do(func(ctx context.Context, su reactor.Subscription) {
+			su.Request(reactor.RequestInfinite)
+		}).
+		Times(1)
+	sub.EXPECT().OnNext(gomock.Any()).Times(0)
+	sub.EXPECT().OnError(gomock.Any()).Times(1)
+	sub.EXPECT().OnComplete().Times(0)
+
 	mono.Zip(mono.JustOneshot("1"), mono.JustOneshot("2")).
 		FlatMap(func(any reactor.Any) mono.Mono {
 			if any != nil {
@@ -169,23 +179,7 @@ func TestZip_EdgeCase(t *testing.T) {
 			}
 			return mono.JustOneshot("dddd")
 		}).
-		Subscribe(context.Background(),
-			reactor.OnNext(func(v reactor.Any) error {
-				atomic.AddInt32(nextCnt, 1)
-				return nil
-			}),
-			reactor.OnError(func(e error) {
-				atomic.AddInt32(errorCnt, 1)
-				t.Logf("%v", e)
-			}),
-			reactor.OnComplete(func() {
-				atomic.AddInt32(completeCnt, 1)
-			}),
-		)
-
-	assert.Equal(t, int32(0), atomic.LoadInt32(nextCnt), "next count should be zero")
-	assert.Equal(t, int32(1), atomic.LoadInt32(errorCnt), "error count should be 1")
-	assert.Equal(t, int32(0), atomic.LoadInt32(completeCnt), "complete count should be zero")
+		SubscribeWith(context.Background(), sub)
 }
 
 func TestZipWith(t *testing.T) {
@@ -205,4 +199,12 @@ func TestZipWith(t *testing.T) {
 		Block(context.Background())
 	assert.NoError(t, err, "should not returns with error")
 	assert.Equal(t, (1+2+3)*2, v, "should be (1+2+3)*2")
+}
+
+func TestZip_Empty(t *testing.T) {
+	res, err := mono.Zip(mono.Just(1), mono.Empty()).Block(context.Background())
+	assert.NoError(t, err)
+	tu := res.(tuple.Tuple)
+	assert.Equal(t, 1, tu.GetValue(0))
+	assert.Nil(t, tu.GetValue(1))
 }

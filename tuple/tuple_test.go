@@ -79,3 +79,47 @@ func TestEmptyTuple(t *testing.T) {
 	_, err = p.Get(0)
 	validate(err)
 }
+
+func TestTuple_HasError(t *testing.T) {
+	tu := tuple.NewTuple(&reactor.Item{V: 1}, &reactor.Item{E: fakeErr})
+	assert.True(t, tu.HasError())
+	tu = tuple.NewTuple(&reactor.Item{V: 1})
+	assert.False(t, tu.HasError())
+}
+
+func TestTuple_GetValue(t *testing.T) {
+	tu := tuple.NewTuple(&reactor.Item{V: 1}, &reactor.Item{V: 2})
+	assert.Equal(t, 1, tu.GetValue(0))
+	assert.Equal(t, 2, tu.GetValue(1))
+	assert.Nil(t, tu.GetValue(2))
+	assert.Nil(t, tu.GetValue(-1))
+
+	tu = tuple.NewTuple(nil)
+	assert.Nil(t, tu.GetValue(0))
+}
+
+func TestTuple_CollectSlice(t *testing.T) {
+	var err error
+	tu := tuple.NewTuple(&reactor.Item{V: 1}, &reactor.Item{V: 2})
+
+	err = tu.CollectSlice(nil)
+	assert.Error(t, err)
+
+	s := make([]int, 0)
+
+	err = tu.CollectSlice(s)
+	assert.Error(t, err)
+	err = tu.CollectSlice(&s)
+	assert.NoError(t, err)
+	assert.Equal(t, []int{1, 2}, s)
+
+	ss := make([]string, 0)
+	err = tu.CollectSlice(&ss)
+	assert.Error(t, err)
+
+	tu = tuple.NewTuple(nil, &reactor.Item{E: fakeErr}, &reactor.Item{V: 1})
+	s = s[:0]
+	err = tu.CollectSlice(&s)
+	assert.NoError(t, err)
+	assert.Equal(t, []int{1}, s)
+}

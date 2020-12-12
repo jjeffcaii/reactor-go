@@ -7,10 +7,22 @@ import (
 	"github.com/jjeffcaii/reactor-go/mono"
 )
 
-func BenchmarkJust(b *testing.B) {
+func BenchmarkZip(b *testing.B) {
+	first := mono.Just(1)
+	second := mono.Just(2)
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			mono.Just(1).Subscribe(context.Background())
+			mono.Zip(first, second).Subscribe(context.Background())
+		}
+	})
+}
+
+func BenchmarkJust(b *testing.B) {
+	j := mono.Just(1)
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			j.Subscribe(context.Background())
 		}
 	})
 }

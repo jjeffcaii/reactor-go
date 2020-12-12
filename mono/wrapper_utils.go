@@ -50,14 +50,6 @@ func block(ctx context.Context, publisher reactor.RawPublisher) (Any, error) {
 	}
 }
 
-func mustProcessor(publisher reactor.RawPublisher) rawProcessor {
-	rp, ok := publisher.(rawProcessor)
-	if !ok {
-		panic(errNotProcessor)
-	}
-	return rp
-}
-
 func unpackRawPublisher(source Mono) reactor.RawPublisher {
 	if source == nil {
 		return nil

@@ -9,7 +9,7 @@ import (
 	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
-var empty = wrap(newMonoJust(nil))
+var empty = wrap(monoEmpty{})
 var _errJustNilValue = "require non nil value"
 
 func Error(e error) Mono {

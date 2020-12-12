@@ -13,10 +13,8 @@ import (
 
 var (
 	_ reactor.Subscription = (*zipCoordinator)(nil)
-	_ reactor.Subscriber   = (*zipInner)(nil)
+	_ reactor.Subscriber   = (*innerZip)(nil)
 )
-
-type Combinator = func(values ...*reactor.Item) (reactor.Any, error)
 
 func newMonoZip(sources []reactor.RawPublisher, cmb Combinator) *monoZip {
 	return &monoZip{
@@ -28,12 +26,12 @@ func newMonoZip(sources []reactor.RawPublisher, cmb Combinator) *monoZip {
 func newZipCoordinator(actual reactor.Subscriber, size int, cmb Combinator) *zipCoordinator {
 	c := &zipCoordinator{
 		actual:      actual,
-		subscribers: make([]*zipInner, size),
+		subscribers: make([]*innerZip, size),
 		countdown:   int32(size),
 		cmb:         cmb,
 	}
 	for i := 0; i < size; i++ {
-		c.subscribers[i] = &zipInner{
+		c.subscribers[i] = &innerZip{
 			coordinator: c,
 		}
 	}
@@ -43,34 +41,34 @@ func newZipCoordinator(actual reactor.Subscriber, size int, cmb Combinator) *zip
 type zipCoordinator struct {
 	sync.Mutex
 	actual      reactor.Subscriber
-	subscribers []*zipInner
+	subscribers []*innerZip
 	countdown   int32
 	requested   int32
 	cancelled   int32
 	cmb         Combinator
 }
 
-func (z *zipCoordinator) Request(n int) {
+func (zc *zipCoordinator) Request(n int) {
 	if n < 0 {
 		panic("illegal request n")
 	}
 	if n == 0 {
 		return
 	}
-	if !atomic.CompareAndSwapInt32(&z.requested, 0, 1) {
+	if !atomic.CompareAndSwapInt32(&zc.requested, 0, 1) {
 		return
 	}
-	if atomic.LoadInt32(&z.countdown) == 0 {
-		z.collect()
+	if atomic.LoadInt32(&zc.countdown) == 0 {
+		zc.collect()
 	}
 }
 
-func (z *zipCoordinator) Cancel() {
-	if !atomic.CompareAndSwapInt32(&z.cancelled, 0, 1) {
+func (zc *zipCoordinator) Cancel() {
+	if !atomic.CompareAndSwapInt32(&zc.cancelled, 0, 1) {
 		return
 	}
 	var su reactor.Subscription
-	for _, subscriber := range z.subscribers {
+	for _, subscriber := range zc.subscribers {
 		subscriber.Lock()
 		su = subscriber.su
 		subscriber.Unlock()
@@ -81,43 +79,43 @@ func (z *zipCoordinator) Cancel() {
 	}
 }
 
-func (z *zipCoordinator) signal() {
+func (zc *zipCoordinator) signal() {
 	// countdown
-	if atomic.AddInt32(&z.countdown, -1) != 0 {
+	if atomic.AddInt32(&zc.countdown, -1) != 0 {
 		return
 	}
 	// exit if not requested
-	if atomic.LoadInt32(&z.requested) != 1 {
+	if atomic.LoadInt32(&zc.requested) != 1 {
 		return
 	}
 	// finish: collect results
-	z.collect()
+	zc.collect()
 }
 
-func (z *zipCoordinator) collect() {
-	n := len(z.subscribers)
+func (zc *zipCoordinator) collect() {
+	n := len(zc.subscribers)
 	items := make([]*reactor.Item, n)
 	var cur *reactor.Item
 	for i := 0; i < n; i++ {
-		cur = z.subscribers[i].item
+		cur = zc.subscribers[i].item
 		if cur == nil {
 			continue
 		}
 		items[i] = cur
 	}
 
-	res, err := z.combine(items)
+	res, err := zc.combine(items)
 	if err != nil {
-		z.actual.OnError(err)
+		zc.actual.OnError(err)
 		return
 	}
 	if res != nil {
-		z.actual.OnNext(res)
+		zc.actual.OnNext(res)
 	}
-	z.actual.OnComplete()
+	zc.actual.OnComplete()
 }
 
-func (z *zipCoordinator) combine(values []*reactor.Item) (result reactor.Any, err error) {
+func (zc *zipCoordinator) combine(values []*reactor.Item) (result reactor.Any, err error) {
 	defer func() {
 		rec := recover()
 		if rec == nil {
@@ -131,70 +129,70 @@ func (z *zipCoordinator) combine(values []*reactor.Item) (result reactor.Any, er
 		}
 	}()
 
-	if z.cmb == nil {
+	if zc.cmb == nil {
 		result = tuple.NewTuple(values...)
 	} else {
-		result, err = z.cmb(values...)
+		result, err = zc.cmb(values...)
 	}
 	return
 }
 
-type zipInner struct {
+type innerZip struct {
 	sync.Mutex
 	su          reactor.Subscription
 	coordinator *zipCoordinator
 	item        *reactor.Item
 }
 
-func (z *zipInner) OnComplete() {
-	z.Lock()
-	defer z.Unlock()
-	if z.item == nil {
-		z.coordinator.signal()
+func (iz *innerZip) OnComplete() {
+	iz.Lock()
+	defer iz.Unlock()
+	if iz.item == nil {
+		iz.coordinator.signal()
 	}
 }
 
-func (z *zipInner) OnError(err error) {
-	z.Lock()
-	defer z.Unlock()
-	if z.item != nil {
+func (iz *innerZip) OnError(err error) {
+	iz.Lock()
+	defer iz.Unlock()
+	if iz.item != nil {
 		hooks.Global().OnErrorDrop(err)
 		return
 	}
-	z.item = &reactor.Item{
+	iz.item = &reactor.Item{
 		E: err,
 	}
-	z.coordinator.signal()
+	iz.coordinator.signal()
 }
 
-func (z *zipInner) OnNext(any reactor.Any) {
-	z.Lock()
-	defer z.Unlock()
-	if z.item != nil {
+func (iz *innerZip) OnNext(any reactor.Any) {
+	iz.Lock()
+	defer iz.Unlock()
+	if iz.item != nil {
 		hooks.Global().OnNextDrop(any)
 		return
 	}
-	z.item = &reactor.Item{
+	iz.item = &reactor.Item{
 		V: any,
 	}
-	z.coordinator.signal()
+	iz.coordinator.signal()
 }
 
-func (z *zipInner) OnSubscribe(ctx context.Context, su reactor.Subscription) {
+func (iz *innerZip) OnSubscribe(ctx context.Context, su reactor.Subscription) {
 	select {
 	case <-ctx.Done():
-		z.OnError(reactor.NewContextError(ctx.Err()))
+		iz.OnError(reactor.NewContextError(ctx.Err()))
 	default:
 		var exist bool
-		z.Lock()
-		exist = z.su != nil
+		iz.Lock()
+		exist = iz.su != nil
 		if !exist {
-			z.su = su
+			iz.su = su
 		}
-		z.Unlock()
+		iz.Unlock()
 
 		// cancel subscription if parent zip coordinator has been cancelled
-		if exist || atomic.LoadInt32(&z.coordinator.cancelled) == 1 {
+		if exist || atomic.LoadInt32(&iz.coordinator.cancelled) == 1 {
 			su.Cancel()
 		} else {
 			su.Request(reactor.RequestInfinite)

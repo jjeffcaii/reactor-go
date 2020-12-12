@@ -68,19 +68,6 @@ func TestDelay(t *testing.T) {
 	cancel()
 }
 
-func TestSwitchIfEmpty(t *testing.T) {
-	v, err := mono.Just(num).SwitchIfEmpty(mono.Just(num * 2)).Block(context.Background())
-	assert.NoError(t, err, "err occurred")
-	assert.Equal(t, num, v, "bad result")
-	v, err = mono.Empty().
-		SwitchIfEmpty(mono.Just(num)).
-		Map(func(i Any) (Any, error) {
-			return i.(int) * 2, nil
-		}).
-		Block(context.Background())
-	assert.NoError(t, err, "err occurred")
-	assert.Equal(t, 666, v.(int), "bad result")
-}
 
 func TestSuite(t *testing.T) {
 	// TODO: processor

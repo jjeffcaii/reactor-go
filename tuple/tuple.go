@@ -2,13 +2,18 @@ package tuple
 
 import (
 	"errors"
+	"reflect"
 
 	"github.com/jjeffcaii/reactor-go"
+	errors2 "github.com/pkg/errors"
 )
 
 var empty Tuple = (tuple)(nil)
 
-var errIndexOutOfBounds = errors.New("index out of bounds")
+var (
+	errIndexOutOfBounds = errors.New("index out of bounds")
+	errRequireSlicePtr  = errors.New("require slice ptr")
+)
 
 // Tuple is a container of multi elements.
 type Tuple interface {
@@ -24,12 +29,16 @@ type Tuple interface {
 	GetValue(index int) reactor.Any
 	// Len returns the length of Tuple.
 	Len() int
+	// HasError returns true if Tuple contains error.
+	HasError() bool
 	// ForEach execute callback for each element in the Tuple.
 	// If ok returns false, current loop will be broken.
 	ForEach(callback func(v reactor.Any, e error) (ok bool))
 	// ForEachWithIndex execute callback for each element and index in the Tuple.
 	// If ok returns false, current loop will be broken.
 	ForEachWithIndex(callback func(v reactor.Any, e error, index int) (ok bool))
+	// CollectSlice collects values to slice.
+	CollectSlice(slicePtr interface{}) error
 }
 
 // IsIndexOutOfBoundsError returns true if input error is type of "IndexOutOfBounds".
@@ -46,6 +55,43 @@ func NewTuple(items ...*reactor.Item) Tuple {
 }
 
 type tuple []*reactor.Item
+
+func (t tuple) CollectSlice(slicePtr interface{}) (err error) {
+	if slicePtr == nil {
+		err = errRequireSlicePtr
+		return
+	}
+	typ := reflect.TypeOf(slicePtr)
+	if typ.Kind() != reflect.Ptr || typ.Elem().Kind() != reflect.Slice {
+		err = errRequireSlicePtr
+		return
+	}
+	elemType := typ.Elem().Elem()
+
+	value := reflect.ValueOf(slicePtr).Elem()
+
+	for i := 0; i < len(t); i++ {
+		next := t[i]
+		if next == nil || next.E != nil || next.V == nil {
+			continue
+		}
+		v := reflect.ValueOf(next.V)
+		if v.Kind() != elemType.Kind() && !v.Type().AssignableTo(elemType) {
+			return errors2.Errorf("incorrect slice element type %s", v.Type())
+		}
+		value.Set(reflect.Append(value, v))
+	}
+	return nil
+}
+
+func (t tuple) HasError() bool {
+	for i := 0; i < len(t); i++ {
+		if cur := t[i]; cur != nil && cur.E != nil {
+			return true
+		}
+	}
+	return false
+}
 
 func (t tuple) GetValue(index int) reactor.Any {
 	value, _ := t.Get(index)

@@ -8,15 +8,33 @@ import (
 	"github.com/pkg/errors"
 )
 
-var _mapSubscriberPool = sync.Pool{
-	New: func() interface{} {
-		return new(mapSubscriber)
-	},
+var globalMapSubscriberPool mapSubscriberPool
+
+func newMonoMap(source reactor.RawPublisher, tf reactor.Transformer) monoMap {
+	return monoMap{
+		source: source,
+		mapper: tf,
+	}
 }
 
-type mapSubscriber struct {
-	actual reactor.Subscriber
-	t      reactor.Transformer
+type mapSubscriberPool struct {
+	inner sync.Pool
+}
+
+func (p *mapSubscriberPool) get() *mapSubscriber {
+	if exist, _ := p.inner.Get().(*mapSubscriber); exist != nil {
+		return exist
+	}
+	return &mapSubscriber{}
+}
+
+func (p *mapSubscriberPool) put(s *mapSubscriber) {
+	if s == nil {
+		return
+	}
+	s.actual = nil
+	s.t = nil
+	p.inner.Put(s)
 }
 
 type monoMap struct {
@@ -28,42 +46,31 @@ func (m monoMap) Parent() reactor.RawPublisher {
 	return m.source
 }
 
-func newMonoMap(source reactor.RawPublisher, tf reactor.Transformer) monoMap {
-	return monoMap{
-		source: source,
-		mapper: tf,
-	}
+func (m monoMap) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
+	su := globalMapSubscriberPool.get()
+	su.actual = s
+	su.t = m.mapper
+	m.source.SubscribeWith(ctx, su)
 }
 
-func borrowMapSubscriber(s reactor.Subscriber, t reactor.Transformer) *mapSubscriber {
-	sub := _mapSubscriberPool.Get().(*mapSubscriber)
-	sub.actual = s
-	sub.t = t
-	return sub
-}
-
-func returnMapSubscriber(s *mapSubscriber) {
-	if s == nil {
-		return
-	}
-	s.actual = nil
-	s.t = nil
-	_mapSubscriberPool.Put(s)
+type mapSubscriber struct {
+	actual reactor.Subscriber
+	t      reactor.Transformer
 }
 
 func (m *mapSubscriber) OnComplete() {
 	if m == nil || m.actual == nil || m.t == nil {
 		return
 	}
-	defer returnMapSubscriber(m)
-	m.actual.OnComplete()
+	defer
+		m.actual.OnComplete()
 }
 
 func (m *mapSubscriber) OnError(err error) {
 	if m == nil || m.actual == nil || m.t == nil {
 		return
 	}
-	defer returnMapSubscriber(m)
+	defer globalMapSubscriberPool.put(m)
 	m.actual.OnError(err)
 }
 
@@ -96,8 +103,4 @@ func (m *mapSubscriber) OnSubscribe(ctx context.Context, s reactor.Subscription)
 		return
 	}
 	m.actual.OnSubscribe(ctx, s)
-}
-
-func (m monoMap) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
-	m.source.SubscribeWith(ctx, borrowMapSubscriber(s, m.mapper))
 }
