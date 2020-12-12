@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/jjeffcaii/reactor-go/scheduler"
 	"github.com/stretchr/testify/assert"
@@ -36,4 +37,21 @@ func TestNewElastic(t *testing.T) {
 	assert.Error(t, sc.Worker().Do(func() {
 		// noop
 	}), "should return error after closing scheduler")
+}
+
+func TestElasticBounded(t *testing.T) {
+	const total = 1000
+	var wg sync.WaitGroup
+	wg.Add(total)
+	start := time.Now()
+	worker := scheduler.ElasticBounded().Worker()
+	for range [total]struct{}{} {
+		err := worker.Do(func() {
+			time.Sleep(10 * time.Millisecond)
+			wg.Done()
+		})
+		assert.NoError(t, err)
+	}
+	wg.Wait()
+	assert.Less(t, int64(time.Since(start)), int64(20*time.Millisecond), "bad result")
 }

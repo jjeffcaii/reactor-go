@@ -13,10 +13,6 @@ type monoSwitchIfError struct {
 	sw     func(error) Mono
 }
 
-func (m monoSwitchIfError) Parent() reactor.RawPublisher {
-	return m.source
-}
-
 func (m monoSwitchIfError) SubscribeWith(ctx context.Context, actual reactor.Subscriber) {
 	alternative := func(err error) (pub reactor.RawPublisher) {
 		if m.sw == nil {

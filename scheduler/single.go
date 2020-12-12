@@ -3,7 +3,6 @@ package scheduler
 import (
 	"errors"
 	"sync"
-	"sync/atomic"
 
 	"github.com/jjeffcaii/reactor-go/internal/buffer"
 )
@@ -18,7 +17,6 @@ var (
 )
 
 type singleScheduler struct {
-	closed  int32
 	jobs    *buffer.Unbounded
 	started sync.Once
 }
@@ -42,9 +40,6 @@ func (p *singleScheduler) start() {
 }
 
 func (p *singleScheduler) Do(j Task) error {
-	if atomic.LoadInt32(&p.closed) == 1 {
-		return errSchedulerClosed
-	}
 	if !p.jobs.Put(j) {
 		return errSchedulerClosed
 	}

@@ -45,19 +45,19 @@ func TestZip_Bad(t *testing.T) {
 
 func TestZipCombine_Bad(t *testing.T) {
 	assert.Panics(t, func() {
-		mono.ZipCombine(nil)
-	})
-	assert.Panics(t, func() {
-		mono.ZipCombine(nil, mono.Just(1))
-	})
-	assert.Panics(t, func() {
-		mono.ZipCombine(nil, mono.Just(1), mono.Just(2), nil)
-	})
-	assert.Panics(t, func() {
 		mono.ZipCombine(nil, nil)
 	})
 	assert.Panics(t, func() {
-		mono.ZipCombine(nil, mono.Just(1), nil)
+		mono.ZipCombine(nil, nil, mono.Just(1))
+	})
+	assert.Panics(t, func() {
+		mono.ZipCombine(nil, nil, mono.Just(1), mono.Just(2), nil)
+	})
+	assert.Panics(t, func() {
+		mono.ZipCombine(nil, nil, nil)
+	})
+	assert.Panics(t, func() {
+		mono.ZipCombine(nil, nil, mono.Just(1), nil)
 	})
 }
 
@@ -120,6 +120,7 @@ func TestZip_Cancel(t *testing.T) {
 			reactor.OnSubscribe(func(ctx context.Context, su reactor.Subscription) {
 				time.Sleep(100 * time.Millisecond)
 				su.Cancel()
+				su.Cancel()
 			}),
 			reactor.OnNext(func(v reactor.Any) error {
 				t.Log("next:", v)
@@ -138,7 +139,7 @@ func TestZipCombine(t *testing.T) {
 		}
 		return values, nil
 	}
-	v, err := mono.ZipCombine(cmb, mono.Just(1), mono.Just(2)).Block(context.Background())
+	v, err := mono.ZipCombine(cmb, nil, mono.Just(1), mono.Just(2)).Block(context.Background())
 	assert.NoError(t, err, "should not return error")
 	values := v.([]reactor.Any)
 	assert.Len(t, values, 2)
@@ -207,4 +208,56 @@ func TestZip_Empty(t *testing.T) {
 	tu := res.(tuple.Tuple)
 	assert.Equal(t, 1, tu.GetValue(0))
 	assert.Nil(t, tu.GetValue(1))
+
+	res, err = mono.
+		Zip(
+			mono.Just(1).
+				Filter(func(any reactor.Any) bool {
+					return any.(int) > 1
+				}),
+			mono.Just(2),
+		).
+		Block(context.Background())
+	assert.NoError(t, err)
+	tu = res.(tuple.Tuple)
+	assert.Nil(t, tu.GetValue(0))
+	assert.Equal(t, 2, tu.GetValue(1))
+}
+
+func TestZipCombineWithItemHandler(t *testing.T) {
+	var cnt int
+	handler := func(item *reactor.Item) {
+		cnt++
+	}
+	mono.ZipCombine(nil, handler, mono.Just(1), mono.Error(fakeErr)).Subscribe(context.Background())
+	assert.Equal(t, 2, cnt)
+}
+
+func TestZipCombine_Panic(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	s := mono.NewMockSubscriber(ctrl)
+	onSub := func(ctx context.Context, su reactor.Subscription) {
+		su.Request(-1)
+		su.Request(0)
+		su.Request(1)
+		su.Request(reactor.RequestInfinite)
+	}
+	s.EXPECT().OnSubscribe(gomock.Any(), gomock.Any()).Do(onSub).Times(1)
+	s.EXPECT().OnError(gomock.Any()).Times(1)
+	s.EXPECT().OnNext(gomock.Any()).Times(0)
+	s.EXPECT().OnComplete().Times(0)
+
+	cmb := func(values ...*reactor.Item) (reactor.Any, error) {
+		panic("fake panic")
+	}
+	mono.ZipCombine(cmb, nil, mono.Just(1), mono.Just(2)).SubscribeWith(context.Background(), s)
+}
+
+func TestZipOneshot(t *testing.T) {
+	res, err := mono.ZipOneshot(mono.JustOneshot(1), mono.JustOneshot(2).Timeout(10*time.Millisecond)).Block(context.Background())
+	assert.NoError(t, err)
+	tu := res.(tuple.Tuple)
+	assert.Equal(t, 1, tu.GetValue(0))
+	assert.Equal(t, 2, tu.GetValue(1))
 }

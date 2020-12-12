@@ -42,10 +42,6 @@ type monoMap struct {
 	mapper reactor.Transformer
 }
 
-func (m monoMap) Parent() reactor.RawPublisher {
-	return m.source
-}
-
 func (m monoMap) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
 	su := globalMapSubscriberPool.get()
 	su.actual = s
@@ -62,8 +58,7 @@ func (m *mapSubscriber) OnComplete() {
 	if m == nil || m.actual == nil || m.t == nil {
 		return
 	}
-	defer
-		m.actual.OnComplete()
+	defer m.actual.OnComplete()
 }
 
 func (m *mapSubscriber) OnError(err error) {

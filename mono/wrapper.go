@@ -96,7 +96,7 @@ func (w wrapper) ZipCombineWith(other Mono, cmb Combinator) Mono {
 		w.RawPublisher,
 		unpackRawPublisher(other),
 	}
-	return wrap(newMonoZip(publishers, cmb))
+	return wrap(newMonoZip(publishers, cmb, nil))
 }
 
 func (w wrapper) Raw() reactor.RawPublisher {

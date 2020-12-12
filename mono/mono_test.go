@@ -68,7 +68,6 @@ func TestDelay(t *testing.T) {
 	cancel()
 }
 
-
 func TestSuite(t *testing.T) {
 	// TODO: processor
 	//pc := mono.CreateProcessor()

@@ -16,19 +16,21 @@ var (
 	_ reactor.Subscriber   = (*innerZip)(nil)
 )
 
-func newMonoZip(sources []reactor.RawPublisher, cmb Combinator) *monoZip {
+func newMonoZip(sources []reactor.RawPublisher, cmb Combinator, itemHandler func(*reactor.Item)) *monoZip {
 	return &monoZip{
-		sources: sources,
-		cmb:     cmb,
+		sources:     sources,
+		cmb:         cmb,
+		itemHandler: itemHandler,
 	}
 }
 
-func newZipCoordinator(actual reactor.Subscriber, size int, cmb Combinator) *zipCoordinator {
+func newZipCoordinator(actual reactor.Subscriber, size int, cmb Combinator, itemHandler func(*reactor.Item)) *zipCoordinator {
 	c := &zipCoordinator{
 		actual:      actual,
 		subscribers: make([]*innerZip, size),
 		countdown:   int32(size),
 		cmb:         cmb,
+		itemHandler: itemHandler,
 	}
 	for i := 0; i < size; i++ {
 		c.subscribers[i] = &innerZip{
@@ -46,13 +48,11 @@ type zipCoordinator struct {
 	requested   int32
 	cancelled   int32
 	cmb         Combinator
+	itemHandler func(*reactor.Item)
 }
 
 func (zc *zipCoordinator) Request(n int) {
-	if n < 0 {
-		panic("illegal request n")
-	}
-	if n == 0 {
+	if n < 1 {
 		return
 	}
 	if !atomic.CompareAndSwapInt32(&zc.requested, 0, 1) {
@@ -121,7 +121,6 @@ func (zc *zipCoordinator) combine(values []*reactor.Item) (result reactor.Any, e
 		if rec == nil {
 			return
 		}
-		// TODO: drop value and error
 		if e, ok := rec.(error); ok {
 			err = errors.WithStack(e)
 		} else {
@@ -162,6 +161,9 @@ func (iz *innerZip) OnError(err error) {
 	iz.item = &reactor.Item{
 		E: err,
 	}
+	if iz.coordinator.itemHandler != nil {
+		iz.coordinator.itemHandler(iz.item)
+	}
 	iz.coordinator.signal()
 }
 
@@ -174,6 +176,9 @@ func (iz *innerZip) OnNext(any reactor.Any) {
 	}
 	iz.item = &reactor.Item{
 		V: any,
+	}
+	if iz.coordinator.itemHandler != nil {
+		iz.coordinator.itemHandler(iz.item)
 	}
 	iz.coordinator.signal()
 }
@@ -201,8 +206,9 @@ func (iz *innerZip) OnSubscribe(ctx context.Context, su reactor.Subscription) {
 }
 
 type monoZip struct {
-	sources []reactor.RawPublisher
-	cmb     Combinator
+	sources     []reactor.RawPublisher
+	cmb         Combinator
+	itemHandler func(*reactor.Item)
 }
 
 func (m *monoZip) SubscribeWith(ctx context.Context, sub reactor.Subscriber) {
@@ -210,7 +216,7 @@ func (m *monoZip) SubscribeWith(ctx context.Context, sub reactor.Subscriber) {
 	case <-ctx.Done():
 		sub.OnError(reactor.NewContextError(ctx.Err()))
 	default:
-		c := newZipCoordinator(sub, len(m.sources), m.cmb)
+		c := newZipCoordinator(sub, len(m.sources), m.cmb, m.itemHandler)
 		sub.OnSubscribe(ctx, c)
 
 		subscribers := c.subscribers

@@ -2,6 +2,7 @@ package mono
 
 import (
 	"context"
+	"math"
 	"sync"
 	"sync/atomic"
 
@@ -10,10 +11,27 @@ import (
 	"github.com/pkg/errors"
 )
 
-var _sinkPool = sync.Pool{
-	New: func() interface{} {
-		return new(sink)
-	},
+var globalSinkPool sinkPool
+
+type sinkPool struct {
+	inner sync.Pool
+}
+
+func (p *sinkPool) get() *sink {
+	if exist, _ := p.inner.Get().(*sink); exist != nil {
+		atomic.StoreInt32(&exist.stat, 0)
+		return exist
+	}
+	return &sink{}
+}
+
+func (p *sinkPool) put(s *sink) {
+	if s == nil {
+		return
+	}
+	s.actual = nil
+	atomic.StoreInt32(&s.stat, math.MinInt32)
+	p.inner.Put(s)
 }
 
 type Sink interface {
@@ -28,18 +46,6 @@ type monoCreate struct {
 type sink struct {
 	actual reactor.Subscriber
 	stat   int32
-}
-
-func borrowSink(sub reactor.Subscriber) *sink {
-	s := _sinkPool.Get().(*sink)
-	atomic.StoreInt32(&s.stat, 0)
-	s.actual = sub
-	return s
-}
-
-func returnSink(s *sink) {
-	s.actual = nil
-	_sinkPool.Put(s)
 }
 
 func newMonoCreate(gen func(context.Context, Sink)) monoCreate {
@@ -79,9 +85,7 @@ func (s *sink) Success(v Any) {
 }
 
 func (s *sink) Request(n int) {
-	if n < 1 {
-		panic(reactor.ErrNegativeRequest)
-	}
+	// ignore
 }
 
 func (s *sink) Cancel() {
@@ -89,19 +93,19 @@ func (s *sink) Cancel() {
 }
 
 func (s *sink) Complete() {
-	defer returnSink(s)
+	defer globalSinkPool.put(s)
 	if atomic.CompareAndSwapInt32(&s.stat, 0, statComplete) {
 		s.actual.OnComplete()
 	}
 }
 
 func (s *sink) Error(err error) {
-	defer returnSink(s)
-	if atomic.CompareAndSwapInt32(&s.stat, 0, statError) {
-		s.actual.OnError(err)
+	defer globalSinkPool.put(s)
+	if !atomic.CompareAndSwapInt32(&s.stat, 0, statError) {
+		hooks.Global().OnErrorDrop(err)
 		return
 	}
-	hooks.Global().OnErrorDrop(err)
+	s.actual.OnError(err)
 }
 
 func (s *sink) Next(v Any) {
@@ -120,7 +124,8 @@ func (s *sink) Next(v Any) {
 }
 
 func (m monoCreate) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
-	sink := borrowSink(s)
-	s.OnSubscribe(ctx, sink)
-	m.sinker(ctx, sink)
+	sk := globalSinkPool.get()
+	sk.actual = s
+	s.OnSubscribe(ctx, sk)
+	m.sinker(ctx, sk)
 }

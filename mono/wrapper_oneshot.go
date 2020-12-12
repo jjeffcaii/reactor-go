@@ -128,7 +128,7 @@ func (o *oneshotWrapper) ZipCombineWith(other Mono, cmb Combinator) Mono {
 		o.RawPublisher,
 		second,
 	}
-	o.RawPublisher = newMonoZip(pubs, cmb)
+	o.RawPublisher = newMonoZip(pubs, cmb, nil)
 	return o
 }
 

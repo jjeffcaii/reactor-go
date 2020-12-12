@@ -19,10 +19,6 @@ type monoPeek struct {
 	onCancelCall    reactor.FnOnCancel
 }
 
-func (p *monoPeek) Parent() reactor.RawPublisher {
-	return p.source
-}
-
 type peekSubscriber struct {
 	actual reactor.Subscriber
 	parent *monoPeek
@@ -56,6 +52,9 @@ func (p *peekSubscriber) Request(n int) {
 }
 
 func (p *peekSubscriber) Cancel() {
+	if !atomic.CompareAndSwapInt32(&p.stat, 0, statCancel) {
+		return
+	}
 	if call := p.parent.onCancelCall; call != nil {
 		call()
 	}
