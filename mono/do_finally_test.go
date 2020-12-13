@@ -4,14 +4,24 @@ import (
 	"context"
 	"testing"
 
+	"github.com/golang/mock/gomock"
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/mono"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestDoFinally(t *testing.T) {
+	const fakeValue = 42
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	sub := mono.NewMockSubscriber(ctrl)
+	sub.EXPECT().OnSubscribe(gomock.Any(), gomock.Any()).Do(mono.MockRequestInfinite).Times(1)
+	sub.EXPECT().OnNext(gomock.Any()).Times(1)
+	sub.EXPECT().OnError(gomock.Any()).Times(0)
+	sub.EXPECT().OnComplete().Times(1)
+
 	var seq []int
-	mono.Just(77778888).
+	mono.Just(fakeValue).
 		DoOnNext(func(v reactor.Any) error {
 			seq = append(seq, 1)
 			return nil
@@ -23,6 +33,6 @@ func TestDoFinally(t *testing.T) {
 			seq = append(seq, 2)
 			return nil
 		}).
-		Subscribe(context.Background())
+		SubscribeWith(context.Background(), sub)
 	assert.Equal(t, []int{1, 2, 3}, seq, "wrong execute order")
 }

@@ -12,10 +12,6 @@ type monoSwitchIfEmpty struct {
 	other  reactor.RawPublisher
 }
 
-func (m *monoSwitchIfEmpty) Parent() reactor.RawPublisher {
-	return m.source
-}
-
 func (m *monoSwitchIfEmpty) SubscribeWith(ctx context.Context, actual reactor.Subscriber) {
 	s := subscribers.NewSwitchIfEmptySubscriber(m.other, actual)
 	actual.OnSubscribe(ctx, s)

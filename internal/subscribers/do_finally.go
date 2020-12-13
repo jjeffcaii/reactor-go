@@ -48,6 +48,9 @@ func (d *DoFinallySubscriber) Request(n int) {
 }
 
 func (d *DoFinallySubscriber) Cancel() {
+	if d.s == nil {
+		return
+	}
 	d.s.Cancel()
 	d.runFinally(reactor.SignalTypeCancel)
 }

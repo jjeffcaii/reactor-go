@@ -5,6 +5,7 @@ import (
 	"sync/atomic"
 
 	"github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go/hooks"
 	"github.com/pkg/errors"
 )
 
@@ -63,13 +64,16 @@ func (p *flatMapSubscriber) OnComplete() {
 }
 
 func (p *flatMapSubscriber) OnError(err error) {
-	if atomic.CompareAndSwapInt32(&p.stat, 0, statError) {
-		p.actual.OnError(err)
+	if !atomic.CompareAndSwapInt32(&p.stat, 0, statError) {
+		hooks.Global().OnErrorDrop(err)
+		return
 	}
+	p.actual.OnError(err)
 }
 
 func (p *flatMapSubscriber) OnNext(v Any) {
 	if atomic.LoadInt32(&p.stat) != 0 {
+		hooks.Global().OnNextDrop(v)
 		return
 	}
 	nextMono, err := p.computeNextMono(v)
@@ -117,10 +121,6 @@ func newFlatMapSubscriber(actual reactor.Subscriber, mapper FlatMapper) *flatMap
 type monoFlatMap struct {
 	source reactor.RawPublisher
 	mapper FlatMapper
-}
-
-func (m *monoFlatMap) Parent() reactor.RawPublisher {
-	return m.source
 }
 
 func (m *monoFlatMap) SubscribeWith(ctx context.Context, actual reactor.Subscriber) {

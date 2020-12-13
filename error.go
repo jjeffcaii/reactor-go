@@ -18,9 +18,6 @@ func IsCancelledError(err error) bool {
 	if _, ok := err.(contextError); ok {
 		return true
 	}
-	if _, ok := err.(*contextError); ok {
-		return true
-	}
 	return false
 }
 

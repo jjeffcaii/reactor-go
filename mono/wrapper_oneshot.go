@@ -99,12 +99,12 @@ func (o *oneshotWrapper) DoOnDiscard(discard reactor.FnOnDiscard) Mono {
 }
 
 func (o *oneshotWrapper) SwitchIfEmpty(alternative Mono) Mono {
-	o.RawPublisher = newMonoSwitchIfEmpty(o.RawPublisher, alternative)
+	o.RawPublisher = newMonoSwitchIfEmpty(o.RawPublisher, unpackRawPublisher(alternative))
 	return o
 }
 
-func (o *oneshotWrapper) SwitchIfError(alternative func(error) Mono) Mono {
-	o.RawPublisher = newMonoSwitchIfError(o.RawPublisher, alternative)
+func (o *oneshotWrapper) SwitchIfError(alternativeFunc func(error) Mono) Mono {
+	o.RawPublisher = newMonoSwitchIfError(o.RawPublisher, alternativeFunc)
 	return o
 }
 
@@ -115,6 +115,20 @@ func (o *oneshotWrapper) DelayElement(delay time.Duration) Mono {
 
 func (o *oneshotWrapper) Timeout(timeout time.Duration) Mono {
 	o.RawPublisher = newMonoTimeout(o.RawPublisher, timeout)
+	return o
+}
+
+func (o *oneshotWrapper) ZipWith(other Mono) Mono {
+	return o.ZipCombineWith(other, nil)
+}
+
+func (o *oneshotWrapper) ZipCombineWith(other Mono, cmb Combinator) Mono {
+	second := unpackRawPublisher(other)
+	pubs := []reactor.RawPublisher{
+		o.RawPublisher,
+		second,
+	}
+	o.RawPublisher = newMonoZip(pubs, cmb, nil)
 	return o
 }
 

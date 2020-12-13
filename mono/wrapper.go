@@ -2,104 +2,105 @@ package mono
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
-var errNotProcessor = errors.New("publisher is not a Processor")
-
 type wrapper struct {
 	reactor.RawPublisher
 }
 
-func (p wrapper) Subscribe(ctx context.Context, options ...reactor.SubscriberOption) {
-	p.SubscribeWith(ctx, reactor.NewSubscriber(options...))
+func (w wrapper) Subscribe(ctx context.Context, options ...reactor.SubscriberOption) {
+	w.SubscribeWith(ctx, reactor.NewSubscriber(options...))
 }
 
-func (p wrapper) SwitchIfEmpty(alternative Mono) Mono {
-	return wrap(newMonoSwitchIfEmpty(p.RawPublisher, alternative))
+func (w wrapper) SwitchIfEmpty(alternative Mono) Mono {
+	return wrap(newMonoSwitchIfEmpty(w.RawPublisher, unpackRawPublisher(alternative)))
 }
 
-func (p wrapper) SwitchIfError(alternative func(error) Mono) Mono {
-	return wrap(newMonoSwitchIfError(p.RawPublisher, alternative))
+func (w wrapper) SwitchIfError(alternativeFunc func(error) Mono) Mono {
+	return wrap(newMonoSwitchIfError(w.RawPublisher, alternativeFunc))
 }
 
-func (p wrapper) Filter(f reactor.Predicate) Mono {
-	return wrap(newMonoFilter(p.RawPublisher, f))
+func (w wrapper) Filter(f reactor.Predicate) Mono {
+	return wrap(newMonoFilter(w.RawPublisher, f))
 }
 
-func (p wrapper) Map(t reactor.Transformer) Mono {
-	return wrap(newMonoMap(p.RawPublisher, t))
+func (w wrapper) Map(t reactor.Transformer) Mono {
+	return wrap(newMonoMap(w.RawPublisher, t))
 }
 
-func (p wrapper) FlatMap(mapper FlatMapper) Mono {
-	return wrap(newMonoFlatMap(p.RawPublisher, mapper))
+func (w wrapper) FlatMap(mapper FlatMapper) Mono {
+	return wrap(newMonoFlatMap(w.RawPublisher, mapper))
 }
 
-func (p wrapper) SubscribeOn(sc scheduler.Scheduler) Mono {
-	return wrap(newMonoScheduleOn(p.RawPublisher, sc))
+func (w wrapper) SubscribeOn(sc scheduler.Scheduler) Mono {
+	return wrap(newMonoScheduleOn(w.RawPublisher, sc))
 }
 
-func (p wrapper) DoOnNext(fn reactor.FnOnNext) Mono {
-	return wrap(newMonoPeek(p.RawPublisher, peekNext(fn)))
+func (w wrapper) DoOnNext(fn reactor.FnOnNext) Mono {
+	return wrap(newMonoPeek(w.RawPublisher, peekNext(fn)))
 }
 
-func (p wrapper) DoOnError(fn reactor.FnOnError) Mono {
-	return wrap(newMonoPeek(p.RawPublisher, peekError(fn)))
+func (w wrapper) DoOnError(fn reactor.FnOnError) Mono {
+	return wrap(newMonoPeek(w.RawPublisher, peekError(fn)))
 }
 
-func (p wrapper) DoOnComplete(fn reactor.FnOnComplete) Mono {
-	return wrap(newMonoPeek(p.RawPublisher, peekComplete(fn)))
+func (w wrapper) DoOnComplete(fn reactor.FnOnComplete) Mono {
+	return wrap(newMonoPeek(w.RawPublisher, peekComplete(fn)))
 }
 
-func (p wrapper) DoOnCancel(fn reactor.FnOnCancel) Mono {
-	return wrap(newMonoPeek(p.RawPublisher, peekCancel(fn)))
+func (w wrapper) DoOnCancel(fn reactor.FnOnCancel) Mono {
+	return wrap(newMonoPeek(w.RawPublisher, peekCancel(fn)))
 }
 
-func (p wrapper) DoOnDiscard(fn reactor.FnOnDiscard) Mono {
-	return wrap(newMonoContext(p.RawPublisher, withContextDiscard(fn)))
+func (w wrapper) DoOnDiscard(fn reactor.FnOnDiscard) Mono {
+	return wrap(newMonoContext(w.RawPublisher, withContextDiscard(fn)))
 }
 
-func (p wrapper) DoFinally(fn reactor.FnOnFinally) Mono {
-	return wrap(newMonoDoFinally(p.RawPublisher, fn))
+func (w wrapper) DoFinally(fn reactor.FnOnFinally) Mono {
+	return wrap(newMonoDoFinally(w.RawPublisher, fn))
 }
 
-func (p wrapper) SwitchValueIfError(v Any) Mono {
-	return wrap(newMonoDoCreateIfError(p.RawPublisher, v))
+func (w wrapper) SwitchValueIfError(v Any) Mono {
+	return wrap(newMonoDoCreateIfError(w.RawPublisher, v))
 }
 
-func (p wrapper) DoOnSubscribe(fn reactor.FnOnSubscribe) Mono {
-	return wrap(newMonoPeek(p.RawPublisher, peekSubscribe(fn)))
+func (w wrapper) DoOnSubscribe(fn reactor.FnOnSubscribe) Mono {
+	return wrap(newMonoPeek(w.RawPublisher, peekSubscribe(fn)))
 }
 
-func (p wrapper) DelayElement(delay time.Duration) Mono {
-	return wrap(newMonoDelayElement(p.RawPublisher, delay, scheduler.Parallel()))
+func (w wrapper) DelayElement(delay time.Duration) Mono {
+	return wrap(newMonoDelayElement(w.RawPublisher, delay, scheduler.Parallel()))
 }
 
-func (p wrapper) Timeout(timeout time.Duration) Mono {
+func (w wrapper) Timeout(timeout time.Duration) Mono {
 	if timeout <= 0 {
-		return p
+		return w
 	}
-	return wrap(newMonoTimeout(p.RawPublisher, timeout))
+	return wrap(newMonoTimeout(w.RawPublisher, timeout))
 }
 
-func (p wrapper) Block(ctx context.Context) (Any, error) {
-	return block(ctx, p.RawPublisher)
+func (w wrapper) Block(ctx context.Context) (Any, error) {
+	return block(ctx, w.RawPublisher)
 }
 
-func (p wrapper) Success(v Any) {
-	mustProcessor(p.RawPublisher).Success(v)
+func (w wrapper) ZipWith(other Mono) Mono {
+	return w.ZipCombineWith(other, nil)
 }
 
-func (p wrapper) Error(e error) {
-	mustProcessor(p.RawPublisher).Error(e)
+func (w wrapper) ZipCombineWith(other Mono, cmb Combinator) Mono {
+	publishers := []reactor.RawPublisher{
+		w.RawPublisher,
+		unpackRawPublisher(other),
+	}
+	return wrap(newMonoZip(publishers, cmb, nil))
 }
 
-func (p wrapper) Raw() reactor.RawPublisher {
-	return p.RawPublisher
+func (w wrapper) Raw() reactor.RawPublisher {
+	return w.RawPublisher
 }
 
 func wrap(r reactor.RawPublisher) wrapper {
