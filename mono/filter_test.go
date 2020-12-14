@@ -30,4 +30,27 @@ func TestMonoFilter(t *testing.T) {
 	sub.EXPECT().OnSubscribe(gomock.Any(), gomock.Any()).Do(MockRequestInfinite).Times(1)
 
 	newMonoFilter(newMonoJust(-42), predicate).SubscribeWith(context.Background(), sub)
+
+	sub = NewMockSubscriber(ctrl)
+	sub.EXPECT().OnNext(gomock.Any()).Times(0)
+	sub.EXPECT().OnComplete().Times(1)
+	sub.EXPECT().OnError(gomock.Any()).Times(0)
+	sub.EXPECT().OnSubscribe(gomock.Any(), gomock.Any()).Do(MockRequestInfinite).Times(1)
+
+	newMonoFilter(newMonoEmpty(), func(any reactor.Any) bool {
+		return true
+	}).SubscribeWith(context.Background(), sub)
+}
+
+func TestMonoFilter_Panic(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	sub := NewMockSubscriber(ctrl)
+	sub.EXPECT().OnNext(gomock.Any()).Times(0)
+	sub.EXPECT().OnComplete().Times(0)
+	sub.EXPECT().OnError(gomock.Any()).Times(1)
+	sub.EXPECT().OnSubscribe(gomock.Any(), gomock.Any()).Do(MockRequestInfinite).Times(1)
+	newMonoFilter(newMonoJust(1), func(any reactor.Any) bool {
+		panic("fake panic")
+	}).SubscribeWith(context.Background(), sub)
 }

@@ -8,6 +8,12 @@ import (
 	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
+const (
+	statCancel   = -1
+	statError    = -2
+	statComplete = 2
+)
+
 // Alias
 type (
 	Any        = reactor.Any

@@ -7,9 +7,37 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/jjeffcaii/reactor-go"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestCreate_Panic(t *testing.T) {
+func TestMonoCreate_SubscribeWith(t *testing.T) {
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	s := NewMockSubscriber(ctrl)
+	s.EXPECT().OnSubscribe(gomock.Any(), gomock.Any()).Do(MockRequestInfinite).Times(1)
+	s.EXPECT().OnNext(gomock.Eq(1)).Times(1)
+	s.EXPECT().OnComplete().Times(1)
+	s.EXPECT().OnError(gomock.Any()).Times(0)
+
+	newMonoCreate(func(ctx context.Context, s Sink) {
+		s.Success(1)
+	}).SubscribeWith(context.Background(), s)
+
+	fakeErr := errors.New("fake error")
+
+	s = NewMockSubscriber(ctrl)
+	s.EXPECT().OnSubscribe(gomock.Any(), gomock.Any()).Do(MockRequestInfinite).Times(1)
+	s.EXPECT().OnNext(gomock.Any()).Times(0)
+	s.EXPECT().OnComplete().Times(0)
+	s.EXPECT().OnError(gomock.Eq(fakeErr)).Times(1)
+
+	newMonoCreate(func(ctx context.Context, s Sink) {
+		s.Error(fakeErr)
+	}).SubscribeWith(context.Background(), s)
+}
+
+func TestMonoCreate_Panic(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	s := NewMockSubscriber(ctrl)
@@ -28,7 +56,7 @@ func TestCreate_Panic(t *testing.T) {
 	}).SubscribeWith(context.Background(), s)
 }
 
-func TestCreate_OnNextPanic(t *testing.T) {
+func TestMonoCreate_OnNextPanic(t *testing.T) {
 	var cnt int
 	onError := reactor.OnError(func(e error) {
 		cnt++
@@ -50,4 +78,28 @@ func TestCreate_OnNextPanic(t *testing.T) {
 			}),
 			onError,
 		))
+}
+
+func TestMonoCreate_Cancel(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	s := NewMockSubscriber(ctrl)
+	s.EXPECT().OnSubscribe(gomock.Any(), gomock.Any()).
+		Do(func(ctx context.Context, su reactor.Subscription) {
+			su.Cancel()
+		}).
+		Times(1)
+	s.EXPECT().OnNext(gomock.Any()).Times(0)
+	s.EXPECT().OnComplete().Times(0)
+	s.EXPECT().OnError(gomock.Eq(reactor.ErrSubscribeCancelled)).Times(1)
+
+	newMonoCreate(func(ctx context.Context, s Sink) {
+		s.Success(1)
+	}).SubscribeWith(context.Background(), s)
+}
+
+func TestSinkPool_PutWithNilValue(t *testing.T) {
+	assert.NotPanics(t, func() {
+		globalSinkPool.put(nil)
+	})
 }

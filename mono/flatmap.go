@@ -9,12 +9,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const (
-	statCancel   = -1
-	statError    = -2
-	statComplete = 2
-)
-
 type flatMapStat int32
 
 const (

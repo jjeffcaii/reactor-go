@@ -75,6 +75,19 @@ func (p *peekSubscriber) OnError(err error) {
 	if !atomic.CompareAndSwapInt32(&p.stat, 0, statError) {
 		return
 	}
+
+	defer func() {
+		rec := recover()
+		if rec == nil {
+			return
+		}
+		if e, ok := rec.(error); ok {
+			p.actual.OnError(errors.WithStack(e))
+		} else {
+			p.actual.OnError(errors.Errorf("%v", rec))
+		}
+	}()
+
 	if call := p.parent.onErrorCall; call != nil {
 		call(err)
 	}
@@ -148,5 +161,11 @@ func peekError(fn reactor.FnOnError) monoPeekOption {
 func peekSubscribe(fn reactor.FnOnSubscribe) monoPeekOption {
 	return func(peek *monoPeek) {
 		peek.onSubscribeCall = fn
+	}
+}
+
+func peekRequest(fn reactor.FnOnRequest) monoPeekOption {
+	return func(peek *monoPeek) {
+		peek.onRequestCall = fn
 	}
 }

@@ -2,8 +2,6 @@ package mono_test
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"testing"
 	"time"
 
@@ -13,8 +11,6 @@ import (
 )
 
 func TestSwitchIfError(t *testing.T) {
-	fakeErr := errors.New("fake error")
-
 	// should call switch to another Mono if error occurs
 	value, err := mono.Error(fakeErr).
 		Map(func(any reactor.Any) (reactor.Any, error) {
@@ -99,7 +95,6 @@ func TestSwitchIfError(t *testing.T) {
 		}).
 		Subscribe(context.Background())
 	start := time.Now()
-	fmt.Println("should not block here, done will be finished after", delay)
 	<-done
-	assert.True(t, int64(end.Sub(start)) > int64(delay))
+	assert.True(t, end.Sub(start).Nanoseconds() > delay.Nanoseconds())
 }

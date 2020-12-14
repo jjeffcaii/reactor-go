@@ -2,22 +2,13 @@ package mono
 
 import (
 	"context"
+	"sync/atomic"
 
 	"github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go/hooks"
 	"github.com/jjeffcaii/reactor-go/internal"
 	"github.com/pkg/errors"
 )
-
-type filterSubscriber struct {
-	ctx       context.Context
-	actual    reactor.Subscriber
-	predicate reactor.Predicate
-}
-
-type monoFilter struct {
-	s reactor.RawPublisher
-	f reactor.Predicate
-}
 
 func newFilterSubscriber(actual reactor.Subscriber, predicate reactor.Predicate) *filterSubscriber {
 	return &filterSubscriber{
@@ -33,11 +24,24 @@ func newMonoFilter(s reactor.RawPublisher, f reactor.Predicate) monoFilter {
 	}
 }
 
+type filterSubscriber struct {
+	ctx       context.Context
+	actual    reactor.Subscriber
+	predicate reactor.Predicate
+	stat      int32
+}
+
 func (f *filterSubscriber) OnComplete() {
-	f.actual.OnComplete()
+	if atomic.CompareAndSwapInt32(&f.stat, 0, statComplete) {
+		f.actual.OnComplete()
+	}
 }
 
 func (f *filterSubscriber) OnError(err error) {
+	if !atomic.CompareAndSwapInt32(&f.stat, 0, statError) {
+		hooks.Global().OnErrorDrop(err)
+		return
+	}
 	f.actual.OnError(err)
 }
 
@@ -63,6 +67,11 @@ func (f *filterSubscriber) OnNext(v Any) {
 func (f *filterSubscriber) OnSubscribe(ctx context.Context, s reactor.Subscription) {
 	f.ctx = ctx
 	f.actual.OnSubscribe(ctx, s)
+}
+
+type monoFilter struct {
+	s reactor.RawPublisher
+	f reactor.Predicate
 }
 
 func (m monoFilter) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
