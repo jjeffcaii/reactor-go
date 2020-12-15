@@ -17,7 +17,7 @@ func Error(e error) Mono {
 }
 
 func ErrorOneshot(e error) Mono {
-	return borrowOneshotWrapper(newMonoError(e))
+	return globalOneshotWrapperPool.get(newMonoError(e))
 }
 
 func Empty() Mono {
@@ -42,7 +42,7 @@ func JustOneshot(v Any) Mono {
 	if v == nil {
 		panic(_errJustNilValue)
 	}
-	return borrowOneshotWrapper(newMonoJust(v))
+	return globalOneshotWrapperPool.get(newMonoJust(v))
 }
 
 func Create(gen func(ctx context.Context, s Sink)) Mono {
@@ -50,7 +50,7 @@ func Create(gen func(ctx context.Context, s Sink)) Mono {
 }
 
 func CreateOneshot(gen func(ctx context.Context, s Sink)) Mono {
-	return borrowOneshotWrapper(newMonoCreate(gen))
+	return globalOneshotWrapperPool.get(newMonoCreate(gen))
 }
 
 func Delay(delay time.Duration) Mono {
@@ -75,11 +75,11 @@ func ZipCombine(cmb Combinator, itemHandler func(item *reactor.Item), sources ..
 }
 
 func ZipOneshot(first Mono, second Mono, rest ...Mono) Mono {
-	return borrowOneshotWrapper(zip(first, second, rest, nil))
+	return globalOneshotWrapperPool.get(zip(first, second, rest, nil))
 }
 
 func ZipCombineOneshot(cmb Combinator, itemHandler func(*reactor.Item), sources ...Mono) Mono {
-	return borrowOneshotWrapper(zipCombine(sources, cmb, itemHandler))
+	return globalOneshotWrapperPool.get(zipCombine(sources, cmb, itemHandler))
 }
 
 func innerZipCombine(sources []reactor.RawPublisher, cmb Combinator, itemHandler func(*reactor.Item)) *monoZip {

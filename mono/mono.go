@@ -45,12 +45,14 @@ type Mono interface {
 	DoFinally(reactor.FnOnFinally) Mono
 	// DoOnDiscard description.
 	DoOnDiscard(reactor.FnOnDiscard) Mono
+	// DefaultIfEmpty fallbacks to an alternative value if this mono is completed without data.
+	DefaultIfEmpty(alternative Any) Mono
+	// DefaultIfError fallbacks to an alternative value if this mono is completed without an error.
+	DefaultIfError(alternative Any) Mono
 	// SwitchIfEmpty fallbacks to an alternative Mono if this mono is completed without data.
 	SwitchIfEmpty(alternative Mono) Mono
 	// SwitchIfError fallbacks to an alternative Mono if this mono is completed without an error.
 	SwitchIfError(alternativeFunc func(error) Mono) Mono
-	// SwitchValueIfError fallbacks to an alternative value if this mono is completed without an error.
-	SwitchValueIfError(v Any) Mono
 	// DelayElement delays this Mono element (Subscriber.OnNext signal) by a given duration.
 	DelayElement(delay time.Duration) Mono
 	// Timeout propagates a Error in case no item arrives within the given Duration.

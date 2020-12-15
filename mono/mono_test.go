@@ -506,3 +506,9 @@ func TestJust(t *testing.T) {
 	assert.NotNil(t, mono.Just(1))
 	assert.NotNil(t, mono.JustOneshot(1))
 }
+
+func TestDefaultIfEmpty(t *testing.T) {
+	value, err := mono.Empty().DefaultIfEmpty(333).Block(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, 333, value, "bad result")
+}

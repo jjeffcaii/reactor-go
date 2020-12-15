@@ -64,7 +64,7 @@ func (w wrapper) DoFinally(fn reactor.FnOnFinally) Mono {
 	return wrap(newMonoDoFinally(w.RawPublisher, fn))
 }
 
-func (w wrapper) SwitchValueIfError(v Any) Mono {
+func (w wrapper) DefaultIfError(v Any) Mono {
 	return wrap(newMonoDoCreateIfError(w.RawPublisher, v))
 }
 
@@ -97,6 +97,10 @@ func (w wrapper) ZipCombineWith(other Mono, cmb Combinator) Mono {
 		unpackRawPublisher(other),
 	}
 	return wrap(newMonoZip(publishers, cmb, nil))
+}
+
+func (w wrapper) DefaultIfEmpty(alternative Any) Mono {
+	return wrap(newMonoDefaultIfEmpty(w.RawPublisher, alternative))
 }
 
 func (w wrapper) Raw() reactor.RawPublisher {

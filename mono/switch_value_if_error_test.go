@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestSwitchValueIfError(t *testing.T) {
+func TestDefaultIfError(t *testing.T) {
 	v, err := mono.JustOneshot(15555).
 		Map(func(any reactor.Any) (reactor.Any, error) {
 			return any, nil
@@ -21,7 +21,7 @@ func TestSwitchValueIfError(t *testing.T) {
 		}).
 		DoOnError(func(e error) {
 		}).
-		SwitchValueIfError(123).
+		DefaultIfError(123).
 		Map(func(any reactor.Any) (reactor.Any, error) {
 			return any, nil
 		}).
@@ -30,11 +30,11 @@ func TestSwitchValueIfError(t *testing.T) {
 	assert.Equal(t, 123, v.(int), "bad result")
 
 	fakeErr := errors.New("fake error")
-	v, err = mono.Error(fakeErr).SwitchValueIfError(1).Block(context.Background())
+	v, err = mono.Error(fakeErr).DefaultIfError(1).Block(context.Background())
 	assert.NoError(t, err)
 	assert.Equal(t, 1, v)
 
-	v, err = mono.Just(1).SwitchValueIfError(2).Block(context.Background())
+	v, err = mono.Just(1).DefaultIfError(2).Block(context.Background())
 	assert.NoError(t, err)
 	assert.Equal(t, 1, v)
 }

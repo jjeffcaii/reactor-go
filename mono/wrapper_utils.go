@@ -56,7 +56,7 @@ func unpackRawPublisher(source Mono) reactor.RawPublisher {
 	}
 	switch t := source.(type) {
 	case *oneshotWrapper:
-		return returnOneshotWrapper(t)
+		return globalOneshotWrapperPool.put(t)
 	default:
 		return t.Raw()
 	}

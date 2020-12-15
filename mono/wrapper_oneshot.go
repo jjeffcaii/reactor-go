@@ -9,30 +9,37 @@ import (
 	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
-var _oneshotWrapperPool = sync.Pool{
-	New: func() interface{} {
-		return new(oneshotWrapper)
-	},
+var globalOneshotWrapperPool oneshotWrapperPool
+
+type oneshotWrapperPool struct {
+	inner sync.Pool
+}
+
+func (op *oneshotWrapperPool) get(origin reactor.RawPublisher) *oneshotWrapper {
+	if exist, _ := op.inner.Get().(*oneshotWrapper); exist != nil {
+		exist.RawPublisher = origin
+		return exist
+	}
+	return &oneshotWrapper{
+		RawPublisher: origin,
+	}
+}
+
+func (op *oneshotWrapperPool) put(w *oneshotWrapper) (raw reactor.RawPublisher) {
+	if w == nil {
+		return
+	}
+	raw, w.RawPublisher = w.RawPublisher, nil
+	op.inner.Put(w)
+	return
 }
 
 type oneshotWrapper struct {
 	reactor.RawPublisher
 }
 
-func borrowOneshotWrapper(origin reactor.RawPublisher) *oneshotWrapper {
-	wrapper := _oneshotWrapperPool.Get().(*oneshotWrapper)
-	wrapper.RawPublisher = origin
-	return wrapper
-}
-
-func returnOneshotWrapper(o *oneshotWrapper) (raw reactor.RawPublisher) {
-	raw, o.RawPublisher = o.RawPublisher, nil
-	_oneshotWrapperPool.Put(o)
-	return
-}
-
 func (o *oneshotWrapper) Subscribe(ctx context.Context, options ...reactor.SubscriberOption) {
-	returnOneshotWrapper(o).SubscribeWith(ctx, reactor.NewSubscriber(options...))
+	globalOneshotWrapperPool.put(o).SubscribeWith(ctx, reactor.NewSubscriber(options...))
 }
 
 func (o *oneshotWrapper) Filter(predicate reactor.Predicate) Mono {
@@ -56,7 +63,7 @@ func (o *oneshotWrapper) SubscribeOn(scheduler scheduler.Scheduler) Mono {
 }
 
 func (o *oneshotWrapper) Block(ctx context.Context) (Any, error) {
-	return block(ctx, returnOneshotWrapper(o))
+	return block(ctx, globalOneshotWrapperPool.put(o))
 }
 
 func (o *oneshotWrapper) DoOnNext(next reactor.FnOnNext) Mono {
@@ -88,7 +95,8 @@ func (o *oneshotWrapper) DoFinally(finally reactor.FnOnFinally) Mono {
 	o.RawPublisher = newMonoDoFinally(o.RawPublisher, finally)
 	return o
 }
-func (o *oneshotWrapper) SwitchValueIfError(v Any) Mono {
+
+func (o *oneshotWrapper) DefaultIfError(v Any) Mono {
 	o.RawPublisher = newMonoDoCreateIfError(o.RawPublisher, v)
 	return o
 }
@@ -129,6 +137,11 @@ func (o *oneshotWrapper) ZipCombineWith(other Mono, cmb Combinator) Mono {
 		second,
 	}
 	o.RawPublisher = newMonoZip(pubs, cmb, nil)
+	return o
+}
+
+func (o *oneshotWrapper) DefaultIfEmpty(alternative reactor.Any) Mono {
+	o.RawPublisher = newMonoDefaultIfEmpty(o.RawPublisher, alternative)
 	return o
 }
 
