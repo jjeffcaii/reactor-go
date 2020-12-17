@@ -14,7 +14,7 @@ type (
 	Disposable = reactor.Disposable
 )
 
-type FlatMapper func(reactor.Any) Mono
+type FlatMapper func(value reactor.Any) Mono
 type Combinator func(values ...*reactor.Item) (reactor.Any, error)
 
 // Mono is a Reactive Streams Publisher with basic rx operators that completes successfully by emitting an element, or with an error.

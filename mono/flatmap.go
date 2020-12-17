@@ -15,30 +15,41 @@ const (
 	statComplete = 2
 )
 
+type flatMapStat int32
+
+const (
+	_ flatMapStat = iota
+	flatMapStatInnerReady
+	flatMapStatInnerComplete
+	flatMapStatError
+	flatMapStatComplete
+)
+
 type innerFlatMapSubscriber struct {
 	parent *flatMapSubscriber
 }
 
 func (in *innerFlatMapSubscriber) OnError(err error) {
-	if atomic.CompareAndSwapInt32(&in.parent.stat, 0, statError) {
+	if atomic.CompareAndSwapInt32(&in.parent.stat, int32(flatMapStatInnerReady), int32(flatMapStatError)) {
 		in.parent.actual.OnError(err)
 	}
 }
 
 func (in *innerFlatMapSubscriber) OnNext(v Any) {
-	if atomic.LoadInt32(&in.parent.stat) != 0 {
+	if atomic.LoadInt32(&in.parent.stat) != int32(flatMapStatInnerReady) {
+		hooks.Global().OnNextDrop(v)
 		return
 	}
 	in.parent.actual.OnNext(v)
 	in.OnComplete()
 }
 
-func (in *innerFlatMapSubscriber) OnSubscribe(ctx context.Context, s reactor.Subscription) {
+func (in *innerFlatMapSubscriber) OnSubscribe(_ context.Context, s reactor.Subscription) {
 	s.Request(reactor.RequestInfinite)
 }
 
 func (in *innerFlatMapSubscriber) OnComplete() {
-	if atomic.CompareAndSwapInt32(&in.parent.stat, 0, statComplete) {
+	if atomic.CompareAndSwapInt32(&in.parent.stat, int32(flatMapStatInnerReady), int32(flatMapStatInnerComplete)) {
 		in.parent.actual.OnComplete()
 	}
 }
@@ -58,13 +69,13 @@ func (p *flatMapSubscriber) Cancel() {
 }
 
 func (p *flatMapSubscriber) OnComplete() {
-	if atomic.LoadInt32(&p.stat) == statComplete {
+	if atomic.CompareAndSwapInt32(&p.stat, 0, int32(flatMapStatComplete)) {
 		p.actual.OnComplete()
 	}
 }
 
 func (p *flatMapSubscriber) OnError(err error) {
-	if !atomic.CompareAndSwapInt32(&p.stat, 0, statError) {
+	if !atomic.CompareAndSwapInt32(&p.stat, 0, int32(flatMapStatError)) {
 		hooks.Global().OnErrorDrop(err)
 		return
 	}
@@ -72,7 +83,7 @@ func (p *flatMapSubscriber) OnError(err error) {
 }
 
 func (p *flatMapSubscriber) OnNext(v Any) {
-	if atomic.LoadInt32(&p.stat) != 0 {
+	if !atomic.CompareAndSwapInt32(&p.stat, 0, int32(flatMapStatInnerReady)) {
 		hooks.Global().OnNextDrop(v)
 		return
 	}
