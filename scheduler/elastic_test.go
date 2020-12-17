@@ -40,18 +40,19 @@ func TestNewElastic(t *testing.T) {
 }
 
 func TestElasticBounded(t *testing.T) {
-	const total = 1000
-	var wg sync.WaitGroup
-	wg.Add(total)
-	start := time.Now()
-	worker := scheduler.ElasticBounded().Worker()
-	for range [total]struct{}{} {
-		err := worker.Do(func() {
-			time.Sleep(10 * time.Millisecond)
-			wg.Done()
-		})
-		assert.NoError(t, err)
-	}
-	wg.Wait()
-	assert.Less(t, int64(time.Since(start)), int64(20*time.Millisecond), "bad result")
+	assert.NotPanics(t, func() {
+		const total = 1000
+		var wg sync.WaitGroup
+		wg.Add(total)
+		worker := scheduler.ElasticBounded().Worker()
+		for range [total]struct{}{} {
+			err := worker.Do(func() {
+				time.Sleep(10 * time.Millisecond)
+				wg.Done()
+			})
+			assert.NoError(t, err)
+		}
+		wg.Wait()
+	})
+
 }

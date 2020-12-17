@@ -67,7 +67,6 @@ func TestMonoJust_Request(t *testing.T) {
 	sub := NewMockSubscriber(ctrl)
 
 	onSubscribe := func(ctx context.Context, su reactor.Subscription) {
-		su.Request(0)
 		su.Request(1)
 		su.Request(1)
 	}

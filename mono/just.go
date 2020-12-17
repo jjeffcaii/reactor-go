@@ -18,7 +18,7 @@ type justSubscriptionPool struct {
 
 func (j *justSubscriptionPool) get() *justSubscription {
 	if exist, _ := j.inner.Get().(*justSubscription); exist != nil {
-		exist.n = 0
+		exist.stat = 0
 		return exist
 	}
 	return &justSubscription{}
@@ -30,7 +30,7 @@ func (j *justSubscriptionPool) put(s *justSubscription) {
 	}
 	s.actual = nil
 	s.parent = nil
-	atomic.StoreInt32(&s.n, math.MinInt32)
+	atomic.StoreInt32(&s.stat, math.MinInt32)
 	j.inner.Put(s)
 }
 
@@ -47,21 +47,23 @@ func newMonoJust(v Any) *monoJust {
 type justSubscription struct {
 	actual reactor.Subscriber
 	parent *monoJust
-	n      int32
+	stat   int32
 }
 
 func (j *justSubscription) Request(n int) {
+	defer globalJustSubscriptionPool.put(j)
+
 	if n < 1 {
+		j.actual.OnError(errors.Errorf("positive request amount required but it was %d", n))
 		return
 	}
 
-	if !atomic.CompareAndSwapInt32(&j.n, 0, statComplete) {
+	if !atomic.CompareAndSwapInt32(&j.stat, 0, statComplete) {
 		return
 	}
 
 	defer func() {
 		actual := j.actual
-		globalJustSubscriptionPool.put(j)
 
 		rec := recover()
 		if rec == nil {
@@ -81,7 +83,7 @@ func (j *justSubscription) Request(n int) {
 }
 
 func (j *justSubscription) Cancel() {
-	if atomic.CompareAndSwapInt32(&j.n, 0, statCancel) {
+	if atomic.CompareAndSwapInt32(&j.stat, 0, statCancel) {
 		j.actual.OnError(reactor.ErrSubscribeCancelled)
 	}
 }
