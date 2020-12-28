@@ -29,8 +29,8 @@ func (p *sinkPool) put(s *sink) {
 	if s == nil {
 		return
 	}
-	s.actual = nil
 	atomic.StoreInt32(&s.stat, math.MinInt32)
+	s.actual = nil
 	p.inner.Put(s)
 }
 

@@ -32,22 +32,16 @@ func IsSubscribeAsync(m Mono) bool {
 }
 
 func block(ctx context.Context, publisher reactor.RawPublisher) (Any, error) {
-	done := make(chan struct{})
-	c := make(chan reactor.Item, 1)
-	b := subscribers.NewBlockSubscriber(done, c)
-	publisher.SubscribeWith(ctx, b)
-	<-done
-	defer close(c)
+	s := subscribers.BorrowBlockSubscriber()
+	defer subscribers.ReturnBlockSubscriber(s)
 
-	select {
-	case result := <-c:
-		if result.E != nil {
-			return nil, result.E
-		}
-		return result.V, nil
-	default:
-		return nil, nil
+	publisher.SubscribeWith(ctx, s)
+	<-s.Done()
+
+	if s.E != nil {
+		return nil, s.E
 	}
+	return s.V, nil
 }
 
 func unpackRawPublisher(source Mono) reactor.RawPublisher {
