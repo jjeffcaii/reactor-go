@@ -41,9 +41,12 @@ func (e *elasticScheduler) Worker() Worker {
 // NewElastic creates a new elastic scheduler.
 func NewElastic(size int) Scheduler {
 	pool, _ := ants.NewPool(size)
-	return &elasticScheduler{
-		pool: pool,
-	}
+	return NewAnts(pool)
+}
+
+// NewAnts creates a new scheduler over ants pool.
+func NewAnts(pool *ants.Pool) Scheduler {
+	return &elasticScheduler{pool: pool}
 }
 
 // Elastic is a dynamic alloc scheduler.
