@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/jjeffcaii/reactor-go"
+	"github.com/jjeffcaii/reactor-go/internal"
 	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
@@ -16,7 +17,8 @@ func (m monoScheduleOn) SubscribeWith(ctx context.Context, s reactor.Subscriber)
 	if err := m.sc.Worker().Do(func() {
 		m.source.SubscribeWith(ctx, s)
 	}); err != nil {
-		panic(err)
+		s.OnSubscribe(ctx, internal.EmptySubscription)
+		s.OnError(err)
 	}
 }
 
