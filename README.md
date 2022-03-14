@@ -1,6 +1,5 @@
 # reactor-go 🚀🚀🚀
 
-
 ![GitHub Workflow Status](https://github.com/jjeffcaii/reactor-go/workflows/Go/badge.svg)
 [![codecov](https://codecov.io/gh/jjeffcaii/reactor-go/branch/master/graph/badge.svg)](https://codecov.io/gh/jjeffcaii/reactor-go)
 [![GoDoc](https://godoc.org/github.com/jjeffcaii/reactor-go?status.svg)](https://godoc.org/github.com/jjeffcaii/reactor-go)
@@ -9,8 +8,6 @@
 [![GitHub Release](https://img.shields.io/github/release-pre/jjeffcaii/reactor-go.svg)](https://github.com/jjeffcaii/reactor-go/releases)
 
 > A golang implementation for [reactive-streams](https://www.reactive-streams.org/).
-<br>🚧🚧🚧 ***IT IS UNDER ACTIVE DEVELOPMENT!!!***
-<br>⚠️⚠️⚠️ ***DO NOT USE IN ANY PRODUCTION ENVIRONMENT!!!***
 
 ## Install
 
@@ -19,10 +16,6 @@ go get -u github.com/jjeffcaii/reactor-go
 ```
 
 ## Example
-
-> NOTICE:
-<br> We can only use `func(interface{})interface{}` for most operations because Golang has not Generics. 😭
-<br> If you have any better idea, please let me know. 😀
 
 ### Mono
 ```go

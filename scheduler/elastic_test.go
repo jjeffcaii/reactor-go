@@ -6,8 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jjeffcaii/reactor-go/scheduler"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/jjeffcaii/reactor-go/scheduler"
 )
 
 func TestElastic(t *testing.T) {
@@ -54,5 +55,4 @@ func TestElasticBounded(t *testing.T) {
 		}
 		wg.Wait()
 	})
-
 }
