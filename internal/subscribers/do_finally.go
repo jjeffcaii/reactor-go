@@ -8,16 +8,30 @@ import (
 	"github.com/jjeffcaii/reactor-go"
 )
 
-var _doFinallySubscriberPool = sync.Pool{
-	New: func() interface{} {
-		return new(DoFinallySubscriber)
-	},
-}
-
 var (
 	_ reactor.Subscriber = (*DoFinallySubscriber)(nil)
 	_ reactor.Disposable = (*DoFinallySubscriber)(nil)
 )
+
+var globalDoFinallySubscriberPool doFinallySubscriberPool
+
+type doFinallySubscriberPool struct {
+	inner sync.Pool
+}
+
+func (p *doFinallySubscriberPool) get() *DoFinallySubscriber {
+	if exist, _ := p.inner.Get().(*DoFinallySubscriber); exist != nil {
+		return exist
+	}
+	return &DoFinallySubscriber{}
+}
+
+func (p *doFinallySubscriberPool) put(s *DoFinallySubscriber) {
+	if s == nil {
+		return
+	}
+	p.inner.Put(s)
+}
 
 type DoFinallySubscriber struct {
 	actual    reactor.Subscriber
@@ -30,11 +44,11 @@ func (d *DoFinallySubscriber) Dispose() {
 	d.actual = nil
 	d.onFinally = nil
 	d.s = nil
-	_doFinallySubscriberPool.Put(d)
+	globalDoFinallySubscriberPool.put(d)
 }
 
 func NewDoFinallySubscriber(actual reactor.Subscriber, onFinally reactor.FnOnFinally) *DoFinallySubscriber {
-	s := _doFinallySubscriberPool.Get().(*DoFinallySubscriber)
+	s := globalDoFinallySubscriberPool.get()
 	s.actual = actual
 	s.onFinally = onFinally
 	atomic.StoreInt32(&s.done, 0)

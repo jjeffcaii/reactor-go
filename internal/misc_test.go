@@ -13,3 +13,9 @@ func TestEmptySubscription(t *testing.T) {
 		internal.EmptySubscription.Request(1)
 	})
 }
+
+func TestSafeCloseDone(t *testing.T) {
+	c := make(chan struct{})
+	assert.True(t, internal.SafeCloseDone(c))
+	assert.False(t, internal.SafeCloseDone(c))
+}

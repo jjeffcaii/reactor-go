@@ -89,22 +89,27 @@ func (s *sink) Request(n int) {
 }
 
 func (s *sink) Cancel() {
-	atomic.CompareAndSwapInt32(&s.stat, 0, statCancel)
+	if !atomic.CompareAndSwapInt32(&s.stat, 0, statCancel) {
+		return
+	}
+	defer globalSinkPool.put(s)
+	s.actual.OnError(reactor.ErrSubscribeCancelled)
 }
 
 func (s *sink) Complete() {
-	defer globalSinkPool.put(s)
-	if atomic.CompareAndSwapInt32(&s.stat, 0, statComplete) {
-		s.actual.OnComplete()
+	if !atomic.CompareAndSwapInt32(&s.stat, 0, statComplete) {
+		return
 	}
+	defer globalSinkPool.put(s)
+	s.actual.OnComplete()
 }
 
 func (s *sink) Error(err error) {
-	defer globalSinkPool.put(s)
 	if !atomic.CompareAndSwapInt32(&s.stat, 0, statError) {
 		hooks.Global().OnErrorDrop(err)
 		return
 	}
+	defer globalSinkPool.put(s)
 	s.actual.OnError(err)
 }
 

@@ -70,7 +70,6 @@ func (s *SwitchIfEmptySubscriber) OnComplete() {
 	} else {
 		s.other.SubscribeWith(s.ctx, s)
 	}
-
 }
 
 func NewSwitchIfEmptySubscriber(alternative reactor.RawPublisher, actual reactor.Subscriber) *SwitchIfEmptySubscriber {

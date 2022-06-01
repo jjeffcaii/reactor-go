@@ -5,7 +5,7 @@ import (
 )
 
 var ErrCallOnSubscribeDuplicated = errors.New("call OnSubscribe duplicated")
-var EmptySubscription = emptySubscription{}
+var EmptySubscription emptySubscription
 
 type emptySubscription struct {
 }
