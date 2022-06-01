@@ -19,7 +19,7 @@ const (
 )
 
 type Any = reactor.Any
-type FnSwitchOnFirst = func(s Signal, f Flux) Flux
+type FnSwitchOnFirst func(s Signal, f Flux) Flux
 
 type Flux interface {
 	reactor.Publisher
