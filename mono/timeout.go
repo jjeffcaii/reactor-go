@@ -2,6 +2,8 @@ package mono
 
 import (
 	"context"
+	"math"
+	"sync/atomic"
 	"time"
 
 	"github.com/jjeffcaii/reactor-go"
@@ -13,37 +15,51 @@ type monoTimeout struct {
 	timeout time.Duration
 }
 
+func newMonoTimeout(source reactor.RawPublisher, timeout time.Duration) *monoTimeout {
+	return &monoTimeout{
+		source:  source,
+		timeout: timeout,
+	}
+}
+
+func (m *monoTimeout) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
+	m.source.SubscribeWith(ctx, &timeoutSubscriber{
+		actual:  s,
+		timeout: m.timeout,
+		done:    make(chan struct{}),
+	})
+}
+
 type timeoutSubscriber struct {
 	actual  reactor.Subscriber
 	timeout time.Duration
 	done    chan struct{}
+	closed  int32
 }
 
 func (t *timeoutSubscriber) OnComplete() {
-	select {
-	case <-t.done:
-	default:
+	if atomic.CompareAndSwapInt32(&t.closed, 0, math.MaxInt32) || atomic.CompareAndSwapInt32(&t.closed, 1, math.MaxInt32) {
 		close(t.done)
 		t.actual.OnComplete()
 	}
 }
 
 func (t *timeoutSubscriber) OnError(err error) {
-	select {
-	case <-t.done:
-		hooks.Global().OnErrorDrop(err)
-	default:
+	if atomic.CompareAndSwapInt32(&t.closed, 0, -1) {
 		close(t.done)
 		t.actual.OnError(err)
+	} else if atomic.CompareAndSwapInt32(&t.closed, 1, -1) {
+		close(t.done)
+	} else {
+		hooks.Global().OnErrorDrop(err)
 	}
 }
 
 func (t *timeoutSubscriber) OnNext(any reactor.Any) {
-	select {
-	case <-t.done:
-		hooks.Global().OnNextDrop(any)
-	default:
+	if atomic.CompareAndSwapInt32(&t.closed, 0, 1) {
 		t.actual.OnNext(any)
+	} else {
+		hooks.Global().OnNextDrop(any)
 	}
 }
 
@@ -58,19 +74,4 @@ func (t *timeoutSubscriber) OnSubscribe(ctx context.Context, subscription reacto
 		}
 	}()
 	t.actual.OnSubscribe(ctx, subscription)
-}
-
-func (m *monoTimeout) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
-	m.source.SubscribeWith(ctx, &timeoutSubscriber{
-		actual:  s,
-		timeout: m.timeout,
-		done:    make(chan struct{}),
-	})
-}
-
-func newMonoTimeout(source reactor.RawPublisher, timeout time.Duration) *monoTimeout {
-	return &monoTimeout{
-		source:  source,
-		timeout: timeout,
-	}
 }
