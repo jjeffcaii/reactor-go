@@ -48,11 +48,16 @@ func (t *timeoutSubscriber) OnError(err error) {
 	if atomic.CompareAndSwapInt32(&t.closed, 0, -1) {
 		close(t.done)
 		t.actual.OnError(err)
-	} else if atomic.CompareAndSwapInt32(&t.closed, 1, -1) {
-		close(t.done)
-	} else {
-		hooks.Global().OnErrorDrop(err)
+		return
 	}
+
+	// item is emitted before error reach, should be processed as completed.
+	if atomic.CompareAndSwapInt32(&t.closed, 1, -1) {
+		close(t.done)
+		t.actual.OnComplete()
+	}
+
+	hooks.Global().OnErrorDrop(err)
 }
 
 func (t *timeoutSubscriber) OnNext(any reactor.Any) {
