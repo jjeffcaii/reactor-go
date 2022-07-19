@@ -6,12 +6,13 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/hc"
 	"github.com/jjeffcaii/reactor-go/mono"
 	"github.com/jjeffcaii/reactor-go/scheduler"
 	"github.com/jjeffcaii/reactor-go/tuple"
-	"github.com/stretchr/testify/assert"
 )
 
 var httpBinUrl = "https://httpbin.org/anything"
@@ -89,7 +90,7 @@ func TestClient_Do(t *testing.T) {
 }
 
 func TestDo_Failed(t *testing.T) {
-	req, _ := http.NewRequest(http.MethodGet, "http://127.0.0.1/not-exists-path", nil)
+	req, _ := http.NewRequest(http.MethodGet, "http://127.0.0.1:8080/not-exists-path", nil)
 	_, err := hc.Do(req).Block(context.Background())
 	assert.Error(t, err)
 }

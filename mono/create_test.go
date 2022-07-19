@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+
 	"github.com/jjeffcaii/reactor-go"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestMonoCreate_SubscribeWith(t *testing.T) {
@@ -96,10 +96,4 @@ func TestMonoCreate_Cancel(t *testing.T) {
 	newMonoCreate(func(ctx context.Context, s Sink) {
 		s.Success(1)
 	}).SubscribeWith(context.Background(), s)
-}
-
-func TestSinkPool_PutWithNilValue(t *testing.T) {
-	assert.NotPanics(t, func() {
-		globalSinkPool.put(nil)
-	})
 }
