@@ -4,9 +4,10 @@ import (
 	"context"
 	"sync/atomic"
 
+	"github.com/pkg/errors"
+
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/internal"
-	"github.com/pkg/errors"
 )
 
 type monoPeek struct {
@@ -20,10 +21,11 @@ type monoPeek struct {
 }
 
 type peekSubscriber struct {
-	actual reactor.Subscriber
-	parent *monoPeek
-	s      reactor.Subscription
-	stat   int32
+	actual    reactor.Subscriber
+	parent    *monoPeek
+	s         reactor.Subscription
+	stat      int32
+	cancelled int32
 }
 
 func newMonoPeek(source reactor.RawPublisher, first monoPeekOption, others ...monoPeekOption) *monoPeek {
@@ -52,7 +54,7 @@ func (p *peekSubscriber) Request(n int) {
 }
 
 func (p *peekSubscriber) Cancel() {
-	if !atomic.CompareAndSwapInt32(&p.stat, 0, statCancel) {
+	if !atomic.CompareAndSwapInt32(&p.cancelled, 0, 1) {
 		return
 	}
 	if call := p.parent.onCancelCall; call != nil {
@@ -73,7 +75,9 @@ func (p *peekSubscriber) OnComplete() {
 
 func (p *peekSubscriber) OnError(err error) {
 	if !atomic.CompareAndSwapInt32(&p.stat, 0, statError) {
-		return
+		if isCancelled := atomic.LoadInt32(&p.stat) == statCancel && err == reactor.ErrSubscribeCancelled; !isCancelled {
+			return
+		}
 	}
 
 	defer func() {

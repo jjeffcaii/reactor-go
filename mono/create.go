@@ -2,37 +2,13 @@ package mono
 
 import (
 	"context"
-	"math"
-	"sync"
 	"sync/atomic"
+
+	"github.com/pkg/errors"
 
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/hooks"
-	"github.com/pkg/errors"
 )
-
-var globalSinkPool sinkPool
-
-type sinkPool struct {
-	inner sync.Pool
-}
-
-func (p *sinkPool) get() *sink {
-	if exist, _ := p.inner.Get().(*sink); exist != nil {
-		atomic.StoreInt32(&exist.stat, 0)
-		return exist
-	}
-	return &sink{}
-}
-
-func (p *sinkPool) put(s *sink) {
-	if s == nil {
-		return
-	}
-	atomic.StoreInt32(&s.stat, math.MinInt32)
-	s.actual = nil
-	p.inner.Put(s)
-}
 
 type Sink interface {
 	Success(Any)
@@ -84,7 +60,7 @@ func (s *sink) Success(v Any) {
 	s.Complete()
 }
 
-func (s *sink) Request(n int) {
+func (s *sink) Request(_ int) {
 	// ignore
 }
 
@@ -92,7 +68,6 @@ func (s *sink) Cancel() {
 	if !atomic.CompareAndSwapInt32(&s.stat, 0, statCancel) {
 		return
 	}
-	defer globalSinkPool.put(s)
 	s.actual.OnError(reactor.ErrSubscribeCancelled)
 }
 
@@ -100,7 +75,6 @@ func (s *sink) Complete() {
 	if !atomic.CompareAndSwapInt32(&s.stat, 0, statComplete) {
 		return
 	}
-	defer globalSinkPool.put(s)
 	s.actual.OnComplete()
 }
 
@@ -109,7 +83,6 @@ func (s *sink) Error(err error) {
 		hooks.Global().OnErrorDrop(err)
 		return
 	}
-	defer globalSinkPool.put(s)
 	s.actual.OnError(err)
 }
 
@@ -129,8 +102,8 @@ func (s *sink) Next(v Any) {
 }
 
 func (m monoCreate) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
-	sk := globalSinkPool.get()
+	var sk sink
 	sk.actual = s
-	s.OnSubscribe(ctx, sk)
-	m.sinker(ctx, sk)
+	s.OnSubscribe(ctx, &sk)
+	m.sinker(ctx, &sk)
 }
