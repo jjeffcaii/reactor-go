@@ -61,6 +61,7 @@ func NewProcessor(sc scheduler.Scheduler, hook ProcessorFinallyHook) (Mono, Sink
 	p := globalProcessorPool.get()
 	p.mu.Lock()
 	p.sc = sc
+	p.item = nil
 	p.hookOnFinally = hook
 	p.mu.Unlock()
 	return wrap(p), p, p
