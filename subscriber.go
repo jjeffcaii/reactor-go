@@ -1,3 +1,4 @@
+//go:generate mockgen -destination=./testdata/mock_subscriber.go -package=testdata . Subscription,Subscriber
 package reactor
 
 import (
@@ -11,100 +12,100 @@ const RequestInfinite = math.MaxInt32
 // Subscription represents a one-to-one lifecycle of a Subscriber subscribing to a Publisher.
 type Subscription interface {
 	// Request requests the next N items.
-	Request(n int)
+	Request(ctx context.Context, n int)
 	// Cancel cancels the current lifecycle of subscribing.
-	Cancel()
+	Cancel(ctx context.Context)
 }
 
 // Subscriber is the basic type to subscribing the Publisher and consumes the items from upstream.
-type Subscriber interface {
+type Subscriber[T any] interface {
 	// OnComplete is successful terminal state.
-	OnComplete()
+	OnComplete(context.Context)
 	// OnError is failed terminal state.
-	OnError(error)
+	OnError(context.Context, error)
 	// OnNext is invoked when a data notification sent by the Publisher in response to requests to Subscription.Request(int).
-	OnNext(Any)
+	OnNext(context.Context, T)
 	// OnSubscribe is invoked after calling RawPublisher.SubscribeWith(context.Context, Subscriber).
 	OnSubscribe(context.Context, Subscription)
 }
 
-type subscriber struct {
+type subscriber[T any] struct {
 	onSubscribe FnOnSubscribe
-	onNext      FnOnNext
+	onNext      FnOnNext[T]
 	onComplete  FnOnComplete
 	onError     FnOnError
 }
 
-func (p *subscriber) OnComplete() {
+func (p *subscriber[T]) OnComplete(ctx context.Context) {
 	if p == nil || p.onComplete == nil {
 		return
 	}
-	p.onComplete()
+	p.onComplete(ctx)
 }
 
-func (p *subscriber) OnError(err error) {
+func (p *subscriber[T]) OnError(ctx context.Context, err error) {
 	if p == nil || p.onError == nil {
 		return
 	}
-	p.onError(err)
+	p.onError(ctx, err)
 }
 
-func (p *subscriber) OnSubscribe(ctx context.Context, s Subscription) {
+func (p *subscriber[T]) OnSubscribe(ctx context.Context, s Subscription) {
 	if p == nil || p.onSubscribe == nil {
-		s.Request(RequestInfinite)
+		s.Request(ctx, RequestInfinite)
 	} else {
 		p.onSubscribe(ctx, s)
 	}
 }
 
-func (p *subscriber) OnNext(i Any) {
+func (p *subscriber[T]) OnNext(ctx context.Context, i T) {
 	if p == nil || p.onNext == nil {
 		return
 	}
-	if err := p.onNext(i); err != nil {
-		p.OnError(err)
+	if err := p.onNext(ctx, i); err != nil {
+		p.OnError(ctx, err)
 	}
 }
 
 // SubscriberOption is used to create a Subscriber easily.
-type SubscriberOption func(*subscriber)
+type SubscriberOption[T any] func(*subscriber[T])
 
 // OnNext specified a Subscriber.OnNext action.
-func OnNext(onNext FnOnNext) SubscriberOption {
-	return func(s *subscriber) {
+func OnNext[T any](onNext FnOnNext[T]) SubscriberOption[T] {
+	return func(s *subscriber[T]) {
 		s.onNext = onNext
 	}
 }
 
 // OnComplete specified a Subscriber.OnComplete action.
-func OnComplete(onComplete FnOnComplete) SubscriberOption {
-	return func(s *subscriber) {
+func OnComplete[T any](onComplete FnOnComplete) SubscriberOption[T] {
+	return func(s *subscriber[T]) {
 		s.onComplete = onComplete
 	}
 }
 
 // OnError specified a Subscriber.OnError action.
-func OnError(onError FnOnError) SubscriberOption {
-	return func(i *subscriber) {
+func OnError[T any](onError FnOnError) SubscriberOption[T] {
+	return func(i *subscriber[T]) {
 		i.onError = onError
 	}
 }
 
 // OnSubscribe specified a Subscriber.OnSubscribe action.
-func OnSubscribe(onSubscribe FnOnSubscribe) SubscriberOption {
-	return func(i *subscriber) {
+func OnSubscribe[T any](onSubscribe FnOnSubscribe) SubscriberOption[T] {
+	return func(i *subscriber[T]) {
 		i.onSubscribe = onSubscribe
 	}
 }
 
 // NewSubscriber creates a Subscriber with given options.
-func NewSubscriber(opts ...SubscriberOption) Subscriber {
+func NewSubscriber[T any](opts ...SubscriberOption[T]) Subscriber[T] {
 	if len(opts) < 1 {
-		return (*subscriber)(nil)
+		return (*subscriber[T])(nil)
 	}
-	s := &subscriber{}
+	var s subscriber[T]
 	for _, opt := range opts {
-		opt(s)
+		opt(&s)
 	}
-	return s
+	return &s
 }

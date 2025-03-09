@@ -13,10 +13,10 @@ const (
 	KeyOnError   Key = "onError"
 )
 
-func TryDiscard(ctx context.Context, v reactor.Any) {
-	fn, ok := ctx.Value(KeyOnDiscard).(reactor.FnOnDiscard)
+func TryDiscard[T any](ctx context.Context, v T) {
+	fn, ok := ctx.Value(KeyOnDiscard).(reactor.FnOnDiscard[T])
 	if !ok {
 		return
 	}
-	fn(v)
+	fn(ctx, v)
 }

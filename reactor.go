@@ -1,29 +1,14 @@
 package reactor
 
-import "context"
+import (
+	"context"
+)
 
-// Item is type of element.
-type Item struct {
-	V Any
-	E error
-}
-
-// SignalType is type of terminal signal.
-type SignalType int8
-
-func (s SignalType) String() string {
-	switch s {
-	case SignalTypeComplete:
-		return "COMPLETE"
-	case SignalTypeDefault:
-		return "DEFAULT"
-	case SignalTypeCancel:
-		return "CANCEL"
-	case SignalTypeError:
-		return "ERROR"
-	default:
-		return "UNKNOWN"
-	}
+var _signalTypeNames = []string{
+	SignalTypeDefault:  "DEFAULT",
+	SignalTypeComplete: "COMPLETE",
+	SignalTypeCancel:   "CANCEL",
+	SignalTypeError:    "ERROR",
 }
 
 const (
@@ -33,28 +18,44 @@ const (
 	SignalTypeError
 )
 
-// Any is an alias of interface{} which means a value of any type.
-type Any = interface{}
+// SignalType is type of terminal signal.
+type SignalType int8
 
-type (
-	Predicate   func(Any) bool
-	Transformer func(Any) (Any, error)
-)
+func (s SignalType) String() string {
+	return _signalTypeNames[s]
+}
 
-// A group of action functions.
-type (
-	FnOnComplete  = func()
-	FnOnNext      = func(v Any) error
-	FnOnCancel    = func()
-	FnOnSubscribe = func(ctx context.Context, su Subscription)
-	FnOnRequest   = func(n int)
-	FnOnError     = func(e error)
-	FnOnFinally   = func(s SignalType)
-	FnOnDiscard   = func(v Any)
-)
+type Null[T any] struct {
+	V     T
+	Valid bool
+}
+
+// Item is type of element.
+type Item[T any] struct {
+	Valid bool
+	V     T
+	E     error
+}
 
 // Disposable is a disposable resource.
 type Disposable interface {
 	// Dispose dispose current resource.
 	Dispose()
 }
+
+type (
+	Predicate[T any]      func(ctx context.Context, next T) bool
+	Transformer[A, B any] func(ctx context.Context, next A) (B, error)
+)
+
+// A group of action functions.
+type (
+	FnOnComplete       func(context.Context)
+	FnOnNext[T any]    func(ctx context.Context, item T) error
+	FnOnCancel         func(context.Context)
+	FnOnSubscribe      func(ctx context.Context, su Subscription)
+	FnOnRequest        func(ctx context.Context, n int)
+	FnOnError          func(ctx context.Context, err error)
+	FnOnFinally        func(ctx context.Context, s SignalType)
+	FnOnDiscard[T any] func(ctx context.Context, v T)
+)

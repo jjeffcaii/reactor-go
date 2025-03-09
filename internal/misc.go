@@ -1,19 +1,19 @@
 package internal
 
 import (
+	"context"
 	"errors"
 )
 
 var ErrCallOnSubscribeDuplicated = errors.New("call OnSubscribe duplicated")
-var EmptySubscription emptySubscription
 
-type emptySubscription struct {
+type EmptySubscription struct {
 }
 
-func (emptySubscription) Request(n int) {
+func (EmptySubscription) Request(ctx context.Context, n int) {
 }
 
-func (emptySubscription) Cancel() {
+func (EmptySubscription) Cancel(ctx context.Context) {
 }
 
 func SafeCloseDone(done chan<- struct{}) (ok bool) {

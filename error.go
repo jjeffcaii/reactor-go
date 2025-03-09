@@ -1,13 +1,13 @@
 package reactor
 
 import (
-	"errors"
+	"context"
 	"fmt"
 )
 
 var (
 	ErrNegativeRequest    = fmt.Errorf("invalid request: n must be between %d and %d", 1, RequestInfinite)
-	ErrSubscribeCancelled = errors.New("subscriber has been cancelled")
+	ErrSubscribeCancelled = context.Canceled
 )
 
 // IsCancelledError returns true if given error is a cancelled subscribe error.

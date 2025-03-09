@@ -3,8 +3,9 @@ package reactor_test
 import (
 	"testing"
 
-	"github.com/jjeffcaii/reactor-go"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/jjeffcaii/reactor-go"
 )
 
 func TestSignalType_String(t *testing.T) {
@@ -19,6 +20,4 @@ func TestSignalType_String(t *testing.T) {
 	} {
 		assert.Equal(t, v.String, v.Signal.String(), "should be same string")
 	}
-	notExist := reactor.SignalType(0x7F)
-	assert.Equal(t, "UNKNOWN", notExist.String())
 }

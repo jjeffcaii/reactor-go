@@ -1,0 +1,2 @@
+定时器池, 节省timer的创建资源, 从NATS源码里抠过来的。
+参考: https://github.com/nats-io/nats.go/blob/master/timer.go
