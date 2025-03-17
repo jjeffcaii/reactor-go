@@ -1,3 +1,0 @@
-package reactor
-
-var ()

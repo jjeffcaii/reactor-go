@@ -2,6 +2,7 @@ package mono
 
 import (
 	"context"
+	"time"
 
 	"github.com/jjeffcaii/reactor-go"
 	"github.com/jjeffcaii/reactor-go/scheduler"
@@ -78,12 +79,11 @@ type Mono[T any] interface {
 	// SwitchValueIfError fallbacks to an alternative value if this mono is completed without an error.
 	SwitchValueIfError(v T) Mono[T]
 
-	//
 	//// DelayElement delays this Mono element (Subscriber.OnNext signal) by a given duration.
 	//DelayElement(delay time.Duration) Mono[T]
-	//
-	//// Timeout propagates an Error in case no item arrives within the given Duration.
-	//Timeout(timeout time.Duration) Mono[T]
+
+	// Timeout propagates an Error in case no item arrives within the given Duration.
+	Timeout(timeout time.Duration) Mono[T]
 
 	// Raw returns an internal RawPublisher.
 	Raw() reactor.RawPublisher[T]

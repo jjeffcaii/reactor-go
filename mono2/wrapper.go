@@ -2,6 +2,7 @@ package mono
 
 import (
 	"context"
+	"time"
 
 	"github.com/jjeffcaii/reactor-go"
 	subscribers2 "github.com/jjeffcaii/reactor-go/internal/subscribers2"
@@ -80,12 +81,12 @@ func (w wrapper[T]) DoOnSubscribe(fn reactor.FnOnSubscribe) Mono[T] {
 //	return wrap(newMonoDelayElement(w.RawPublisher, delay, scheduler.Parallel()))
 //}
 
-//func (w wrapper) Timeout(timeout time.Duration) Mono {
-//	if timeout <= 0 {
-//		return w
-//	}
-//	return wrap(newMonoTimeout(w.RawPublisher, timeout))
-//}
+func (w wrapper[T]) Timeout(timeout time.Duration) Mono[T] {
+	if timeout <= 0 {
+		return w
+	}
+	return wrap[T](newMonoTimeout(w.RawPublisher, timeout))
+}
 
 func (w wrapper[T]) Block(ctx context.Context) (val reactor.Null[T], err error) {
 	sub := subscribers2.NewBlockSubscriber[T]()
@@ -99,7 +100,7 @@ func (w wrapper[T]) Block(ctx context.Context) (val reactor.Null[T], err error) 
 
 	val.Valid = sub.Valid
 	val.V = sub.V
-	
+
 	return
 }
 
