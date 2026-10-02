@@ -79,7 +79,10 @@ func (up *unicastProcessor) OnNext(v Any) {
 		hooks.Global().OnNextDrop(v)
 		return
 	}
-	up.q.offer(v)
+	if !up.q.offer(v) {
+		hooks.Global().OnNextDrop(v)
+		return
+	}
 	up.drain()
 }
 

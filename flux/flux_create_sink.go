@@ -57,7 +57,10 @@ func (p *bufferedSink) Next(v Any) {
 		hooks.Global().OnNextDrop(v)
 		return
 	}
-	p.q.offer(v)
+	if !p.q.offer(v) {
+		hooks.Global().OnNextDrop(v)
+		return
+	}
 	p.drain()
 }
 
