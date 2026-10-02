@@ -16,6 +16,11 @@ type bufferedSink struct {
 	stat     int32
 	lock     sync.Mutex
 	cond     sync.Cond
+	// onCancel runs once when downstream cancels so the owner can stop the
+	// producer. Producer-initiated terminals (Complete, Error) do not fire it:
+	// the producer already knows it is done, and its context must stay valid
+	// for any cleanup it runs afterwards.
+	onCancel func()
 }
 
 func (p *bufferedSink) Request(n int) {
@@ -29,6 +34,9 @@ func (p *bufferedSink) Cancel() {
 	}
 	// TODO: support cancel
 	p.dispose()
+	if fn := p.onCancel; fn != nil {
+		fn()
+	}
 }
 
 func (p *bufferedSink) Complete() {

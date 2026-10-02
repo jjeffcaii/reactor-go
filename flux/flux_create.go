@@ -63,7 +63,14 @@ func (fc fluxCreate) SubscribeWith(ctx context.Context, s reactor.Subscriber) {
 			// TODO: need implementation
 			panic("implement me")
 		default:
-			sink = newBufferedSink(s, _buffSize)
+			// The source function runs with a child context that is cancelled
+			// on downstream cancel, so a producer also receives cancellation
+			// signal via context. Parent cancellation propagates.
+			childCtx, cancel := context.WithCancel(ctx)
+			bs := newBufferedSink(s, _buffSize)
+			bs.onCancel = cancel
+			sink = bs
+			ctx = childCtx
 		}
 		s.OnSubscribe(ctx, sink)
 		fc.source(ctx, sink)
